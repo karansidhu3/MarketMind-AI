@@ -32,5 +32,5 @@ async def readiness(request: Request) -> dict:
 
 
 @router.get("/health/version")
-async def version() -> dict:
-    return {"app": "marketmind", "version": "0.2.0"}
+async def version(request: Request) -> dict:
+    return {"app": "marketmind", "version": request.app.version}

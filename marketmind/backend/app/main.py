@@ -17,6 +17,7 @@ async def lifespan(app: FastAPI):
     llm = OllamaLLMService(
         base_url=settings.ollama_url,
         embed_model=settings.ollama_embed_model,
+        generate_model=settings.ollama_generate_model,
     )
     storage = LocalStorageService(base_path=settings.storage_path)
     retrieval = QdrantRetrievalService(url=settings.qdrant_url)
@@ -36,7 +37,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title="MarketMind AI",
-        version="0.2.0",
+        version="0.3.0",
         docs_url="/docs" if settings.environment == "development" else None,
         redoc_url=None,
         lifespan=lifespan,

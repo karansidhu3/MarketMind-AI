@@ -1,11 +1,13 @@
 from dataclasses import dataclass
 from uuid import UUID
 
-from fastapi import Depends, Header
+from fastapi import Depends, Header, Request
 from fastapi import HTTPException, status
 
 from app.config import Settings, get_settings
 from app.core.auth import AuthError, decode_token
+from app.services.llm_service import LLMService
+from app.services.retrieval_service import RetrievalService
 
 
 @dataclass
@@ -43,3 +45,11 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Token payload is invalid"
         )
+
+
+def get_llm(request: Request) -> LLMService:
+    return request.app.state.llm
+
+
+def get_retrieval(request: Request) -> RetrievalService:
+    return request.app.state.retrieval
