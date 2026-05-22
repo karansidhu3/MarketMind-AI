@@ -25,7 +25,7 @@ class Settings(BaseSettings):
 
     storage_path: Path = Path("data/raw")
     ollama_embed_model: str = "nomic-embed-text"
-    ollama_generate_model: str = "llama3.2"
+    ollama_generate_model: str = "qwen3:8b"
 
 
 @lru_cache

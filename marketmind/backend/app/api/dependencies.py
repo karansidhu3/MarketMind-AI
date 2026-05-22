@@ -6,8 +6,11 @@ from fastapi import HTTPException, status
 
 from app.config import Settings, get_settings
 from app.core.auth import AuthError, decode_token
+from app.feed.service import FeedService
+from app.services.cache_service import CacheService
 from app.services.llm_service import LLMService
 from app.services.retrieval_service import RetrievalService
+from app.thesis.service import ThesisService
 
 
 @dataclass
@@ -22,8 +25,6 @@ async def get_current_user(
 ) -> CurrentUser:
     """
     Extract and validate the Bearer token from the Authorization header.
-    Used as a FastAPI dependency on every protected route.
-
     Raises HTTP 401 if the header is absent, malformed, or the JWT is invalid.
     """
     if not authorization or not authorization.startswith("Bearer "):
@@ -53,3 +54,15 @@ def get_llm(request: Request) -> LLMService:
 
 def get_retrieval(request: Request) -> RetrievalService:
     return request.app.state.retrieval
+
+
+def get_cache(request: Request) -> CacheService:
+    return request.app.state.cache
+
+
+def get_thesis_service(request: Request) -> ThesisService:
+    return request.app.state.thesis
+
+
+def get_feed_service(request: Request) -> FeedService:
+    return request.app.state.feed
