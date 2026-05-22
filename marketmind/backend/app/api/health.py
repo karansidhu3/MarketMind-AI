@@ -1,29 +1,36 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 router = APIRouter(tags=["health"])
 
 
 @router.get("/health")
 async def liveness() -> dict:
-    """
-    Liveness probe.
-    Returns 200 as long as the process is running.
-    Used by Docker healthcheck and load balancers.
-    """
+    """Liveness probe — returns 200 as long as the process is running."""
     return {"status": "ok"}
 
 
 @router.get("/health/ready")
-async def readiness() -> dict:
+async def readiness(request: Request) -> dict:
     """
-    Readiness probe.
-    Sprint 1: always returns 200. Dependency checks (postgres, redis,
-    qdrant, ollama) are wired in Sprint 2 once the service layer is
-    implemented.
+    Readiness probe. Checks that the Sprint 2 services initialised successfully.
+    Returns 200 when all checks pass, 503 when any service is not ready.
     """
-    return {"status": "ready"}
+    from fastapi import status
+    from fastapi.responses import JSONResponse
+
+    checks = {
+        "qdrant": "ok" if getattr(request.app.state, "retrieval", None) is not None else "not_initialized",
+        "ollama": "ok" if getattr(request.app.state, "llm", None) is not None else "not_initialized",
+        "storage": "ok" if getattr(request.app.state, "storage", None) is not None else "not_initialized",
+    }
+    all_ok = all(v == "ok" for v in checks.values())
+    http_status = status.HTTP_200_OK if all_ok else status.HTTP_503_SERVICE_UNAVAILABLE
+    return JSONResponse(
+        {"status": "ready" if all_ok else "degraded", "checks": checks},
+        status_code=http_status,
+    )
 
 
 @router.get("/health/version")
 async def version() -> dict:
-    return {"app": "marketmind", "version": "0.1.0"}
+    return {"app": "marketmind", "version": "0.2.0"}

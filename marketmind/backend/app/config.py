@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -21,6 +22,9 @@ class Settings(BaseSettings):
 
     environment: str = "development"
     allowed_origins: list[str] = ["http://localhost:3001"]
+
+    storage_path: Path = Path("data/raw")
+    ollama_embed_model: str = "nomic-embed-text"
 
 
 @lru_cache

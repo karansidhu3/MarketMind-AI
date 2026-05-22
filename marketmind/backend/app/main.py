@@ -5,14 +5,30 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import auth, feed, health, learn, research, thesis, trends
 from app.config import get_settings
+from app.services.llm_service import OllamaLLMService
+from app.services.retrieval_service import QdrantRetrievalService
+from app.services.storage_service import LocalStorageService
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: nothing to initialise in Sprint 1.
-    # Sprint 2: open DB pool, Redis connection, Qdrant client.
+    settings = get_settings()
+
+    llm = OllamaLLMService(
+        base_url=settings.ollama_url,
+        embed_model=settings.ollama_embed_model,
+    )
+    storage = LocalStorageService(base_path=settings.storage_path)
+    retrieval = QdrantRetrievalService(url=settings.qdrant_url)
+
+    app.state.llm = llm
+    app.state.storage = storage
+    app.state.retrieval = retrieval
+
     yield
-    # Shutdown: nothing to close in Sprint 1.
+
+    await llm.close()
+    await retrieval.close()
 
 
 def create_app() -> FastAPI:
@@ -20,7 +36,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title="MarketMind AI",
-        version="0.1.0",
+        version="0.2.0",
         docs_url="/docs" if settings.environment == "development" else None,
         redoc_url=None,
         lifespan=lifespan,
