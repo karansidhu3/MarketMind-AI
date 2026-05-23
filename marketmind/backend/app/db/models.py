@@ -105,3 +105,19 @@ class DailyFeed(Base):
     insider_clusters: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class ConfidenceSnapshot(Base):
+    """One row per thesis per day — enables confidence history charts."""
+    __tablename__ = "confidence_snapshots"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    thesis_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("theses.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    snapshot_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+    supporting_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    opposing_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    evidence_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

@@ -7,7 +7,7 @@ from datetime import date, datetime, timedelta, timezone
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.db.models import CompanySignal, DailyFeed, Evidence, InsiderTransaction, Thesis
+from app.db.models import CompanySignal, ConfidenceSnapshot, DailyFeed, Evidence, InsiderTransaction, Thesis
 from app.feed.schema import FeedResponse, InsiderCluster, NewCompany, ThesisSignal
 from app.services.cache_service import CacheService
 from app.services.llm_service import LLMService
@@ -94,6 +94,9 @@ class FeedService:
                     )
                 )
             await session.commit()
+
+        # Write confidence snapshots (one row per active thesis per day)
+        await self._write_snapshots(feed_date, thesis_signals)
 
         return FeedResponse(
             feed_date=feed_date,
@@ -278,6 +281,40 @@ class FeedService:
             )
             for row in rows
         ]
+
+    async def _write_snapshots(self, feed_date: date, signals: list[ThesisSignal]) -> None:
+        """Upsert one ConfidenceSnapshot per thesis per day."""
+        if not signals:
+            return
+        import uuid as _uuid
+        async with self._factory() as session:
+            for sig in signals:
+                tid = _uuid.UUID(sig.thesis_id)
+                existing = (
+                    await session.execute(
+                        select(ConfidenceSnapshot).where(
+                            ConfidenceSnapshot.thesis_id == tid,
+                            ConfidenceSnapshot.snapshot_date == feed_date,
+                        )
+                    )
+                ).scalar_one_or_none()
+
+                if existing:
+                    existing.confidence       = sig.confidence
+                    existing.supporting_count = sig.supporting_count
+                    existing.opposing_count   = sig.opposing_count
+                    existing.evidence_count   = sig.supporting_count + sig.opposing_count
+                else:
+                    session.add(ConfidenceSnapshot(
+                        thesis_id        = tid,
+                        snapshot_date    = feed_date,
+                        confidence       = sig.confidence,
+                        supporting_count = sig.supporting_count,
+                        opposing_count   = sig.opposing_count,
+                        evidence_count   = sig.supporting_count + sig.opposing_count,
+                    ))
+            await session.commit()
+        logger.info("Wrote %d confidence snapshot(s) for %s", len(signals), feed_date)
 
     async def _synthesise_summary(
         self,

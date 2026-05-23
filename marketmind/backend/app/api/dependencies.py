@@ -66,3 +66,7 @@ def get_thesis_service(request: Request) -> ThesisService:
 
 def get_feed_service(request: Request) -> FeedService:
     return request.app.state.feed
+
+
+def get_session_factory(request: Request):
+    return request.app.state.session_factory

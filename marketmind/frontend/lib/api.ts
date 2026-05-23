@@ -1,4 +1,4 @@
-import type { CompanyRadarItem, EvidenceOut, FeedResponse, ResearchResponse, ThesisOut } from './types'
+import type { CompanyRadarItem, ConfidenceSnapshot, EvidenceOut, FeedResponse, ResearchResponse, SupplyChainLink, ThesisOut } from './types'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -75,6 +75,18 @@ export async function createThesis(data: { name: string; description: string; ke
 
 export async function getCompanyRadar(minMentions = 1): Promise<CompanyRadarItem[]> {
   return request<CompanyRadarItem[]>(`/theses/radar?min_mentions=${minMentions}`)
+}
+
+// ── Supply chain ──────────────────────────────────────────────────────────────
+
+export async function getSupplyChain(company: string, limit = 50): Promise<SupplyChainLink[]> {
+  return request<SupplyChainLink[]>(`/supply-chain/${encodeURIComponent(company)}?limit=${limit}`)
+}
+
+// ── Confidence history ────────────────────────────────────────────────────────
+
+export async function getConfidenceHistory(id: string, days = 30): Promise<ConfidenceSnapshot[]> {
+  return request<ConfidenceSnapshot[]>(`/theses/${id}/confidence-history?days=${days}`)
 }
 
 // ── Research ──────────────────────────────────────────────────────────────────

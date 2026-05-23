@@ -85,3 +85,22 @@ export interface ResearchResponse {
   sources: SourceRef[]
   confidence: number
 }
+
+export interface SupplyChainLink {
+  id: string
+  parent_company: string
+  child_company: string
+  relationship_type: 'supplier' | 'customer' | 'partner'
+  evidence_text: string
+  confidence: number
+  source_document_id: string
+  created_at: string
+}
+
+export interface ConfidenceSnapshot {
+  date: string
+  confidence: number
+  supporting_count: number
+  opposing_count: number
+  evidence_count: number
+}

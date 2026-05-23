@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.api.dependencies import CurrentUser, get_current_user, get_thesis_service
+from app.api.dependencies import CurrentUser, get_current_user, get_session_factory, get_thesis_service
+from app.db.models import ConfidenceSnapshot
 from app.thesis.schema import CompanyRadarItem, EvidenceOut, ThesisCreate, ThesisOut, ThesisUpdate
 from app.thesis.service import ThesisService
 
@@ -84,3 +88,36 @@ async def get_thesis_evidence(
 ) -> list[EvidenceOut]:
     rows = await svc.get_evidence(thesis_id, limit=limit)
     return [EvidenceOut.model_validate(r) for r in rows]
+
+
+@router.get("/{thesis_id}/confidence-history")
+async def get_confidence_history(
+    thesis_id: uuid.UUID,
+    days: int = 30,
+    _user: CurrentUser = Depends(get_current_user),
+    factory: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> list[dict]:
+    """Daily confidence snapshots for the given thesis, newest first."""
+    cutoff = date.today() - timedelta(days=days)
+    async with factory() as session:
+        rows = (
+            await session.execute(
+                select(ConfidenceSnapshot)
+                .where(
+                    ConfidenceSnapshot.thesis_id == thesis_id,
+                    ConfidenceSnapshot.snapshot_date >= cutoff,
+                )
+                .order_by(ConfidenceSnapshot.snapshot_date.asc())
+            )
+        ).scalars().all()
+
+    return [
+        {
+            "date": r.snapshot_date.isoformat(),
+            "confidence": r.confidence,
+            "supporting_count": r.supporting_count,
+            "opposing_count": r.opposing_count,
+            "evidence_count": r.evidence_count,
+        }
+        for r in rows
+    ]
