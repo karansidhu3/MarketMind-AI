@@ -163,6 +163,7 @@ class FeedService:
             ).scalars().all()
 
             highlight = today_rows[0].excerpt[:300] if today_rows else ""
+            evidence_ids = [str(e.id) for e in today_rows]
 
             signals.append(
                 ThesisSignal(
@@ -175,6 +176,7 @@ class FeedService:
                     confidence=confidence,
                     top_companies=list(company_rows),
                     highlight=highlight,
+                    evidence_ids=evidence_ids,
                 )
             )
 

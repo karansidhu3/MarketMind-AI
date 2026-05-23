@@ -304,18 +304,21 @@ natural decay.
 ## C-011 — Feed does not link to specific evidence records
 
 **Severity:** Medium
-**Status:** Open
+**Status:** Resolved ✅
 
 **Root cause:**
-The daily feed thesis signals show aggregated counts ("4 new supporting signals
-for AI Infrastructure") but do not reference the specific evidence record IDs
-that produced them. Provenance is broken at the feed layer. A user cannot
-trace a feed signal back to the exact document passage that generated it.
+The daily feed thesis signals showed aggregated counts ("4 new supporting signals
+for AI Infrastructure") but did not reference the specific evidence record IDs
+that produced them. Provenance was broken at the feed layer.
 
-**Proposed solution:**
-Feed thesis signals should carry a list of evidence record IDs alongside the
-count. This enables bidirectional traversal from signal to source without
-requiring the feed to store the full content of each evidence record.
+**What was done:**
+- `ThesisSignal` schema gained `evidence_ids: list[str]` — populated from the
+  `today_rows` query in `FeedService._thesis_signals()`
+- `SignalCard` href carries provenance: `/thesis/{id}?from=feed&eids=<ids>`
+- Thesis detail page reads `from` and `eids` query params:
+  - Shows a "Showing N signals from today's feed" banner when navigating from feed
+  - Highlights matching evidence cards with accent border + "Today's feed" badge
+  - Auto-scrolls to the first highlighted card on load
 
 ---
 
@@ -325,7 +328,7 @@ requiring the feed to store the full content of each evidence record.
 |----|---------|----------|--------|
 | C-001 | Knowledge quality vs retrieval quality | High | Partially addressed |
 | C-002 | Confirmation bias / discovery gap | Medium | Open |
-| C-003 | Relationship extraction reliability | High | Open |
+| C-003 | Relationship extraction reliability | High | Deprioritised (ADR-024) |
 | C-004 | Unknown company surfacing quality | High | Partially addressed |
 | C-005 | Signal inflation risk | Medium | Open |
 | C-006 | Data model evolution risk | Medium | Open |
@@ -333,4 +336,4 @@ requiring the feed to store the full content of each evidence record.
 | C-008 | Uncertainty propagation | High | Partially addressed |
 | C-009 | Thesis semantic drift | High | Open |
 | C-010 | Temporal decay / stale relationships | Medium | Open |
-| C-011 | Feed provenance gap | Medium | Open |
+| C-011 | Feed provenance gap | Medium | Resolved ✅ |

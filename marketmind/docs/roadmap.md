@@ -2,14 +2,46 @@
 
 ## Vision
 
-MarketMind is a persistent investment intelligence platform that finds bottlenecks
-and early signals **before they become obvious** — surfacing unknown companies,
-tracking thesis confidence over time, and detecting supply chain relationships
-that analysts haven't written about yet.
+MarketMind is a persistent investment intelligence platform that surfaces unknown
+companies and tracks investment thesis confidence **before signals become mainstream**.
 
 The core advantage over one-shot LLM queries: **memory across time**.
-MarketMind knows what signals appeared 6 weeks ago versus today.
-It builds a corpus that compounds.
+MarketMind knows what signals appeared 6 weeks ago versus today. It builds a
+corpus that compounds. The longer it runs, the more meaningful every new signal
+becomes.
+
+**The daily use case:** Open it for 2 minutes each morning. See what changed in
+your thesis trajectories, which unknown companies are accelerating, and how that
+maps to your portfolio — in plain English, without jargon.
+
+---
+
+## Product Direction (post product review)
+
+After a product reduction exercise, the following decisions were made:
+
+**Deprioritised (won't build further):**
+- Supply chain extraction graph — systematic LLM errors compound as false positives;
+  graph grows but doesn't get more accurate; impressive in demos, maintenance
+  liability in production (C-003 unresolved)
+- Insider transaction clustering (Form 4) — commodity signal available on every
+  terminal; no differentiation; adds ingestion complexity for zero unique value
+- Research endpoint — stateless synthesis; doesn't use the temporal layer that
+  makes MarketMind different from asking Claude directly
+- Per-thesis evidence list as primary UX — nobody browses 15,000 records daily;
+  useful for debugging, not for daily intelligence use
+
+**Core compounding features (double down on these):**
+- Company radar with trajectory (not just rank — velocity of emergence matters)
+- Thesis confidence trends over time (direction and duration, not the point-in-time %)
+- Language delta auto-surfaced in feed (not buried behind a click in thesis detail)
+- Plain English interpretation layer — the feed should explain what's happening,
+  not just report numbers
+
+**New direction:**
+- Portfolio layer: connect holdings to theses, surface alignment gaps, let MarketMind
+  tell you what your corpus is saying about companies you hold or don't hold yet
+- Explain mode: LLM synthesises the trend narrative, not today's documents
 
 ---
 
@@ -50,77 +82,189 @@ It builds a corpus that compounds.
 - Supply chain query endpoint: `GET /supply-chain/{company}`
 - Full frontend built: login, feed, thesis list + detail, research
 
----
-
-## Current — Sprint 5 — Thesis Deepening
-
-### Completed this sprint
-- **Opposing evidence surfacing** — top 2 highest-scoring opposing records pinned
-  above evidence list on thesis detail page with ShieldAlert callout
-- **Confidence sparkline** — 30-day SVG trend chart in thesis stats row (green/red
-  trend line + dot at latest value, auto-hides if insufficient history)
-- **Radar ranking fix** — changed from `SUM(mention_count)` to
-  `COUNT(DISTINCT document_id)` so a company mentioned 40× in one 10-K doesn't
-  outrank one mentioned once each in 5 independent filings
-- **Company name normalisation** — radar now groups by `normalised_name` using
-  Python-side aggregation with `pick_canonical()` for display name;
-  "Eaton Corporation plc" + "Eaton Corporation" → single entry with correct counts
-- **Language shift detector** — `GET /theses/{id}/language-delta` compares evidence
-  language between two rolling 30-day windows; returns appeared/disappeared/intensified
-  themes + LLM summary; cached 6h; returns `insufficient_data` gracefully until
-  corpus spans 60+ days (will auto-activate as data accumulates)
-- **On-demand corpus re-evaluation** — `POST /theses/{id}/evaluate` rescores entire
-  Qdrant corpus against one thesis as a FastAPI BackgroundTask; returns 202 immediately;
-  useful when creating a new thesis or updating keywords
-- **Supply chain tab** — thesis detail page has Evidence | Supply Chain tabs;
-  supply chain tab has company search box querying `GET /supply-chain/{company}`
-- **Re-evaluate button** — one-click corpus rescore from thesis detail page header
-- **Dark/light mode** — Sun/Moon toggle in sidebar; next-themes; CSS custom properties
-  as RGB triplets; `suppressHydrationWarning` on `<html>`
-
-- **Toast notification system** — `components/ui/Toast.tsx` with `ToastProvider` + `useToast` hook;
-  wired into `app/layout.tsx`; used by feed regenerate and thesis re-evaluate actions
-- **Feed hero section** — LLM summary promoted to full-width hero with stat pills (theses tracked,
-  new signals, new companies, insider clusters), decorative accent glow, cached/live indicator
-- **Skeleton loading** — `HeroSkeleton`, `SignalCardSkeleton`, `RadarRowSkeleton` replace spinner;
-  layout-faithful skeletons animate with `animate-pulse` during feed load
-- **Brief/Full toggle** — segmented control on feed page only; Brief mode shows compact single-row
-  signal cards (momentum badge + thesis name + confidence inline); Full is the default expanded view
-- **"NEW" badge on radar** — companies first seen within 7 days get a green NEW pill in CompanyRadar
-- **Improved empty states** — feed shows guidance card with icon when no signals yet; radar shows
-  two-line empty message
-- **Thesis detail: toast for re-evaluate** — replaced inline `evalMsg` state with toast notification
-
-### Remaining this sprint
-- **Feed provenance** (C-011) — thesis signals in daily feed should carry the evidence
-  record IDs that produced them (traceability from feed → evidence → source)
-- **Temporal decay** (C-010) — older evidence should contribute less to confidence
-- **Counter-thesis enforcement** — separate stable hypothesis statement from evolving
-  keyword list (ADR-016 design, not yet reflected in data model)
+### Sprint 5 — Thesis Deepening + UI Overhaul ✅
+- Opposing evidence surfacing — top 2 opposing records pinned with ShieldAlert callout
+- Confidence sparkline — 30-day SVG trend in thesis stats row
+- Radar ranking fixed — COUNT(DISTINCT document_id) not raw mention sum
+- Company name normalisation — groups by normalised_name, pick_canonical() for display
+- Language shift detector — GET /theses/{id}/language-delta, 30-day window comparison,
+  6h Redis cache, insufficient_data graceful handling
+- On-demand corpus re-evaluation — POST /theses/{id}/evaluate as BackgroundTask (202)
+- Supply chain tab on thesis detail page
+- Dark/light mode — next-themes, CSS vars as RGB triplets
+- Toast notification system — ToastProvider + useToast() hook wired into layout
+- Feed hero section — LLM summary as full-width briefing with stat pills
+- Skeleton loading — HeroSkeleton, SignalCardSkeleton, RadarRowSkeleton
+- Brief/Full toggle — feed page only; compact vs full signal cards
+- "NEW" badge on radar — companies first seen within 7 days
+- Improved empty states with guidance text
+- Re-evaluate action uses toast, not inline status text
 
 ---
 
-## Near-Term
+## Current — Sprint 6 — Intelligence Surfacing
 
-### Sprint 6 — Trend Discovery
+Goal: make the daily 2-minute experience actually useful without financial knowledge.
+The feed should interpret trends, not just report numbers.
 
-- Automatic bottleneck detection without user-defined thesis keywords
-- Cross-company signal clustering: "8 companies from 4 sectors all mention X"
-- Emerging signal alerts: new keyword clusters appearing for the first time
-- Source targeting: connectors aimed at specific sectors rather than global feeds
+### Remaining from Sprint 5
+- **Feed provenance** (C-011) — evidence record IDs in feed signals for traceability
+- **Temporal decay** (C-010) — recency weighting so old evidence counts less than recent
 
-### Sprint 7 — Investor Tracking
+### Sprint 6 features
 
-- Track credible investor newsletters and public commentary
-- Surface when a known investor starts or exits a thesis
+- **Explain / Data mode** (replaces Brief/Full) — "Data" is current technical view;
+  "Explain" uses LLM to generate a plain English trend narrative per thesis:
+  "Most of what we're reading about AI Infrastructure is positive. Companies are
+  expanding data centers and ordering more power equipment. This trend has been
+  strengthening for two weeks, not weakening." Uses the corpus history, not just
+  today's documents. Toggle is feed-page-scoped.
+
+- **Auto language delta in feed** — instead of buried behind a click in thesis
+  detail, surface one meaningful language shift per thesis in the feed automatically.
+  "New term appearing in Power Grid filings this week: grid interconnection queue."
+  No click required.
+
+- **Company alert threshold** — user sets a doc_count threshold per company on the
+  radar ("alert me when Powell Industries hits 8 independent documents"). Notification
+  appears in feed on next load. Turns passive radar into active watchlist.
+
+- **Thesis suggestion from clusters** — background clustering pass over ingested
+  documents surfaces recurring themes not covered by any active thesis.
+  "14 companies all mention grid-scale battery storage this month — you have no
+  thesis for this yet." Directly addresses C-002 (discovery gap).
+
+- **Radar trajectory view** — instead of showing doc_count as a static number,
+  show the 4-week trend. A company at 12 docs with an acceleration curve is more
+  interesting than one at 20 docs that's been flat for 6 weeks. The curve is
+  the intelligence.
+
+---
+
+## Sprint 7 — Portfolio Layer
+
+The "so what" sprint. Right now MarketMind tells you things are happening.
+Portfolio integration answers the question the feed never answers.
+
+- **Holdings input** — user adds positions (ticker, shares, optional cost basis).
+  Stored locally. Never leaves the machine (consistent with local-first ADR-001).
+
+- **Thesis alignment score** — each holding is mapped to active theses.
+  Portfolio receives an overall alignment score: "Your portfolio is 71% aligned
+  with your active theses." When a thesis strengthens, you see your exposure.
+
+- **Gap detection** — "Power Grid thesis confidence has been rising for 8 weeks.
+  Companies on your radar in this sector: Eaton (you hold 20 shares), Vertiv
+  (no position), Powell Industries (no position — 12 independent documents this month)."
+  This is the unique output. No terminal does this.
+
+- **Portfolio-aware feed** — feed signals know your holdings. "AI Infrastructure
+  rising — you hold NVDA (high exposure), MSFT (moderate). Power Grid rising —
+  you have minimal exposure in this sector."
+
+- **Framing: thesis alignment, not buy/sell** — MarketMind surfaces what the corpus
+  says about your exposure gaps. It does not recommend trades. The user decides
+  what to do. This is intentional — buy/sell recommendations require precision
+  the confidence score does not have.
+
+---
+
+## Sprint 8 — Resume Ready + Demo Polish
+
+- **Public demo mode** — read-only view with sample corpus, no login required.
+  For showing recruiters and in portfolio links without exposing personal data.
+
+- **"Explain this signal" on demand** — click any thesis card anywhere in the app
+  to get a plain English synthesis of why MarketMind thinks this trend is real:
+  "Here's what we're actually seeing across 47 filings and why this has been
+  strengthening." Uses trend history, not just today.
+
+- **Mobile responsive** — current UI is desktop-only. At minimum, feed page
+  readable on mobile for the morning check.
+
+- **Thesis export** — one-click export of a thesis summary (PDF or shareable
+  text): hypothesis, confidence trend, top companies, key evidence excerpts.
+  Good for sharing research with others.
+
+- **Corpus targeting** — source connectors aimed at specific sectors rather than
+  global EDGAR feeds. Addresses C-001 (the existential concern). Without this,
+  all the intelligence surfacing runs on the wrong raw material.
+
+---
+
+## Sprint 8 — Resume Ready + Demo Polish
+
+- **Public demo mode** — read-only `/demo` route with static sample data, no login
+  required. Send to recruiters as a live link. Changes the resume story from "I
+  built this" to "you can use it right now." Sample data is static JSON — no live
+  LLM needed for the demo view.
+
+- **"Why is this signal meaningful?" on-demand** — per-signal explainer button on
+  any evidence card. Opens a modal showing the reasoning chain: "This filing from
+  Vertiv mentions transformer delivery timelines 4 times. It also references NVIDIA
+  and Microsoft as customers. We classified it as supporting your AI Infrastructure
+  thesis because 8 of the 12 keywords matched." Useful for demos, useful for
+  debugging whether the system is working correctly.
+
+- **Mobile responsive feed** — at minimum, the feed page is readable on mobile
+  for the morning check. Current UI is desktop-only.
+
+- **Thesis export** — one-click export of a thesis summary (PDF or shareable text):
+  hypothesis, confidence trend, top companies, key evidence excerpts.
+
+---
+
+## Sprint 9 — Track Record + Prediction
+
+- **Thesis vs reality tracking** — add "predicted outcome" and "target date" to
+  each thesis. At the target date, mark: did it play out? After 12 months you have
+  a table: 7 theses tracked, 4 correct calls, 2 wrong, 1 pending. Turns MarketMind
+  from a monitoring tool into a track record builder. Very strong interview story.
+
+- **Comparable period detection** — "this pattern resembles what we saw in AI
+  Infrastructure 3 months before it accelerated." Requires multi-month corpus.
+
+- **Earnings calendar overlay** — when companies appear on the radar, flag when
+  they next report earnings. "Powell Industries, 12 docs on radar, reports Q2 in
+  8 days." That's actionable. Earnings dates are public data, easy to fetch.
 
 ---
 
 ## Long-Term
 
-- Personalized learning system
-- Evidence graph visualisation (supply chain as interactive graph)
-- Long-term market memory (multi-year corpus)
-- Intelligent research workspace
-- Earnings surprise pattern detection
-- Corroboration UI: show how many independent sources support each relationship
+- Multi-year corpus with temporal query ("what was the narrative around power grid
+  in Q3 2024 vs now?")
+- Collaborative mode — share theses and corpus with a team
+- Corpus targeting automation — auto-discover companies in thesis sectors and add
+  their filings to a priority ingestion queue
+
+---
+
+## Backlog / Ideas
+
+Unscheduled ideas worth keeping. Revisit when relevant sprint arrives.
+
+- **Corpus targeting** (do before portfolio layer) — compile 50-100 specific
+  companies known to operate in thesis sectors. Pull their 10-K/10-Q directly
+  instead of relying on EDGAR's generic daily feed. One afternoon of work,
+  dramatically better corpus quality. Addresses C-001. Must happen before portfolio
+  alignment is meaningful — alignment built on a noisy corpus gives noisy answers.
+
+- **First appearance prominence** — when a company crosses the radar threshold for
+  the first time, it deserves its own visual treatment in the feed, not buried in
+  a list. This moment is the core value proposition of the product.
+
+- **Radar trajectory view** — show the 4-week doc_count trend curve alongside the
+  current number. A company at 12 docs with acceleration is more interesting than
+  one at 20 docs that's been flat for 6 weeks. The curve is the intelligence.
+
+- **Terminology audit** — small rename pass for clarity without code changes:
+  "Evidence" → "Signals" in user-facing layer; "Confidence score" → "Signal
+  strength"; momentum badges should show duration ("Rising — 11 days" not just
+  "Rising"); thesis list should explain what theses are on first visit.
+
+- **Company alert threshold** — user sets doc_count threshold per radar company.
+  Feed shows notification when crossed. Turns passive radar into active watchlist.
+
+- **Auto language delta in feed** — surface one language shift per thesis in the
+  feed automatically, no click required. Currently buried in thesis detail page.

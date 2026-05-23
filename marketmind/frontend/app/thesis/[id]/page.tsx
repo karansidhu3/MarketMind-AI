@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState, use } from 'react'
+import { useEffect, useState, use, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import {
   ArrowLeft, RefreshCw, AlertCircle, ExternalLink,
-  Search, ArrowRight, TrendingUp, TrendingDown,
+  Search, ArrowRight, ArrowUpRight, TrendingUp, TrendingDown,
   ShieldAlert, GitCompare, Plus, Minus, Zap,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -84,6 +85,11 @@ function Sparkline({ data }: { data: ConfidenceSnapshot[] }) {
 
 export default function ThesisDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const searchParams = useSearchParams()
+
+  // Feed provenance: eids=<comma-separated evidence IDs> when navigating from feed
+  const fromFeed    = searchParams.get('from') === 'feed'
+  const feedEidSet  = new Set((searchParams.get('eids') ?? '').split(',').filter(Boolean))
 
   const [thesis,    setThesis]    = useState<ThesisOut | null>(null)
   const [evidence,  setEvidence]  = useState<EvidenceOut[]>([])
@@ -91,7 +97,10 @@ export default function ThesisDetailPage({ params }: { params: Promise<{ id: str
   const [loading,   setLoading]   = useState(true)
   const [error,     setError]     = useState('')
 
-  // Evidence tab state
+  // Ref map for scrolling to highlighted evidence cards
+  const evidenceRefs = useRef<Record<string, HTMLDivElement | null>>({})
+
+  // Evidence tab state — default to 'all' but auto-scroll to feed evidence if present
   const [filter,    setFilter]    = useState<'all' | 'supporting' | 'opposing' | 'neutral'>('all')
 
   // Main tab
@@ -125,6 +134,16 @@ export default function ThesisDetailPage({ params }: { params: Promise<{ id: str
       .catch(e => setError(e instanceof Error ? e.message : 'Failed to load.'))
       .finally(() => setLoading(false))
   }, [id])
+
+  // Auto-scroll to first feed-highlighted evidence card after load
+  useEffect(() => {
+    if (!fromFeed || feedEidSet.size === 0 || loading) return
+    const firstId = [...feedEidSet][0]
+    const el = evidenceRefs.current[firstId]
+    if (el) {
+      setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)
+    }
+  }, [loading, fromFeed]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function searchSupplyChain(company: string) {
     const q = company.trim()
@@ -499,6 +518,17 @@ export default function ThesisDetailPage({ params }: { params: Promise<{ id: str
                   ))}
                 </div>
 
+                {/* Feed provenance banner — shown when navigated from feed */}
+                {fromFeed && feedEidSet.size > 0 && (
+                  <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-accent/5 border border-accent/20 rounded-lg">
+                    <ArrowUpRight size={12} className="text-accent shrink-0" />
+                    <p className="text-text-secondary text-xs">
+                      Showing {feedEidSet.size} signal{feedEidSet.size !== 1 ? 's' : ''} from today's feed —
+                      highlighted below.
+                    </p>
+                  </div>
+                )}
+
                 {/* Evidence list */}
                 {filtered.length === 0 ? (
                   <div className="text-center py-16 text-text-tertiary text-sm">
@@ -508,10 +538,17 @@ export default function ThesisDetailPage({ params }: { params: Promise<{ id: str
                   <div className="space-y-2">
                     {filtered.map(ev => {
                       const s = SENTIMENT_CONFIG[ev.sentiment]
+                      const isFromFeed = feedEidSet.has(ev.id)
                       return (
                         <div
                           key={ev.id}
-                          className="bg-surface border border-border rounded-xl p-4"
+                          ref={el => { evidenceRefs.current[ev.id] = el }}
+                          className={cn(
+                            'rounded-xl p-4 border transition-colors',
+                            isFromFeed
+                              ? 'bg-accent/5 border-accent/25'
+                              : 'bg-surface border-border',
+                          )}
                         >
                           <div className="flex items-start justify-between gap-3 mb-2">
                             <div className="flex items-center gap-2">
@@ -521,6 +558,11 @@ export default function ThesisDetailPage({ params }: { params: Promise<{ id: str
                               <span className="text-text-tertiary text-xs">
                                 {ev.source_name}
                               </span>
+                              {isFromFeed && (
+                                <span className="text-accent text-[10px] font-medium bg-accent/10 px-1.5 py-0.5 rounded-full">
+                                  Today's feed
+                                </span>
+                              )}
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                               {ev.document_date && (

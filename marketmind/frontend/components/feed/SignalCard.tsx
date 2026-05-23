@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { TrendingUp, TrendingDown, Minus, ArrowUpRight } from 'lucide-react'
 import Link from 'next/link'
 import { cn, formatConfidence } from '@/lib/utils'
 import type { ThesisSignal } from '@/lib/types'
@@ -37,11 +37,16 @@ export default function SignalCard({ signal, compact = false }: SignalCardProps)
   const Icon = m.icon
   const total = signal.supporting_count + signal.opposing_count
 
+  // URL to thesis evidence tab, highlighting today's evidence IDs
+  const evidenceHref = signal.evidence_ids.length > 0
+    ? `/thesis/${signal.thesis_id}?from=feed&eids=${signal.evidence_ids.slice(0, 10).join(',')}`
+    : `/thesis/${signal.thesis_id}`
+
   if (compact) {
     // ── Brief / compact layout ─────────────────────────────────────────────
     return (
       <Link
-        href={`/thesis/${signal.thesis_id}`}
+        href={evidenceHref}
         className={cn(
           'flex items-center gap-3 bg-surface border border-border border-l-4 rounded-xl px-4 py-3',
           'hover:bg-elevated transition-all duration-150 animate-slide-up',
@@ -62,10 +67,11 @@ export default function SignalCard({ signal, compact = false }: SignalCardProps)
           {signal.thesis_name}
         </h3>
 
-        {/* New count */}
+        {/* Provenance: new count as link hint */}
         {signal.new_evidence_count > 0 && (
-          <span className="text-text-tertiary text-xs shrink-0">
+          <span className="text-text-tertiary text-xs shrink-0 flex items-center gap-0.5">
             +{signal.new_evidence_count}
+            <ArrowUpRight size={9} />
           </span>
         )}
 
@@ -88,7 +94,7 @@ export default function SignalCard({ signal, compact = false }: SignalCardProps)
   // ── Full layout ────────────────────────────────────────────────────────────
   return (
     <Link
-      href={`/thesis/${signal.thesis_id}`}
+      href={evidenceHref}
       className={cn(
         'block bg-surface border border-border border-l-4 rounded-xl p-4',
         'hover:bg-elevated transition-all duration-150 animate-slide-up',
@@ -108,8 +114,9 @@ export default function SignalCard({ signal, compact = false }: SignalCardProps)
               {m.label}
             </span>
             {signal.new_evidence_count > 0 && (
-              <span className="text-text-tertiary text-xs">
+              <span className="inline-flex items-center gap-0.5 text-text-tertiary text-xs">
                 +{signal.new_evidence_count} today
+                <ArrowUpRight size={9} className="opacity-60" />
               </span>
             )}
           </div>

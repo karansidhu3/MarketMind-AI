@@ -302,3 +302,109 @@ extended reasoning.
 `think=False` (default). All current callers use the default. Reserved for future
 use: pass `think=True` for tasks like deep thesis analysis where reasoning quality
 matters more than latency.
+
+---
+
+## ADR-022 — Explain/Data mode replaces Brief/Full density toggle
+
+**Decision:** The feed's two-mode toggle is "Explain" and "Data", not "Brief" and
+"Full". The difference is interpretation, not information density.
+
+**Data mode:** current technical cards — confidence %, evidence counts, momentum
+label, company tags.
+
+**Explain mode:** per-thesis LLM-generated narrative interpreting the trend using
+corpus history, not just today's documents. Output is 2-3 plain English sentences
+that a non-finance reader would understand. The LLM synthesises direction and
+duration ("rising for two weeks, not weakening") rather than summarising today's
+filings.
+
+**Reason:**
+- "Brief" just makes cards smaller — same jargon, less space. Not useful.
+- The real gap is interpretation: most users opening the feed don't know what
+  "74% confidence, momentum rising, 12↑ 4↓" means in practice.
+- Explain mode uses the temporal data that accumulates over months — it cannot
+  be produced on day 1. This makes it a compounding feature, not a display option.
+- Scoped to feed page only. Thesis detail page retains full data view.
+
+---
+
+## ADR-023 — Portfolio integration uses thesis alignment framing, not buy/sell
+
+**Decision:** When portfolio holdings are connected, MarketMind surfaces thesis
+alignment scores and exposure gaps. It does not generate buy or sell recommendations.
+
+**Alignment framing:** "Your portfolio is 68% aligned with your active theses.
+Power Grid thesis rising but you have minimal exposure in this sector. Powell
+Industries has appeared in 12 independent documents — you don't hold this."
+
+**Reason:**
+- Buy/sell recommendations require precision the confidence score does not have
+  (C-009, C-010 both unresolved). Generating "buy this" from an imprecise signal
+  erodes trust in everything else.
+- Alignment gaps are accurate and honest: the corpus *is* showing something about
+  a sector. Whether to act on it is the user's decision.
+- Thesis alignment framing is unique — no financial terminal maps your holdings
+  to an independently tracked corpus of sector signals. This is the differentiation.
+- Local-first (ADR-001): holdings are stored in Postgres on the user's machine.
+  No data leaves the local environment.
+
+---
+
+## ADR-024 — Supply chain extraction deprioritised
+
+**Decision:** No further development on supply chain LLM extraction or the
+supply chain graph. Existing code is retained but not extended.
+
+**Reason:**
+- C-003 (relationship extraction reliability) remains unresolved. Systematic LLM
+  errors accumulate in one direction and are invisible because the data looks
+  internally consistent.
+- The graph grows with every ingestion cycle but has no mechanism to remove false
+  positives or flag stale relationships. After 12 months it is larger and less
+  trustworthy simultaneously.
+- The relationships with genuine value (unknown tier-2 supplier to 4 thesis-relevant
+  OEMs) require both corpus quality (C-001 unresolved) and extraction precision
+  (C-003 unresolved) that the system cannot currently provide.
+- The relationships that are reliably extracted (NVIDIA → TSMC) are public knowledge.
+- Development time is better invested in the portfolio layer and Explain mode,
+  both of which compound cleanly.
+
+**What stays:** The supply chain tab on thesis detail page, the supply chain
+endpoint, and the extractor code remain in place. They are not actively broken.
+They just won't be extended.
+
+---
+
+## ADR-025 — Insider transaction tracking deprioritised
+
+**Decision:** Form 4 ingestion and insider cluster detection are not extended.
+Existing code is retained.
+
+**Reason:**
+- Commodity signal — available on every financial terminal and data provider.
+- Zero differentiation from existing products.
+- The companies MarketMind aims to surface (unknown sector suppliers) are not
+  generating Form 4 filings that create novel signals.
+- Infrastructure complexity (separate connector, cluster detection logic, feed
+  section) for no unique value.
+
+---
+
+## ADR-026 — Corpus targeting is the highest-leverage infrastructure investment
+
+**Decision:** Future ingestion work should prioritise targeted sector connectors
+over volume. Ingesting more irrelevant documents does not improve intelligence
+quality.
+
+**Reason:**
+- C-001 (knowledge quality vs retrieval quality) is the existential concern.
+  All thesis tracking, radar, confidence scoring, and portfolio alignment run on
+  the corpus. If the corpus is mostly irrelevant documents, all downstream
+  intelligence is built on noise.
+- EDGAR's public feed returns whatever companies filed that day — mostly retail,
+  healthcare, and financial services — not AI infrastructure or power grid companies.
+- 300-400 genuinely on-topic documents per thesis area produce meaningfully better
+  intelligence than 10,000 documents of which 5% are relevant.
+- Targeted connectors: specific company 10-K/10-Q filing RSS feeds, sector-specific
+  ETF constituent lists as ingestion targets, curated company watchlists.

@@ -8,18 +8,48 @@ without asking the user to re-explain context.
 ## What this project is
 
 MarketMind is a **persistent investment intelligence platform** that runs entirely
-locally (no paid APIs). The core goal: find investment opportunities — specifically
-supply chain bottlenecks and unknown companies — **before they become obvious**.
+locally (no paid APIs). Core goal: surface unknown companies and track investment
+thesis confidence **before signals become mainstream** — not after.
 
 The key differentiator from asking Claude or ChatGPT directly:
-**memory across time**. MarketMind ingests SEC filings, news, and insider
-transactions daily, scores them against tracked investment theses, extracts supply
-chain relationships, and builds a compounding corpus that no one-shot LLM query
-can replicate. It knows what signals appeared six weeks ago versus today.
+**memory across time**. MarketMind ingests SEC filings and news daily, scores
+them against tracked investment theses, and builds a compounding corpus that no
+one-shot LLM query can replicate. It knows what signals appeared six weeks ago
+versus today. A company appearing in 2 filings in March → 8 in April → 19 in May
+is a signal you cannot get from a search.
 
-The user's actual goal: identify bottlenecks (power, semiconductors, grid
-infrastructure, defense) and surface unknown companies in those supply chains
-before analysts write about them.
+**The daily use case:** 2-minute morning check. What changed in my thesis
+trajectories. Which unknown companies are accelerating. How that maps to my
+portfolio. In plain English, without jargon.
+
+**The user's portfolio goal:** eventually link holdings so MarketMind can surface
+alignment gaps — "Power Grid thesis rising, you have minimal exposure in this sector;
+Powell Industries has appeared in 12 independent filings and you don't hold it."
+
+---
+
+## Product direction (post product review — Sprint 6 onwards)
+
+**Deprioritised (not extending further):**
+- Supply chain extraction — systematic LLM errors compound as false positives;
+  see ADR-024. Code exists but won't be extended.
+- Insider transaction clustering (Form 4) — commodity signal, no differentiation;
+  see ADR-025. Code exists but won't be extended.
+- Research endpoint — stateless synthesis, doesn't use the temporal layer.
+  Retained but not a focus.
+
+**Core compounding features (all effort goes here):**
+- Company radar with trajectory (velocity of emergence, not just current rank)
+- Thesis confidence trends over time (direction and duration)
+- Explain mode: LLM interprets trend narrative from corpus history (not today's docs)
+- Language delta auto-surfaced in feed (not buried in thesis detail)
+- Portfolio layer: holdings → thesis alignment scores → exposure gaps
+
+**Resume framing for interviews:**
+- Local LLM pipeline at production scale (Ollama, Docker, daily ingestion scheduler)
+- Temporal intelligence: not retrieval, but signal tracking across months
+- Architecture decisions defensible in interview (see docs/decisions.md ADR-001 through ADR-026)
+- Portfolio integration connecting personal holdings to an independently built corpus
 
 ---
 
@@ -39,53 +69,72 @@ Everything runs locally. Zero API costs.
 
 ---
 
-## Current sprint: Sprint 5 — Thesis Deepening (in progress)
+## Current sprint: Sprint 6 — Intelligence Surfacing
 
-### What has been built (Sprints 1–5)
+Sprint 5 is complete. Sprint 6 starts now.
 
-**Sprint 1** — Infrastructure: FastAPI, Next.js, Docker, Qdrant, Redis, Ollama, health endpoints.
+### What has been built (Sprints 1–5 complete)
 
-**Sprint 2** — Knowledge ingestion: SEC EDGAR (8-K), Yahoo Finance, RSS connectors.
-Embeddings via nomic-embed-text. Qdrant storage. UUID5 deduplication.
+**Sprint 1** — Infrastructure: FastAPI, Next.js, Docker, Qdrant, Redis, Ollama.
 
-**Sprint 3** — Research workflow: query expansion, retrieval, reranking
-(similarity × credibility × keyword overlap), LLM synthesis, structured responses.
+**Sprint 2** — Knowledge ingestion: SEC EDGAR (8-K, 10-Q, 10-K, Form 4), Yahoo Finance,
+RSS connectors. Embeddings via nomic-embed-text. Qdrant storage. UUID5 deduplication.
+
+**Sprint 3** — Research workflow: query expansion, retrieval, reranking, LLM synthesis.
 
 **Sprint 4** — Bottleneck intelligence:
-- Postgres live — tables: theses, evidence, company_signals, supply_chain_links,
-  insider_transactions, daily_feeds, confidence_snapshots
+- Postgres live — all tables created
 - 5 system theses seeded at startup
 - Thesis scoring pipeline (keyword overlap → LLM sentiment classification)
-- Supply chain extractor (LLM extracts supplier/customer/partner from 10-K/10-Q)
-- Form 4 connector (SEC insider transaction filings, buy clusters in feed)
-- Company radar (`GET /theses/radar`) — ranked by unique source documents
-- Daily feed (`GET /feed`) — thesis momentum, new companies, insider clusters, LLM summary
-- Daily ingestor container — scheduler.py triggers ingest.py at INGEST_HOUR_UTC (default 06:00 UTC)
-- Redis cache (RedisCacheService)
-- Model corrected: llama3.2 → qwen3:8b
+- Supply chain extractor (not extending further — ADR-024)
+- Form 4 connector (not extending further — ADR-025)
+- Company radar (GET /theses/radar) — unique source document ranking
+- Daily feed with Redis cache (25h TTL)
+- Daily ingestor container with scheduler
 
-**Sprint 4 completions (pre-Sprint 5):**
-- `/no_think` prefix on LLM prompts disables qwen3 chain-of-thought (cuts 60–180s → 5–20s)
-- httpx.Timeout(300.0, connect=10.0) — separate connect/read timeouts
-- Date-scoped research: `days_back` param on `/research` filters Qdrant by created_at
-- Auto-regenerate feed after ingestion (scheduler.py calls `POST /feed/regenerate`)
-- Confidence snapshots: one row per thesis per day written after each feed generation
-- Supply chain query endpoint: `GET /supply-chain/{company}` (case-insensitive partial match)
-- Full frontend: login, feed, thesis list + create, thesis detail, research pages
+**Sprint 5** — Thesis deepening + UI overhaul:
+- Opposing evidence surfacing (top 2 pinned with ShieldAlert)
+- Confidence sparkline (30-day SVG trend)
+- Radar ranking fixed (COUNT DISTINCT document_id)
+- Company name normalisation (normalise.py + pick_canonical)
+- Language shift detector (GET /theses/{id}/language-delta, 6h cache)
+- On-demand corpus re-evaluation (POST /theses/{id}/evaluate, BackgroundTask)
+- Supply chain tab on thesis detail
+- Dark/light mode (next-themes, CSS vars as RGB triplets)
+- Toast notification system (ToastProvider + useToast hook in layout)
+- Feed hero section (LLM summary as full-width briefing with stat pills)
+- Skeleton loading (HeroSkeleton, SignalCardSkeleton, RadarRowSkeleton)
+- Brief/Full toggle on feed page (compact vs full signal cards)
+- "NEW" badge on radar (companies first seen within 7 days)
+- Improved empty states with guidance text
 
-**Sprint 5 — Thesis Deepening (current):**
-- ✅ Opposing evidence surfacing: top 2 opposing records pinned with ShieldAlert in thesis detail
-- ✅ Confidence sparkline: 30-day SVG trend shown in thesis stats row
-- ✅ Radar ranking fixed: `COUNT(DISTINCT document_id)` replaces raw mention sum
-- ✅ Company name normalisation: radar groups by `normalised_name`, uses `pick_canonical()`
-  so "Eaton Corporation plc" + "Eaton Corporation" → single entry, correct counts
-- ✅ Language shift detector: `GET /theses/{id}/language-delta` — compares two 30-day windows,
-  returns appeared/disappeared/intensified themes + summary. Cached 6h. Returns
-  `insufficient_data` until corpus spans 60 days (auto-activates, no code change needed)
-- ✅ On-demand corpus re-evaluation: `POST /theses/{id}/evaluate` rescores entire Qdrant
-  corpus against one thesis as a FastAPI BackgroundTask (returns 202 immediately)
-- ✅ Supply chain tab on thesis detail: search any company, see extracted relationships
-- ✅ Dark/light mode toggle (next-themes, CSS custom properties as RGB triplets)
+### Sprint 6 priorities (in order)
+
+1. **Feed provenance** (C-011) — evidence record IDs in feed signals. Small backend
+   change, high traceability value. Completes Sprint 5 remaining.
+
+2. **Temporal decay** (C-010) — recency weighting so evidence from 18 months ago
+   doesn't count the same as evidence from yesterday.
+
+3. **Explain / Data mode** (ADR-022) — replaces Brief/Full. "Data" = current technical
+   cards. "Explain" = LLM generates 2-3 plain English sentences per thesis interpreting
+   the trend using corpus history (not today's documents). Toggle scoped to feed page.
+
+4. **Auto language delta in feed** — surface one meaningful language shift per thesis
+   directly in the feed, no click required. Currently buried in thesis detail.
+
+5. **Company alert threshold** — user sets doc_count threshold per radar company,
+   gets notified in feed when it's crossed.
+
+6. **Radar trajectory view** — show 4-week doc_count trend alongside current count.
+   The curve is more informative than the number.
+
+### Sprint 7 (next)
+
+Portfolio layer: holdings input → thesis alignment score → exposure gap detection →
+portfolio-aware feed. See ADR-023 for framing decisions (alignment gaps, not buy/sell).
+
+---
 
 ### Ingestion sources (scripts/ingest.py)
 - SEC EDGAR: 8-K (40), 10-Q (20), 10-K (10), Form 4 (40)
@@ -125,7 +174,7 @@ docker compose logs ingestor --tail=5
 docker exec infrastructure-postgres-1 psql -U marketmind -c \
   "SELECT t.name, COUNT(e.id) FROM theses t LEFT JOIN evidence e ON e.thesis_id=t.id GROUP BY t.name;"
 
-# Check company radar (no auth needed for this curl trick)
+# Check company radar
 TOKEN=$(curl -s -X POST http://localhost:8000/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"email":"admin@marketmind.local","password":"marketmind"}' \
@@ -148,7 +197,7 @@ marketmind/
   CLAUDE.md                          ← this file (always read first)
   docs/
     roadmap.md                       ← vision, sprint history, near-term plan
-    decisions.md                     ← ADR-001 through ADR-021
+    decisions.md                     ← ADR-001 through ADR-026
     concerns.md                      ← C-001 through C-011, known issues + status
   backend/
     app/
@@ -166,7 +215,7 @@ marketmind/
       feed/
         service.py                   ← FeedService (feed generation, Redis cache, _write_snapshots)
       supply_chain/
-        extractor.py                 ← LLM supply chain relationship extraction
+        extractor.py                 ← LLM supply chain extraction (not extending — ADR-024)
       ingestion/
         worker.py                    ← IngestionWorker (embed → store → score → extract)
         normalise.py                 ← normalise(), is_same_company(), pick_canonical()
@@ -190,26 +239,27 @@ marketmind/
     requirements.txt
   frontend/
     app/
-      layout.tsx                     ← ThemeProvider, suppressHydrationWarning on <html>
+      layout.tsx                     ← ThemeProvider + ToastProvider, suppressHydrationWarning
       globals.css                    ← CSS vars as RGB triplets (enables bg-green/10 etc.)
       (auth)/login/page.tsx          ← JWT login → localStorage mm_token
-      feed/page.tsx                  ← SignalCard feed + CompanyRadar
+      feed/page.tsx                  ← hero section, skeleton loading, Brief/Full toggle,
+                                        SignalCard feed, CompanyRadar
       thesis/
         page.tsx                     ← thesis list + inline create form
-        [id]/page.tsx                ← full thesis detail (sparkline, counter-arg, delta,
-                                        supply chain tab, re-evaluate button)
+        [id]/page.tsx                ← thesis detail (sparkline, counter-arg, delta,
+                                        supply chain tab, re-evaluate button with toast)
       research/page.tsx              ← query + time filters + elapsed timer + results
     components/
       layout/AppShell.tsx            ← auth guard + sidebar wrapper
       layout/Sidebar.tsx             ← nav links + Sun/Moon theme toggle
-      feed/SignalCard.tsx            ← color-coded signal card (green/amber/red by momentum)
-      feed/CompanyRadar.tsx          ← relative-strength bars, doc_count as primary metric
+      feed/SignalCard.tsx            ← signal card with compact prop (Brief/Full mode)
+      feed/CompanyRadar.tsx          ← relative-strength bars, doc_count, NEW badge
+      ui/Toast.tsx                   ← ToastProvider + useToast hook + ToastItem
       ThemeProvider.tsx              ← next-themes, defaultTheme="dark", attribute="class"
     lib/
-      api.ts                         ← all API calls including getSupplyChain,
-                                        getConfidenceHistory, getLanguageDelta, evaluateThesis
+      api.ts                         ← all API calls
       types.ts                       ← all TypeScript interfaces
-      utils.ts                       ← formatConfidence, formatDate, formatDateShort, cn
+      utils.ts                       ← formatConfidence, formatDate, formatDateShort, cn, greet
     tailwind.config.js               ← rgb(var(--color) / <alpha-value>) pattern throughout
     next.config.js                   ← output: "standalone" (required for Docker build)
   infrastructure/
@@ -226,55 +276,39 @@ marketmind/
 - **ADR-010** — Postgres for persistent state; Qdrant for vectors; Redis for cache
 - **ADR-011** — Keyword threshold (15%) gates LLM calls to avoid O(docs × theses) cost
 - **ADR-012** — Confidence = supporting / total evidence (interpretable, not cosine mean)
-- **ADR-013** — Supply chain extraction only on 10-K/10-Q and credibility ≥ 0.85 docs
 - **ADR-015** — Epistemic tiers (Primary / Derived / Synthesized) not numeric propagation
 - **ADR-017** — Evidence is immutable; re-evaluation is explicit user action
-- **ADR-018** — Relationships need 3+ independent sources to be treated as established
 - **ADR-019** — Company name normalisation: normalise.py + radar groups by normalised_name
-- **ADR-020** — Radar ranks by unique source documents, not raw mention count (ADR-019 companion)
+- **ADR-020** — Radar ranks by unique source documents, not raw mention count
 - **ADR-021** — `/no_think` prefix disables qwen3 chain-of-thought on latency-sensitive paths
+- **ADR-022** — Explain/Data mode: interpretation toggle, not density toggle
+- **ADR-023** — Portfolio integration: thesis alignment framing, not buy/sell recommendations
+- **ADR-024** — Supply chain extraction deprioritised (code retained, not extended)
+- **ADR-025** — Insider transaction tracking deprioritised (code retained, not extended)
+- **ADR-026** — Corpus targeting is the highest-leverage infrastructure investment
 
 ---
 
 ## Known concerns (summary — full detail in docs/concerns.md)
 
 High severity — open:
-- **C-003** Relationship extraction reliability: systematic LLM errors compound silently
-- **C-008** Uncertainty propagation: inference chain errors compound into confident wrong signals
-- **C-009** Thesis semantic drift: expanding keywords silently inflates confidence scores
+- **C-003** Relationship extraction reliability (deprioritised per ADR-024)
+- **C-008** Uncertainty propagation: inference chain errors compound silently
+- **C-009** Thesis semantic drift: expanding keywords silently inflates confidence
 
 High severity — partially addressed:
-- **C-004** Company radar large-cap dominance: doc_count ranking + normalisation helps;
-  large-cap exclusion list still outstanding
+- **C-004** Company radar large-cap dominance: doc_count + normalisation helps;
+  static exclusion list still outstanding
 
 Medium severity — open:
+- **C-001** Corpus relevance: EDGAR public feed returns wrong sectors (existential)
 - **C-002** Discovery gap: signals outside defined theses are invisible
-- **C-005** Signal inflation: LLM forced to summarise even when nothing meaningful happened
-- **C-006** Data model brittleness: keyword scoring, sentiment enum, supply chain model
-- **C-010** Temporal decay missing: old evidence weighted same as recent
-- **C-011** Feed provenance gap: feed signals don't link back to specific evidence record IDs
+- **C-005** Signal inflation: LLM forced to summarise even when nothing happened
+- **C-010** Temporal decay: old evidence weighted same as recent
+- **C-011** Feed provenance: feed signals don't link to specific evidence IDs
 
 Resolved:
 - **C-007** Company name normalisation ✅
-
----
-
-## Next priorities (Sprint 5 remaining)
-
-1. **Feed provenance** (C-011) — thesis signals in daily feed should carry the specific
-   evidence record IDs that produced them. Small backend change, high value for traceability.
-
-2. **Temporal decay** (C-010) — evidence older than N months should contribute less to
-   confidence. Critical before corpus spans multiple years.
-
-3. **Counter-thesis enforcement** (ADR-016) — separate stable hypothesis statement from
-   evolving keyword list. Currently description serves informally, no hard separation.
-
-4. **Language delta — data** — `GET /theses/{id}/language-delta` already built. Will
-   auto-activate after ~30 days of ingestion. No code change needed; just wait.
-
-Then Sprint 6: automatic bottleneck detection without user-defined theses (unsupervised
-clustering over ingested documents to surface candidate new thesis areas).
 
 ---
 
@@ -283,6 +317,8 @@ clustering over ingested documents to surface candidate new thesis areas).
 - Do not add new ingestion sources without checking C-001 — relevance > volume
 - Do not change the confidence formula without updating ADR-012 and concerns.md
 - Do not allow keyword edits to silently re-score historical evidence (C-009)
-- Do not surface supply chain relationships as established facts until C-003 is addressed
+- Do not extend supply chain extraction — deprioritised per ADR-024
+- Do not extend insider transaction tracking — deprioritised per ADR-025
+- Do not generate buy/sell recommendations — thesis alignment framing only (ADR-023)
 - Do not run Alembic migrations without user awareness — schema changes affect existing data
 - Frontend changes require Docker image rebuild — there is no live reload in production container
