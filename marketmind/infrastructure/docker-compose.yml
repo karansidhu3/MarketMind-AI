@@ -81,6 +81,30 @@ services:
       redis:
         condition: service_healthy
 
+  # Runs ingest.py once per day at INGEST_HOUR_UTC (default 06:00 UTC).
+  # Restarts automatically if it crashes. No cron dependency needed.
+  # Change the hour: set INGEST_HOUR_UTC=8 in .env to run at 08:00 UTC instead.
+  # Logs: docker compose logs ingestor --tail=50
+  ingestor:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-marketmind}:${POSTGRES_PASSWORD:-marketmind}@postgres:5432/${POSTGRES_DB:-marketmind}
+      REDIS_URL: redis://redis:6379
+      QDRANT_URL: http://qdrant:6333
+      OLLAMA_URL: http://ollama:11434
+      INGEST_HOUR_UTC: ${INGEST_HOUR_UTC:-6}
+    command: ["python", "scripts/scheduler.py"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   frontend:
     build:
       context: ../frontend

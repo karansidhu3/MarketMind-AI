@@ -164,3 +164,91 @@ with credibility ≥ 0.85 and content length ≥ 400 chars.
 - Feed generation requires multiple DB queries + one LLM call
 - 25h TTL ensures yesterday's feed is still readable after midnight until new one generates
 - `POST /feed/regenerate` allows manual invalidation without restart
+
+---
+
+## ADR-015 — Epistemic tiers instead of numeric uncertainty propagation
+
+**Decision:** Classify all objects as Primary, Derived, or Synthesized rather than
+propagating numeric confidence scores through inference layers.
+
+**Reason:**
+- LLM-generated confidence floats are uncalibrated — multiplying them produces
+  precise-looking numbers that mean nothing
+- Systematic model errors compound in one direction and are invisible in aggregated scores
+- Epistemic tiers travel with every object and survive into the presentation layer
+  so users can always distinguish what a document explicitly stated from what
+  the system inferred across documents
+
+**Tiers:**
+- **Primary** — what a document explicitly states, anchored to a source filing
+- **Derived** — extracted from a document by inference (sentiment, relationship, entity)
+- **Synthesized** — inferred across multiple derived records (thesis signals, opportunities)
+
+---
+
+## ADR-016 — Thesis capture scope vs hypothesis statement are separate concepts
+
+**Decision:** A thesis has two distinct components that must not be conflated:
+a stable **hypothesis statement** (the investment claim in plain language) and
+an evolving **capture scope** (keywords used to find relevant evidence).
+
+**Reason:**
+- Expanding keywords to find more evidence is different from expanding the
+  investment claim being made
+- Conflating them causes silent scope drift and confidence inflation
+- Evidence should always be evaluated against the hypothesis, not just
+  matched by the keyword list
+
+**Implication:** Keyword edits alone do not change the hypothesis. The hypothesis
+statement requires deliberate, versioned revision.
+
+---
+
+## ADR-017 — Evidence immutability and scope fingerprinting
+
+**Decision:** Evidence records are immutable. Each evidence record carries a
+snapshot of the keyword set (scope fingerprint) under which it was scored.
+Re-scoring the historical corpus against a changed thesis is an explicit
+user-initiated action, not automatic.
+
+**Reason:**
+- Retroactively re-interpreting historical evidence under a new scope changes
+  what the confidence score measures without changing the number
+- The scope fingerprint makes drift visible — you can see exactly which keyword
+  set produced each evidence record
+- Overwriting old scores destroys the ability to ask "how confident was I in
+  this thesis as I originally defined it?"
+
+---
+
+## ADR-018 — Corroboration threshold before relationships are treated as established
+
+**Decision:** A supply chain relationship extracted from one document is a
+candidate. The same relationship independently extracted from three or more
+documents across different companies or quarters is established.
+
+**Reason:**
+- Single-document extraction false positive rate is too high to trust immediately
+- Independent corroboration is the most reliable signal that the relationship
+  is real rather than a model hallucination or misclassification
+- Corroboration count is more meaningful than any LLM-generated confidence float
+
+**Status:** Architecture decision only — not yet reflected in data model.
+
+---
+
+## ADR-019 — Company name normalisation is required before radar is trustworthy
+
+**Decision:** Company signals must be normalised to a canonical name before
+being stored. "NVIDIA Corp", "Nvidia Corporation", and "NVIDIA" are the same
+company and must resolve to the same record.
+
+**Reason:**
+- Without normalisation, mention counts fragment across name variants silently
+- The company radar's core value (surfacing companies by accumulated signal)
+  is directly undermined by fragmented counts
+- This is a data quality issue that compounds over time and cannot be
+  retroactively fixed without a full re-ingestion
+
+**Status:** Architecture decision only — normalisation strategy not yet implemented.
