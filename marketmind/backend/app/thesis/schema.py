@@ -55,6 +55,7 @@ class CompanyRadarItem(BaseModel):
     company_name: str
     ticker: str | None
     thesis_names: list[str]
-    mention_count: int
+    doc_count: int       # unique source documents — primary ranking signal
+    mention_count: int   # raw mentions (can be inflated by a single verbose filing)
     first_seen: datetime
     last_seen: datetime

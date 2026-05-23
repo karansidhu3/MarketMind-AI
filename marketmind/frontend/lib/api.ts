@@ -1,4 +1,4 @@
-import type { CompanyRadarItem, ConfidenceSnapshot, EvidenceOut, FeedResponse, ResearchResponse, SupplyChainLink, ThesisOut } from './types'
+import type { CompanyRadarItem, ConfidenceSnapshot, EvidenceOut, FeedResponse, LanguageDelta, ResearchResponse, SupplyChainLink, ThesisOut } from './types'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -73,8 +73,8 @@ export async function createThesis(data: { name: string; description: string; ke
 
 // ── Company radar ─────────────────────────────────────────────────────────────
 
-export async function getCompanyRadar(minMentions = 1): Promise<CompanyRadarItem[]> {
-  return request<CompanyRadarItem[]>(`/theses/radar?min_mentions=${minMentions}`)
+export async function getCompanyRadar(minDocs = 1): Promise<CompanyRadarItem[]> {
+  return request<CompanyRadarItem[]>(`/theses/radar?min_docs=${minDocs}`)
 }
 
 // ── Supply chain ──────────────────────────────────────────────────────────────
@@ -87,6 +87,14 @@ export async function getSupplyChain(company: string, limit = 50): Promise<Suppl
 
 export async function getConfidenceHistory(id: string, days = 30): Promise<ConfidenceSnapshot[]> {
   return request<ConfidenceSnapshot[]>(`/theses/${id}/confidence-history?days=${days}`)
+}
+
+export async function getLanguageDelta(id: string, windowDays = 30): Promise<LanguageDelta> {
+  return request<LanguageDelta>(`/theses/${id}/language-delta?window_days=${windowDays}`)
+}
+
+export async function evaluateThesis(id: string): Promise<{ status: string; message: string }> {
+  return request(`/theses/${id}/evaluate`, { method: 'POST' })
 }
 
 // ── Research ──────────────────────────────────────────────────────────────────

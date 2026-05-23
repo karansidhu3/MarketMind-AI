@@ -4,13 +4,14 @@ import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.db.models import CompanySignal, Evidence, Thesis
 from app.ingestion.normalise import is_same_company, normalise, pick_canonical
 from app.ingestion.schema import Document
 from app.services.llm_service import LLMService
+from app.services.retrieval_service import COLLECTION, RetrievalService
 from app.thesis.schema import CompanyRadarItem, ThesisCreate, ThesisOut, ThesisUpdate
 
 logger = logging.getLogger(__name__)
@@ -114,46 +115,60 @@ class ThesisService:
             ).scalars().all()
             return list(rows)
 
-    async def get_company_radar(self, min_mentions: int = 2) -> list[CompanyRadarItem]:
-        """Companies appearing across multiple documents/theses — the unknown-company finder."""
-        async with self._factory() as session:
-            rows = (
-                await session.execute(
-                    select(
-                        CompanySignal.company_name,
-                        CompanySignal.ticker,
-                        func.sum(CompanySignal.mention_count).label("total_mentions"),
-                        func.min(CompanySignal.first_seen).label("first_seen"),
-                        func.max(CompanySignal.last_seen).label("last_seen"),
-                    )
-                    .group_by(CompanySignal.company_name, CompanySignal.ticker)
-                    .having(func.sum(CompanySignal.mention_count) >= min_mentions)
-                    .order_by(func.sum(CompanySignal.mention_count).desc())
-                    .limit(50)
-                )
-            ).all()
+    async def get_company_radar(self, min_docs: int = 2) -> list[CompanyRadarItem]:
+        """
+        Companies ranked by unique source documents, grouped by normalised_name
+        so "Eaton Corporation plc" and "Eaton Corporation" are a single entry.
 
-            result = []
-            for row in rows:
-                thesis_rows = (
-                    await session.execute(
-                        select(Thesis.name)
-                        .join(CompanySignal, CompanySignal.thesis_id == Thesis.id)
-                        .where(CompanySignal.company_name == row.company_name)
-                        .distinct()
-                    )
-                ).scalars().all()
-                result.append(
-                    CompanyRadarItem(
-                        company_name=row.company_name,
-                        ticker=row.ticker,
-                        thesis_names=list(thesis_rows),
-                        mention_count=row.total_mentions,
-                        first_seen=row.first_seen,
-                        last_seen=row.last_seen,
-                    )
-                )
-            return result
+        Uses Python-side aggregation so we can apply pick_canonical() on the name.
+        """
+        from collections import defaultdict
+
+        async with self._factory() as session:
+            all_signals = (
+                await session.execute(select(CompanySignal))
+            ).scalars().all()
+
+            # Batch-load thesis names once
+            thesis_id_to_name: dict[uuid.UUID, str] = {
+                t.id: t.name
+                for t in (await session.execute(select(Thesis))).scalars().all()
+            }
+
+        # Group by normalised_name
+        groups: dict[str, list[CompanySignal]] = defaultdict(list)
+        for sig in all_signals:
+            if sig.normalised_name:
+                groups[sig.normalised_name].append(sig)
+
+        result: list[CompanyRadarItem] = []
+        for norm, signals in groups.items():
+            unique_docs = len({s.document_id for s in signals})
+            if unique_docs < min_docs:
+                continue
+
+            canonical = pick_canonical([s.company_name for s in signals])
+            ticker    = next((s.ticker for s in signals if s.ticker), None)
+            thesis_names = list({
+                thesis_id_to_name[s.thesis_id]
+                for s in signals
+                if s.thesis_id in thesis_id_to_name
+            })
+            total_mentions = sum(s.mention_count for s in signals)
+            first_seen     = min(s.first_seen for s in signals)
+            last_seen      = max(s.last_seen  for s in signals)
+
+            result.append(CompanyRadarItem(
+                company_name=canonical,
+                ticker=ticker,
+                thesis_names=thesis_names,
+                doc_count=unique_docs,
+                mention_count=total_mentions,
+                first_seen=first_seen,
+                last_seen=last_seen,
+            ))
+
+        return sorted(result, key=lambda x: x.doc_count, reverse=True)[:50]
 
     # ── Document scoring (called by IngestionWorker) ─────────────────────────
 
@@ -201,6 +216,89 @@ class ThesisService:
                     await self._upsert_company_signal(session, name, thesis.id, doc.id)
 
             await session.commit()
+
+    # ── Corpus re-evaluation ─────────────────────────────────────────────────
+
+    async def evaluate_against_corpus(
+        self,
+        thesis_id: uuid.UUID,
+        retrieval: RetrievalService,
+    ) -> int:
+        """
+        Score every document in the Qdrant corpus against this one thesis.
+        Skips documents that already have evidence for this thesis.
+        Returns count of new evidence records created.
+
+        Intended use: called after a new thesis is created, or after keywords
+        are updated, to immediately populate evidence without waiting for the
+        next ingestion run.
+        """
+        async with self._factory() as session:
+            thesis = await session.get(Thesis, thesis_id)
+            if not thesis or not thesis.is_active:
+                return 0
+            # Snapshot thesis data before closing session
+            thesis_id_val  = thesis.id
+            thesis_name    = thesis.name
+            thesis_desc    = thesis.description
+            thesis_keywords = list(thesis.keywords)
+
+            existing_doc_ids: set[str] = set(
+                (await session.execute(
+                    select(Evidence.document_id).where(Evidence.thesis_id == thesis_id)
+                )).scalars().all()
+            )
+
+        # Use a minimal Thesis-like object so helpers don't need a DB session
+        class _ThesisProxy:
+            id = thesis_id_val
+            name = thesis_name
+            description = thesis_desc
+            keywords = thesis_keywords
+
+        proxy = _ThesisProxy()
+        all_points = await retrieval.scroll_all(COLLECTION)
+        new_count = 0
+
+        for point in all_points:
+            doc_id = point.payload.get("id", point.id)
+            if doc_id in existing_doc_ids:
+                continue
+
+            doc = self._payload_to_document(point.payload)
+            score = self._keyword_score(proxy.keywords, doc)
+            if score < KEYWORD_THRESHOLD:
+                continue
+
+            sentiment = await self._classify_sentiment(proxy, doc)  # type: ignore[arg-type]
+            excerpt   = doc.content[:600]
+
+            async with self._factory() as session:
+                # Guard against race if called concurrently
+                already = (await session.execute(
+                    select(Evidence).where(
+                        Evidence.thesis_id == thesis_id,
+                        Evidence.document_id == doc.id,
+                    )
+                )).scalar_one_or_none()
+                if not already:
+                    session.add(Evidence(
+                        thesis_id=thesis_id,
+                        document_id=doc.id,
+                        sentiment=sentiment,
+                        excerpt=excerpt,
+                        score=round(score, 3),
+                        source_url=doc.metadata.get("url", ""),
+                        source_name=doc.source_name,
+                        document_date=doc.created_at,
+                    ))
+                    await session.commit()
+                    new_count += 1
+
+        logger.info(
+            "Re-evaluation of thesis %s complete — %d new evidence record(s)", thesis_id, new_count
+        )
+        return new_count
 
     # ── Seeding ──────────────────────────────────────────────────────────────
 
@@ -308,6 +406,25 @@ class ThesisService:
                     document_id=document_id,
                 )
             )
+
+    @staticmethod
+    def _payload_to_document(payload: dict) -> Document:
+        """Reconstruct a Document from a Qdrant point payload for re-evaluation."""
+        raw_ts = payload.get("created_at", "")
+        try:
+            created_at = datetime.fromisoformat(raw_ts) if raw_ts else datetime.now(timezone.utc)
+        except ValueError:
+            created_at = datetime.now(timezone.utc)
+        return Document(
+            id=payload.get("id", ""),
+            title=payload.get("title", ""),
+            source_name=payload.get("source_name", ""),
+            source_type=payload.get("source_type", "rss"),
+            source_credibility_score=float(payload.get("source_credibility_score", 0.5)),
+            content=payload.get("content", ""),
+            metadata=payload.get("metadata") or {},
+            created_at=created_at,
+        )
 
     async def _enrich(self, thesis: Thesis, session: AsyncSession) -> ThesisOut:
         counts = (

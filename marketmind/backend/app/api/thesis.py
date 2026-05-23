@@ -3,14 +3,17 @@ from __future__ import annotations
 import uuid
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.api.dependencies import CurrentUser, get_current_user, get_session_factory, get_thesis_service
-from app.db.models import ConfidenceSnapshot
+from app.api.dependencies import CurrentUser, get_cache, get_current_user, get_llm, get_retrieval, get_session_factory, get_thesis_service
+from app.db.models import ConfidenceSnapshot, Thesis
+from app.thesis.delta import LanguageDeltaService
 from app.thesis.schema import CompanyRadarItem, EvidenceOut, ThesisCreate, ThesisOut, ThesisUpdate
 from app.thesis.service import ThesisService
+from app.services.cache_service import CacheService
+from app.services.llm_service import LLMService
 
 router = APIRouter(prefix="/theses", tags=["thesis"])
 
@@ -34,12 +37,12 @@ async def create_thesis(
 
 @router.get("/radar", response_model=list[CompanyRadarItem])
 async def company_radar(
-    min_mentions: int = 2,
+    min_docs: int = 2,
     _user: CurrentUser = Depends(get_current_user),
     svc: ThesisService = Depends(get_thesis_service),
 ) -> list[CompanyRadarItem]:
-    """Companies appearing across multiple documents — surfaces unknowns before they're obvious."""
-    return await svc.get_company_radar(min_mentions=min_mentions)
+    """Companies ranked by unique source documents — surfaces unknowns before they're obvious."""
+    return await svc.get_company_radar(min_docs=min_docs)
 
 
 @router.get("/{thesis_id}", response_model=ThesisOut)
@@ -121,3 +124,54 @@ async def get_confidence_history(
         }
         for r in rows
     ]
+
+
+@router.get("/{thesis_id}/language-delta")
+async def language_delta(
+    thesis_id: uuid.UUID,
+    window_days: int = 30,
+    _user: CurrentUser = Depends(get_current_user),
+    factory: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+    llm: LLMService = Depends(get_llm),
+    cache: CacheService = Depends(get_cache),
+    svc: ThesisService = Depends(get_thesis_service),
+) -> dict:
+    """
+    Compare evidence language between two rolling windows.
+    Returns appeared / disappeared / intensified themes + a plain-English summary.
+    Returns status=insufficient_data until at least 2 signals exist in each window.
+    """
+    thesis = await svc.get(thesis_id)
+    if not thesis:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thesis not found")
+
+    delta_svc = LanguageDeltaService(factory=factory, llm=llm, cache=cache)
+    return await delta_svc.get_delta(
+        thesis_id=thesis_id,
+        thesis_name=thesis.name,
+        window_days=window_days,
+    )
+
+
+@router.post("/{thesis_id}/evaluate", status_code=status.HTTP_202_ACCEPTED)
+async def evaluate_thesis(
+    thesis_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
+    _user: CurrentUser = Depends(get_current_user),
+    svc: ThesisService = Depends(get_thesis_service),
+    retrieval=Depends(get_retrieval),
+) -> dict:
+    """
+    Re-score the full Qdrant corpus against this thesis.
+    Returns 202 immediately — evaluation runs in the background.
+    New evidence records appear as the job progresses (refresh the page).
+    """
+    thesis = await svc.get(thesis_id)
+    if not thesis:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thesis not found")
+
+    background_tasks.add_task(svc.evaluate_against_corpus, thesis_id, retrieval)
+    return {
+        "status": "started",
+        "message": f"Re-evaluating corpus against '{thesis.name}'. New signals will appear as the job runs — refresh in a few minutes.",
+    }

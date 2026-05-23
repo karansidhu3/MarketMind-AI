@@ -66,7 +66,8 @@ export interface CompanyRadarItem {
   company_name: string
   ticker: string | null
   thesis_names: string[]
-  mention_count: number
+  doc_count: number      // unique source documents — primary ranking signal
+  mention_count: number  // raw mentions across all docs
   first_seen: string
   last_seen: string
 }
@@ -103,4 +104,18 @@ export interface ConfidenceSnapshot {
   supporting_count: number
   opposing_count: number
   evidence_count: number
+}
+
+export interface LanguageDelta {
+  status: 'ok' | 'insufficient_data'
+  message?: string                 // only when status=insufficient_data
+  recent_window: string
+  prior_window: string
+  evidence_count_recent: number
+  evidence_count_prior: number
+  appeared: string[]
+  disappeared: string[]
+  intensified: string[]
+  summary: string
+  from_cache: boolean
 }

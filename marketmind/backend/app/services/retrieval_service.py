@@ -40,6 +40,10 @@ class RetrievalService(ABC):
         """Create the collection if it does not already exist."""
 
     @abstractmethod
+    async def scroll_all(self, collection: str, batch_size: int = 100) -> list["SearchResult"]:
+        """Return all points in the collection (no vector search). Used for corpus re-evaluation."""
+
+    @abstractmethod
     async def search(
         self,
         collection: str,
@@ -87,6 +91,29 @@ class QdrantRetrievalService(RetrievalService):
             collection_name=collection,
             points=[PointStruct(id=point_id, vector=embedding, payload=payload)],
         )
+
+    async def scroll_all(self, collection: str, batch_size: int = 100) -> list[SearchResult]:
+        """Fetch every point in the collection without vector search (used for re-evaluation)."""
+        results: list[SearchResult] = []
+        offset = None
+        while True:
+            points, next_offset = await self._client.scroll(
+                collection_name=collection,
+                limit=batch_size,
+                offset=offset,
+                with_payload=True,
+                with_vectors=False,
+            )
+            for p in points:
+                results.append(SearchResult(
+                    id=str(p.id),
+                    score=0.0,
+                    payload=p.payload or {},
+                ))
+            if next_offset is None:
+                break
+            offset = next_offset
+        return results
 
     async def search(
         self,

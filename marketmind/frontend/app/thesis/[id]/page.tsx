@@ -3,14 +3,14 @@
 import { useEffect, useState, use } from 'react'
 import {
   ArrowLeft, RefreshCw, AlertCircle, ExternalLink,
-  Search, ArrowRight, TrendingUp, TrendingDown, Minus,
-  ShieldAlert,
+  Search, ArrowRight, TrendingUp, TrendingDown,
+  ShieldAlert, GitCompare, Plus, Minus, Zap,
 } from 'lucide-react'
 import Link from 'next/link'
 import AppShell from '@/components/layout/AppShell'
-import { getThesis, getThesisEvidence, getSupplyChain, getConfidenceHistory } from '@/lib/api'
+import { getThesis, getThesisEvidence, getSupplyChain, getConfidenceHistory, getLanguageDelta, evaluateThesis } from '@/lib/api'
 import { formatConfidence, formatDate, cn } from '@/lib/utils'
-import type { ThesisOut, EvidenceOut, SupplyChainLink, ConfidenceSnapshot } from '@/lib/types'
+import type { ThesisOut, EvidenceOut, SupplyChainLink, ConfidenceSnapshot, LanguageDelta } from '@/lib/types'
 
 // ── Sentiment config ──────────────────────────────────────────────────────────
 
@@ -103,6 +103,15 @@ export default function ThesisDetailPage({ params }: { params: Promise<{ id: str
   const [scLoading, setScLoading] = useState(false)
   const [scError,   setScError]   = useState('')
 
+  // Language delta state
+  const [delta,        setDelta]        = useState<LanguageDelta | null>(null)
+  const [deltaLoading, setDeltaLoading] = useState(false)
+  const [deltaError,   setDeltaError]   = useState('')
+
+  // Re-evaluate state
+  const [evalRunning, setEvalRunning] = useState(false)
+  const [evalMsg,     setEvalMsg]     = useState('')
+
   useEffect(() => {
     setLoading(true)
     setError('')
@@ -130,6 +139,31 @@ export default function ThesisDetailPage({ params }: { params: Promise<{ id: str
       setScError(e instanceof Error ? e.message : 'Failed to fetch supply chain.')
     } finally {
       setScLoading(false)
+    }
+  }
+
+  async function runEvaluate() {
+    setEvalRunning(true)
+    setEvalMsg('')
+    try {
+      const res = await evaluateThesis(id)
+      setEvalMsg(res.message)
+    } catch (e: unknown) {
+      setEvalMsg(e instanceof Error ? e.message : 'Evaluation failed.')
+    } finally {
+      setEvalRunning(false)
+    }
+  }
+
+  async function loadDelta() {
+    setDeltaError('')
+    setDeltaLoading(true)
+    try {
+      setDelta(await getLanguageDelta(id))
+    } catch (e: unknown) {
+      setDeltaError(e instanceof Error ? e.message : 'Analysis failed.')
+    } finally {
+      setDeltaLoading(false)
     }
   }
 
@@ -175,12 +209,35 @@ export default function ThesisDetailPage({ params }: { params: Promise<{ id: str
                 <h1 className="text-text-primary text-2xl font-semibold tracking-tight">
                   {thesis.name}
                 </h1>
-                {thesis.is_system && (
-                  <span className="text-xs text-text-tertiary bg-elevated px-2 py-0.5 rounded-full shrink-0 mt-1">
-                    System
-                  </span>
-                )}
+                <div className="flex items-center gap-2 shrink-0 mt-1">
+                  {thesis.is_system && (
+                    <span className="text-xs text-text-tertiary bg-elevated px-2 py-0.5 rounded-full">
+                      System
+                    </span>
+                  )}
+                  <button
+                    onClick={runEvaluate}
+                    disabled={evalRunning}
+                    title="Re-score all ingested documents against this thesis"
+                    className={cn(
+                      'flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg transition-colors',
+                      evalRunning
+                        ? 'text-text-tertiary bg-elevated cursor-not-allowed'
+                        : 'text-text-secondary bg-elevated hover:text-text-primary hover:bg-elevated/80'
+                    )}
+                  >
+                    {evalRunning
+                      ? <><RefreshCw size={10} className="animate-spin" /> Running…</>
+                      : <><RefreshCw size={10} /> Re-evaluate</>
+                    }
+                  </button>
+                </div>
               </div>
+              {evalMsg && (
+                <p className="text-text-tertiary text-xs mb-3 bg-elevated rounded-lg px-3 py-2">
+                  {evalMsg}
+                </p>
+              )}
               {thesis.description && (
                 <p className="text-text-secondary text-sm leading-relaxed mb-4">
                   {thesis.description}
@@ -288,6 +345,119 @@ export default function ThesisDetailPage({ params }: { params: Promise<{ id: str
                 </div>
               </div>
             )}
+
+            {/* ── Language shift detector ───────────────────────────────── */}
+            <div className="mb-6 rounded-xl border border-border bg-surface p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <GitCompare size={13} className="text-accent shrink-0" />
+                  <span className="text-text-primary text-xs font-semibold">Language Shift</span>
+                  <span className="text-text-tertiary text-xs">· 30-day vs prior 30-day</span>
+                </div>
+                {!delta && !deltaLoading && (
+                  <button
+                    onClick={loadDelta}
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-elevated text-text-secondary hover:text-text-primary hover:bg-elevated/80 transition-colors"
+                  >
+                    <GitCompare size={11} />
+                    Analyse
+                  </button>
+                )}
+                {delta && !deltaLoading && (
+                  <button
+                    onClick={loadDelta}
+                    className="text-text-tertiary text-xs hover:text-text-secondary transition-colors"
+                  >
+                    Refresh
+                  </button>
+                )}
+              </div>
+
+              {/* Idle state */}
+              {!delta && !deltaLoading && !deltaError && (
+                <p className="text-text-tertiary text-xs">
+                  Click Analyse to compare language patterns across the last two 30-day windows.
+                  Requires at least 2 signals in each window — check back as data accumulates.
+                </p>
+              )}
+
+              {/* Loading */}
+              {deltaLoading && (
+                <div className="flex items-center gap-2 text-text-tertiary text-xs py-2">
+                  <RefreshCw size={11} className="animate-spin" />
+                  Comparing language patterns… (10–30 seconds)
+                </div>
+              )}
+
+              {/* Error */}
+              {deltaError && !deltaLoading && (
+                <p className="text-red text-xs">{deltaError}</p>
+              )}
+
+              {/* Insufficient data */}
+              {delta && delta.status === 'insufficient_data' && (
+                <div className="text-text-tertiary text-xs space-y-1">
+                  <p>{delta.message}</p>
+                  <p className="text-text-tertiary/60">
+                    Recent window: {delta.recent_window} ({delta.evidence_count_recent} signals) ·
+                    Prior window: {delta.prior_window} ({delta.evidence_count_prior} signals)
+                  </p>
+                </div>
+              )}
+
+              {/* Results */}
+              {delta && delta.status === 'ok' && (
+                <div className="space-y-3">
+                  {/* Summary */}
+                  <p className="text-text-secondary text-sm leading-relaxed">{delta.summary}</p>
+
+                  {/* Tag rows */}
+                  {delta.appeared.length > 0 && (
+                    <div className="flex items-start gap-2 flex-wrap">
+                      <span className="flex items-center gap-1 text-green text-xs font-medium shrink-0 mt-0.5">
+                        <Plus size={10} /> Appeared
+                      </span>
+                      {delta.appeared.map((item, i) => (
+                        <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-green/10 text-green">
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {delta.disappeared.length > 0 && (
+                    <div className="flex items-start gap-2 flex-wrap">
+                      <span className="flex items-center gap-1 text-red text-xs font-medium shrink-0 mt-0.5">
+                        <Minus size={10} /> Disappeared
+                      </span>
+                      {delta.disappeared.map((item, i) => (
+                        <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-red/10 text-red">
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {delta.intensified.length > 0 && (
+                    <div className="flex items-start gap-2 flex-wrap">
+                      <span className="flex items-center gap-1 text-amber text-xs font-medium shrink-0 mt-0.5">
+                        <Zap size={10} /> Intensified
+                      </span>
+                      {delta.intensified.map((item, i) => (
+                        <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-amber/10 text-amber">
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <p className="text-text-tertiary text-[10px]">
+                    {delta.recent_window} vs {delta.prior_window}
+                    {delta.from_cache && ' · cached'}
+                  </p>
+                </div>
+              )}
+            </div>
 
             {/* ── Main tab switcher ──────────────────────────────────────── */}
             <div className="flex items-center gap-1 border-b border-border mb-5">
