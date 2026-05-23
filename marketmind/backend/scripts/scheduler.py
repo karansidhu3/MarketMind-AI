@@ -1,17 +1,22 @@
 """
 Daily ingestion scheduler.
 
-Runs ingest.py once per day at INGEST_HOUR_UTC (default 06:00 UTC).
-Designed to run as a long-lived Docker container — restarts pick up the
-correct next-run time automatically.
+Smart catch-up behaviour:
+  On startup, checks if today's ingestion has already run (via Redis).
+  If not, runs immediately rather than waiting for the next scheduled slot.
+  This means the Mac just needs to be on once per day — not at a specific time.
 
-Logs appear in: docker compose logs ingestor --tail=50
+Schedule: once per day. Configurable via INGEST_HOUR_UTC (used as the
+preferred time when the machine is already on, not a hard requirement).
+
+Logs: docker compose logs ingestor --tail=50
 """
 import asyncio
+import importlib
 import logging
 import os
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, date, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -24,9 +29,32 @@ logging.basicConfig(
 logger = logging.getLogger("scheduler")
 
 INGEST_HOUR_UTC = int(os.getenv("INGEST_HOUR_UTC", "6"))
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379")
+_DONE_KEY_PREFIX = "ingest:done:"  # ingest:done:2026-05-23
 
 
-def _next_run() -> datetime:
+def _done_key(for_date: date | None = None) -> str:
+    d = for_date or date.today()
+    return f"{_DONE_KEY_PREFIX}{d.isoformat()}"
+
+
+async def _already_ran_today(redis) -> bool:
+    return bool(await redis.exists(_done_key()))
+
+
+async def _mark_done(redis) -> None:
+    # TTL of 25h so the key expires naturally after tomorrow's run
+    await redis.set(_done_key(), "1", ex=25 * 3600)
+
+
+async def _run_ingestion() -> int:
+    import ingest
+    importlib.reload(ingest)
+    return await ingest.main()
+
+
+def _next_scheduled() -> datetime:
+    """Next occurrence of INGEST_HOUR_UTC, always in the future."""
     now = datetime.now(timezone.utc)
     candidate = now.replace(hour=INGEST_HOUR_UTC, minute=0, second=0, microsecond=0)
     if candidate <= now:
@@ -35,25 +63,39 @@ def _next_run() -> datetime:
 
 
 async def main() -> None:
-    logger.info("Scheduler started — daily ingestion at %02d:00 UTC", INGEST_HOUR_UTC)
+    import redis.asyncio as aioredis
+    redis = aioredis.from_url(REDIS_URL, decode_responses=True)
 
-    while True:
-        next_run = _next_run()
-        wait_seconds = (next_run - datetime.now(timezone.utc)).total_seconds()
-        logger.info("Next ingestion run: %s (in %.0f minutes)", next_run.isoformat(), wait_seconds / 60)
+    logger.info("Scheduler started (preferred run time: %02d:00 UTC)", INGEST_HOUR_UTC)
 
-        await asyncio.sleep(wait_seconds)
+    try:
+        while True:
+            # ── Catch-up check ───────────────────────────────────────────────
+            # Run immediately if today's ingestion hasn't happened yet.
+            # This handles the case where the Mac was off at the scheduled time.
+            if not await _already_ran_today(redis):
+                logger.info("Today's ingestion has not run yet — starting now")
+                try:
+                    count = await _run_ingestion()
+                    await _mark_done(redis)
+                    logger.info("Ingestion complete — %d document(s) ingested", count)
+                except Exception:
+                    logger.exception("Ingestion failed — will retry in 1 hour")
+                    await asyncio.sleep(3600)
+                    continue
 
-        logger.info("Starting scheduled ingestion run")
-        try:
-            import ingest
-            # Re-import forces a fresh run each time
-            import importlib
-            importlib.reload(ingest)
-            result = await ingest.main()
-            logger.info("Scheduled ingestion complete — %d document(s) ingested", result)
-        except Exception:
-            logger.exception("Scheduled ingestion failed — will retry tomorrow")
+            # ── Wait for next scheduled slot ─────────────────────────────────
+            next_run = _next_scheduled()
+            wait_seconds = (next_run - datetime.now(timezone.utc)).total_seconds()
+            logger.info(
+                "Next run: %s (in %.0f minutes)",
+                next_run.strftime("%Y-%m-%d %H:%M UTC"),
+                wait_seconds / 60,
+            )
+            await asyncio.sleep(wait_seconds)
+
+    finally:
+        await redis.aclose()
 
 
 if __name__ == "__main__":

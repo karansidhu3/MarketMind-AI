@@ -185,7 +185,7 @@ free text.
 ## C-007 — Company name normalisation
 
 **Severity:** High
-**Status:** Open
+**Status:** Resolved
 
 **Root cause:**
 "NVIDIA Corp", "Nvidia Corporation", and "NVIDIA" are stored as three
@@ -330,7 +330,7 @@ requiring the feed to store the full content of each evidence record.
 | C-004 | Unknown company surfacing quality | High | Open |
 | C-005 | Signal inflation risk | Medium | Open |
 | C-006 | Data model evolution risk | Medium | Open |
-| C-007 | Company name normalisation | High | Open |
+| C-007 | Company name normalisation | High | Resolved |
 | C-008 | Uncertainty propagation | High | Partially addressed |
 | C-009 | Thesis semantic drift | High | Open |
 | C-010 | Temporal decay / stale relationships | Medium | Open |

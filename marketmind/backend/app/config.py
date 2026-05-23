@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     ollama_embed_model: str = "nomic-embed-text"
     ollama_generate_model: str = "qwen3:8b"
 
+    admin_email: str = "admin@marketmind.local"
+    admin_password: str = "marketmind"
+
 
 @lru_cache
 def get_settings() -> Settings:

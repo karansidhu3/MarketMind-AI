@@ -55,7 +55,8 @@ class CompanySignal(Base):
     __tablename__ = "company_signals"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
-    company_name: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
+    company_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    normalised_name: Mapped[str] = mapped_column(String(200), nullable=False, index=True, default="")
     ticker: Mapped[str | None] = mapped_column(String(20), nullable=True)
     thesis_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("theses.id", ondelete="CASCADE"), nullable=False, index=True)
     document_id: Mapped[str] = mapped_column(String(100), nullable=False)

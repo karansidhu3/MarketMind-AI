@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.db.models import CompanySignal, Evidence, Thesis
+from app.ingestion.normalise import is_same_company, normalise, pick_canonical
 from app.ingestion.schema import Document
 from app.services.llm_service import LLMService
 from app.thesis.schema import CompanyRadarItem, ThesisCreate, ThesisOut, ThesisUpdate
@@ -272,23 +273,37 @@ class ThesisService:
         thesis_id: uuid.UUID,
         document_id: str,
     ) -> None:
-        existing = (
+        norm = normalise(company_name)
+        if not norm:
+            return
+
+        # Load all signals for this thesis and match using is_same_company.
+        # This handles both legal suffix variants ("Eaton Corp" == "Eaton Corporation")
+        # and abbreviated extractions ("Quanta" == "Quanta Services").
+        # The per-thesis list is small (~10-50 rows) so the Python-side scan is fine.
+        all_signals = (
             await session.execute(
-                select(CompanySignal).where(
-                    CompanySignal.company_name == company_name,
-                    CompanySignal.thesis_id == thesis_id,
-                )
+                select(CompanySignal).where(CompanySignal.thesis_id == thesis_id)
             )
-        ).scalar_one_or_none()
+        ).scalars().all()
+
+        existing = next(
+            (s for s in all_signals if is_same_company(s.company_name, company_name)),
+            None,
+        )
 
         now = datetime.now(timezone.utc)
         if existing:
             existing.mention_count += 1
             existing.last_seen = now
+            # Always keep the longest (most complete) display name
+            existing.company_name = pick_canonical([existing.company_name, company_name])
+            existing.normalised_name = normalise(existing.company_name)
         else:
             session.add(
                 CompanySignal(
                     company_name=company_name,
+                    normalised_name=norm,
                     thesis_id=thesis_id,
                     document_id=document_id,
                 )

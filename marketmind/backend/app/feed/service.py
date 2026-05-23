@@ -78,18 +78,18 @@ class FeedService:
                 await session.execute(select(DailyFeed).where(DailyFeed.feed_date == feed_date))
             ).scalar_one_or_none()
             if existing:
-                existing.thesis_signals = [s.model_dump() for s in thesis_signals]
-                existing.new_companies = [c.model_dump() for c in new_companies]
-                existing.insider_clusters = [i.model_dump() for i in insider_clusters]
+                existing.thesis_signals = [s.model_dump(mode='json') for s in thesis_signals]
+                existing.new_companies = [c.model_dump(mode='json') for c in new_companies]
+                existing.insider_clusters = [i.model_dump(mode='json') for i in insider_clusters]
                 existing.summary = summary
                 existing.generated_at = datetime.now(timezone.utc)
             else:
                 session.add(
                     DailyFeed(
                         feed_date=feed_date,
-                        thesis_signals=[s.model_dump() for s in thesis_signals],
-                        new_companies=[c.model_dump() for c in new_companies],
-                        insider_clusters=[i.model_dump() for i in insider_clusters],
+                        thesis_signals=[s.model_dump(mode='json') for s in thesis_signals],
+                        new_companies=[c.model_dump(mode='json') for c in new_companies],
+                        insider_clusters=[i.model_dump(mode='json') for i in insider_clusters],
                         summary=summary,
                     )
                 )
