@@ -11,6 +11,7 @@ from app.db.models import CompanySignal, ConfidenceSnapshot, DailyFeed, Evidence
 from app.feed.schema import FeedResponse, InsiderCluster, NewCompany, ThesisSignal
 from app.services.cache_service import CacheService
 from app.services.llm_service import LLMService
+from app.thesis.decay import weighted_confidence
 
 logger = logging.getLogger(__name__)
 
@@ -140,17 +141,13 @@ class FeedService:
 
             momentum = await self._compute_momentum(session, thesis.id, day_start)
 
-            # All-time confidence
-            all_counts = (
+            # All-time confidence — temporally weighted (recent evidence counts more)
+            all_evidence = (
                 await session.execute(
-                    select(Evidence.sentiment, func.count(Evidence.id))
-                    .where(Evidence.thesis_id == thesis.id)
-                    .group_by(Evidence.sentiment)
+                    select(Evidence).where(Evidence.thesis_id == thesis.id)
                 )
-            ).all()
-            sentiment_map = {r[0]: r[1] for r in all_counts}
-            total = sum(sentiment_map.values())
-            confidence = round(sentiment_map.get("supporting", 0) / total, 3) if total else 0.0
+            ).scalars().all()
+            confidence, _, _, _ = weighted_confidence(all_evidence)
 
             # Top companies for this thesis today
             company_rows = (

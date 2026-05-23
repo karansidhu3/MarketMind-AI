@@ -275,29 +275,28 @@ Apply ADR-016 and ADR-017:
 ## C-010 — Temporal decay of evidence and stale relationships
 
 **Severity:** Medium
-**Status:** Open
+**Status:** Partially resolved ✅ (evidence decay done; supply chain staleness deferred per ADR-024)
 
 **Root cause:**
-Evidence from 18 months ago is weighted identically to evidence from yesterday.
-Supply chain relationships extracted from 2023 filings may no longer be current
-— contracts end, suppliers change, companies exit markets — but the system has
-no mechanism to detect this. The absence of a relationship being mentioned is
-not evidence the relationship ended, so stale relationships accumulate silently.
+Evidence from 18 months ago was weighted identically to evidence from yesterday.
+A thesis strongly supported in 2024 could maintain high confidence even if 2025
+filings showed the buildout decelerating. Confidence could only go up.
 
-For theses, this means a thesis that was strongly supported during peak AI hype
-in 2024 will maintain high confidence even if 2025 filings show the buildout
-is decelerating. Confidence can only go up as evidence accumulates; it has no
-natural decay.
+**What was done — evidence decay:**
+`backend/app/thesis/decay.py` implements exponential decay weighting:
+- Half-life of 90 days: evidence from 3 months ago counts at 0.5 weight
+- Minimum weight of 0.1: very old evidence retains a small vote, never disappears entirely
+- `weighted_confidence(evidence_rows)` returns decayed confidence alongside raw counts
+- Applied in `ThesisService._enrich()` (thesis detail + list) and `FeedService._thesis_signals()`
+- Raw supporting/opposing counts are preserved for display; only the confidence % uses decay
 
-**Proposed solution:**
-- Evidence records should carry a recency weight that decays over a configurable
-  window (e.g. half-weight after 6 months, quarter-weight after 12 months).
-- Supply chain relationships should be flagged as stale if the source document
-  is older than 18 months with no corroborating mention in more recent filings.
-- Contradiction detection: if later filings explicitly contradict an earlier
-  relationship or evidence record, flag the conflict rather than letting both
-  sit in the system simultaneously. Contradictions are often more informative
-  than confirmations.
+Decay table:
+  0 days → 1.00 weight · 30 days → 0.79 · 90 days → 0.50 · 180 days → 0.25 · 360+ days → 0.10
+
+**Remaining (deferred):**
+- Supply chain relationship staleness — deprioritised per ADR-024; supply chain
+  extraction is not being extended
+- Contradiction detection — not yet implemented
 
 ---
 
@@ -335,5 +334,5 @@ that produced them. Provenance was broken at the feed layer.
 | C-007 | Company name normalisation | High | Resolved ✅ |
 | C-008 | Uncertainty propagation | High | Partially addressed |
 | C-009 | Thesis semantic drift | High | Open |
-| C-010 | Temporal decay / stale relationships | Medium | Open |
+| C-010 | Temporal decay / stale relationships | Medium | Partially resolved ✅ |
 | C-011 | Feed provenance gap | Medium | Resolved ✅ |

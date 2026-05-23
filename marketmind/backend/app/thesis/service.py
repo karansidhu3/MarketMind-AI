@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.db.models import CompanySignal, Evidence, Thesis
 from app.ingestion.normalise import is_same_company, normalise, pick_canonical
+from app.thesis.decay import weighted_confidence
 from app.ingestion.schema import Document
 from app.services.llm_service import LLMService
 from app.services.retrieval_service import COLLECTION, RetrievalService
@@ -427,19 +428,14 @@ class ThesisService:
         )
 
     async def _enrich(self, thesis: Thesis, session: AsyncSession) -> ThesisOut:
-        counts = (
+        # Fetch full evidence rows (need created_at for decay weighting)
+        all_evidence = (
             await session.execute(
-                select(Evidence.sentiment, func.count(Evidence.id))
-                .where(Evidence.thesis_id == thesis.id)
-                .group_by(Evidence.sentiment)
+                select(Evidence).where(Evidence.thesis_id == thesis.id)
             )
-        ).all()
+        ).scalars().all()
 
-        sentiment_map: dict[str, int] = {row[0]: row[1] for row in counts}
-        supporting = sentiment_map.get("supporting", 0)
-        opposing = sentiment_map.get("opposing", 0)
-        total = sum(sentiment_map.values())
-        confidence = round(supporting / total, 3) if total > 0 else 0.0
+        confidence, supporting, opposing, total = weighted_confidence(all_evidence)
 
         return ThesisOut(
             id=thesis.id,

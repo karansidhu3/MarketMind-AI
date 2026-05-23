@@ -260,36 +260,49 @@ export default function ThesisDetailPage({ params }: { params: Promise<{ id: str
 
               {/* Stats row */}
               <div className="flex items-center gap-6 py-4 border-y border-border">
-                <div>
-                  <div className="text-text-primary text-xl font-semibold tabular-nums">
-                    {formatConfidence(thesis.confidence)}
+                {thesis.evidence_count === 0 ? (
+                  /* No evidence yet — replace stats with a clear "no data" indicator */
+                  <div className="flex items-center gap-3 py-1">
+                    <span className="text-amber text-sm font-medium">No signals yet</span>
+                    <span className="text-text-tertiary text-xs">—</span>
+                    <span className="text-text-tertiary text-xs">
+                      Run corpus evaluation to score existing documents against this thesis
+                    </span>
                   </div>
-                  <div className="text-text-tertiary text-xs">confidence</div>
-                </div>
-                <div>
-                  <div className="text-text-primary text-xl font-semibold tabular-nums">
-                    {thesis.evidence_count}
-                  </div>
-                  <div className="text-text-tertiary text-xs">total signals</div>
-                </div>
-                <div>
-                  <div className="text-green text-xl font-semibold tabular-nums">
-                    {thesis.supporting_count}
-                  </div>
-                  <div className="text-text-tertiary text-xs">supporting</div>
-                </div>
-                <div>
-                  <div className="text-red text-xl font-semibold tabular-nums">
-                    {thesis.opposing_count}
-                  </div>
-                  <div className="text-text-tertiary text-xs">opposing</div>
-                </div>
-                {/* Confidence history sparkline (if data) */}
-                {history.length >= 2 && (
-                  <div className="ml-auto flex flex-col items-end gap-0.5">
-                    <Sparkline data={history} />
-                    <span className="text-text-tertiary text-[10px]">30-day trend</span>
-                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <div className="text-text-primary text-xl font-semibold tabular-nums">
+                        {formatConfidence(thesis.confidence)}
+                      </div>
+                      <div className="text-text-tertiary text-xs">confidence</div>
+                    </div>
+                    <div>
+                      <div className="text-text-primary text-xl font-semibold tabular-nums">
+                        {thesis.evidence_count}
+                      </div>
+                      <div className="text-text-tertiary text-xs">total signals</div>
+                    </div>
+                    <div>
+                      <div className="text-green text-xl font-semibold tabular-nums">
+                        {thesis.supporting_count}
+                      </div>
+                      <div className="text-text-tertiary text-xs">supporting</div>
+                    </div>
+                    <div>
+                      <div className="text-red text-xl font-semibold tabular-nums">
+                        {thesis.opposing_count}
+                      </div>
+                      <div className="text-text-tertiary text-xs">opposing</div>
+                    </div>
+                    {/* Confidence history sparkline (if data) */}
+                    {history.length >= 2 && (
+                      <div className="ml-auto flex flex-col items-end gap-0.5">
+                        <Sparkline data={history} />
+                        <span className="text-text-tertiary text-[10px]">30-day trend</span>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -531,9 +544,46 @@ export default function ThesisDetailPage({ params }: { params: Promise<{ id: str
 
                 {/* Evidence list */}
                 {filtered.length === 0 ? (
-                  <div className="text-center py-16 text-text-tertiary text-sm">
-                    No evidence found.
-                  </div>
+                  evidence.length === 0 ? (
+                    /* Thesis has never been scored — prominent CTA */
+                    <div className="flex flex-col items-center justify-center py-16 gap-5 text-center">
+                      <div className="w-12 h-12 rounded-full bg-amber/10 flex items-center justify-center">
+                        <Zap size={22} className="text-amber" />
+                      </div>
+                      <div>
+                        <p className="text-text-primary text-sm font-semibold mb-1">
+                          No signals scored yet
+                        </p>
+                        <p className="text-text-tertiary text-xs max-w-xs leading-relaxed">
+                          Run a corpus evaluation to score all ingested documents against this thesis.
+                          This runs in the background and usually takes 1–3 minutes.
+                        </p>
+                      </div>
+                      <button
+                        onClick={runEvaluate}
+                        disabled={evalRunning}
+                        className={cn(
+                          'flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors',
+                          evalRunning
+                            ? 'bg-elevated text-text-tertiary cursor-not-allowed'
+                            : 'bg-accent text-white hover:opacity-90'
+                        )}
+                      >
+                        {evalRunning
+                          ? <><RefreshCw size={13} className="animate-spin" /> Running…</>
+                          : <><RefreshCw size={13} /> Run Corpus Evaluation</>
+                        }
+                      </button>
+                      <p className="text-text-tertiary text-[11px]">
+                        New signals will appear here after the run completes — refresh the page in a few minutes.
+                      </p>
+                    </div>
+                  ) : (
+                    /* Filter applied, no matches */
+                    <div className="text-center py-16 text-text-tertiary text-sm">
+                      No {filter} evidence found.
+                    </div>
+                  )
                 ) : (
                   <div className="space-y-2">
                     {filtered.map(ev => {
