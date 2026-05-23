@@ -1,14 +1,15 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
-import { RefreshCw, AlertCircle, Sparkles, Zap } from 'lucide-react'
+import { RefreshCw, AlertCircle, Sparkles, Zap, TrendingUp, TrendingDown, Minus, BookOpen, BarChart2 } from 'lucide-react'
+import Link from 'next/link'
 import AppShell from '@/components/layout/AppShell'
 import SignalCard from '@/components/feed/SignalCard'
 import CompanyRadar from '@/components/feed/CompanyRadar'
-import { getFeed, getCompanyRadar, regenerateFeed } from '@/lib/api'
+import { getFeed, getCompanyRadar, regenerateFeed, getThesisExplain } from '@/lib/api'
 import { formatDate, greet, cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
-import type { FeedResponse, CompanyRadarItem } from '@/lib/types'
+import type { FeedResponse, CompanyRadarItem, ThesisSignal, ThesisExplain } from '@/lib/types'
 
 // ── Skeleton components ───────────────────────────────────────────────────────
 
@@ -69,6 +70,22 @@ function SignalCardSkeleton() {
   )
 }
 
+function ExplainCardSkeleton() {
+  return (
+    <div className="bg-surface border border-border rounded-xl p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-4 w-16 rounded-full ml-auto" />
+      </div>
+      <div className="space-y-2">
+        <Skeleton className="h-3.5 w-full" />
+        <Skeleton className="h-3.5 w-[92%]" />
+        <Skeleton className="h-3.5 w-4/5" />
+      </div>
+    </div>
+  )
+}
+
 function RadarRowSkeleton() {
   return (
     <div className="flex items-center gap-3 px-3 py-2.5 border-b border-border last:border-0">
@@ -101,7 +118,7 @@ function FeedHero({ feed }: { feed: FeedResponse }) {
 
   return (
     <div className="relative bg-surface border border-border rounded-2xl p-6 mb-8 overflow-hidden">
-      {/* Decorative glow — accent top-right */}
+      {/* Decorative glow */}
       <div
         aria-hidden
         className="absolute -top-20 -right-20 w-64 h-64 rounded-full pointer-events-none"
@@ -128,7 +145,7 @@ function FeedHero({ feed }: { feed: FeedResponse }) {
           </div>
         </div>
 
-        {/* LLM summary — the main event */}
+        {/* LLM summary */}
         {feed.summary ? (
           <p className="text-text-primary text-sm leading-relaxed mb-5">
             {feed.summary}
@@ -156,6 +173,96 @@ function FeedHero({ feed }: { feed: FeedResponse }) {
   )
 }
 
+// ── Explain card — plain English narrative per thesis ─────────────────────────
+
+const TREND_CONFIG = {
+  strengthening: {
+    Icon: TrendingUp,
+    label: 'Building',
+    color: 'text-green',
+    bg: 'bg-green/10',
+  },
+  weakening: {
+    Icon: TrendingDown,
+    label: 'Fading',
+    color: 'text-red',
+    bg: 'bg-red/10',
+  },
+  stable: {
+    Icon: Minus,
+    label: 'Steady',
+    color: 'text-text-tertiary',
+    bg: 'bg-elevated',
+  },
+  none: {
+    Icon: Minus,
+    label: 'No data',
+    color: 'text-text-tertiary',
+    bg: 'bg-elevated',
+  },
+}
+
+function ExplainCard({ signal }: { signal: ThesisSignal }) {
+  const [data,    setData]    = useState<ThesisExplain | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error,   setError]   = useState('')
+
+  useEffect(() => {
+    setLoading(true)
+    setError('')
+    getThesisExplain(signal.thesis_id)
+      .then(setData)
+      .catch(e => setError(e instanceof Error ? e.message : 'Failed to load explanation.'))
+      .finally(() => setLoading(false))
+  }, [signal.thesis_id])
+
+  if (loading) return <ExplainCardSkeleton />
+
+  const trend     = data?.trend ?? 'stable'
+  const cfg       = TREND_CONFIG[trend] ?? TREND_CONFIG.stable
+  const narrative = data?.narrative ?? (error ? 'Could not generate explanation.' : '')
+
+  return (
+    <Link
+      href={`/thesis/${signal.thesis_id}`}
+      className="block bg-surface border border-border rounded-xl p-5 hover:bg-elevated hover:border-border-subtle transition-all duration-150 group"
+    >
+      {/* Header: thesis name + trend badge */}
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <p className="text-text-primary text-sm font-semibold leading-snug group-hover:text-accent transition-colors">
+          {signal.thesis_name}
+        </p>
+        <span className={cn(
+          'flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium shrink-0',
+          cfg.color, cfg.bg
+        )}>
+          <cfg.Icon size={10} />
+          {cfg.label}
+        </span>
+      </div>
+
+      {/* Plain English narrative */}
+      {error ? (
+        <p className="text-text-tertiary text-xs italic">{error}</p>
+      ) : (
+        <p className="text-text-secondary text-sm leading-relaxed">
+          {narrative}
+        </p>
+      )}
+
+      {/* Footer: subtle signal count + cache indicator */}
+      <div className="mt-3 flex items-center gap-2">
+        <span className="text-text-tertiary text-[11px]">
+          {signal.new_evidence_count} new signal{signal.new_evidence_count !== 1 ? 's' : ''} today
+        </span>
+        {data?.from_cache && (
+          <span className="text-text-tertiary text-[11px] opacity-60">· cached</span>
+        )}
+      </div>
+    </Link>
+  )
+}
+
 // ── Empty state ───────────────────────────────────────────────────────────────
 
 function EmptySignals() {
@@ -180,7 +287,8 @@ export default function FeedPage() {
   const [loading,      setLoading]      = useState(true)
   const [error,        setError]        = useState('')
   const [regenerating, setRegenerating] = useState(false)
-  const [brief,        setBrief]        = useState(false)
+  // Data = technical cards, Explain = plain-English narrative per thesis (ADR-022)
+  const [explainMode,  setExplainMode]  = useState(false)
   const { toast } = useToast()
 
   const load = useCallback(async () => {
@@ -221,29 +329,33 @@ export default function FeedPage() {
           <h1 className="text-text-primary text-lg font-semibold">{greet()}</h1>
 
           <div className="flex items-center gap-2">
-            {/* Brief / Full toggle — scoped to this page */}
+            {/* Data / Explain toggle */}
             <div className="flex items-center bg-surface border border-border rounded-lg p-0.5 gap-0.5">
               <button
-                onClick={() => setBrief(true)}
+                onClick={() => setExplainMode(false)}
+                title="Technical view — signal counts, confidence, companies"
                 className={cn(
-                  'px-3 py-1 rounded-md text-xs font-medium transition-all',
-                  brief
+                  'flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all',
+                  !explainMode
                     ? 'bg-elevated text-text-primary shadow-sm'
                     : 'text-text-tertiary hover:text-text-secondary'
                 )}
               >
-                Brief
+                <BarChart2 size={11} />
+                Data
               </button>
               <button
-                onClick={() => setBrief(false)}
+                onClick={() => setExplainMode(true)}
+                title="Plain English — what's happening and why it matters"
                 className={cn(
-                  'px-3 py-1 rounded-md text-xs font-medium transition-all',
-                  !brief
+                  'flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all',
+                  explainMode
                     ? 'bg-elevated text-text-primary shadow-sm'
                     : 'text-text-tertiary hover:text-text-secondary'
                 )}
               >
-                Full
+                <BookOpen size={11} />
+                Explain
               </button>
             </div>
 
@@ -292,7 +404,7 @@ export default function FeedPage() {
 
             <div className="flex gap-6 items-start">
 
-              {/* ── Left: signals + insider clusters + new companies ── */}
+              {/* ── Left: signals ─────────────────────────────────── */}
               <div className="flex-[7] min-w-0">
 
                 {/* Section header */}
@@ -300,17 +412,31 @@ export default function FeedPage() {
                   <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest">
                     Thesis Signals
                   </h2>
-                  <span className="text-text-tertiary text-xs tabular-nums">
-                    {feed.thesis_signals.length} active
-                  </span>
+                  <div className="flex items-center gap-3">
+                    {explainMode && (
+                      <span className="text-text-tertiary text-xs flex items-center gap-1">
+                        <BookOpen size={10} />
+                        Plain English mode
+                      </span>
+                    )}
+                    <span className="text-text-tertiary text-xs tabular-nums">
+                      {feed.thesis_signals.length} active
+                    </span>
+                  </div>
                 </div>
 
                 <div className="space-y-3">
                   {feed.thesis_signals.length === 0 ? (
                     <EmptySignals />
-                  ) : (
+                  ) : explainMode ? (
+                    /* Explain mode: plain-English cards, lazy-loaded per thesis */
                     feed.thesis_signals.map(signal => (
-                      <SignalCard key={signal.thesis_id} signal={signal} compact={brief} />
+                      <ExplainCard key={signal.thesis_id} signal={signal} />
+                    ))
+                  ) : (
+                    /* Data mode: full technical signal cards */
+                    feed.thesis_signals.map(signal => (
+                      <SignalCard key={signal.thesis_id} signal={signal} />
                     ))
                   )}
                 </div>

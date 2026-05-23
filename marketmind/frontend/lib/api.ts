@@ -1,4 +1,4 @@
-import type { CompanyRadarItem, ConfidenceSnapshot, EvidenceOut, FeedResponse, LanguageDelta, ResearchResponse, SupplyChainLink, ThesisOut } from './types'
+import type { CompanyRadarItem, ConfidenceSnapshot, EvidenceOut, FeedResponse, LanguageDelta, ResearchResponse, SupplyChainLink, ThesisExplain, ThesisOut } from './types'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -95,6 +95,10 @@ export async function getLanguageDelta(id: string, windowDays = 30): Promise<Lan
 
 export async function evaluateThesis(id: string): Promise<{ status: string; message: string }> {
   return request(`/theses/${id}/evaluate`, { method: 'POST' })
+}
+
+export async function getThesisExplain(id: string): Promise<ThesisExplain> {
+  return request<ThesisExplain>(`/theses/${id}/explain`)
 }
 
 // ── Research ──────────────────────────────────────────────────────────────────

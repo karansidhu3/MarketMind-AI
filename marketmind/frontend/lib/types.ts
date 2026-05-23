@@ -107,6 +107,13 @@ export interface ConfidenceSnapshot {
   evidence_count: number
 }
 
+export interface ThesisExplain {
+  thesis_id: string
+  narrative: string
+  trend: 'strengthening' | 'weakening' | 'stable' | 'none'
+  from_cache: boolean
+}
+
 export interface LanguageDelta {
   status: 'ok' | 'insufficient_data'
   message?: string                 // only when status=insufficient_data

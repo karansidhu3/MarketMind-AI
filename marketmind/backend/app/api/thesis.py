@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.api.dependencies import CurrentUser, get_cache, get_current_user, get_llm, get_retrieval, get_session_factory, get_thesis_service
 from app.db.models import ConfidenceSnapshot, Thesis
 from app.thesis.delta import LanguageDeltaService
+from app.thesis.explain import ThesisExplainService
 from app.thesis.schema import CompanyRadarItem, EvidenceOut, ThesisCreate, ThesisOut, ThesisUpdate
 from app.thesis.service import ThesisService
 from app.services.cache_service import CacheService
@@ -150,6 +151,32 @@ async def language_delta(
         thesis_id=thesis_id,
         thesis_name=thesis.name,
         window_days=window_days,
+    )
+
+
+@router.get("/{thesis_id}/explain")
+async def explain_thesis(
+    thesis_id: uuid.UUID,
+    _user: CurrentUser = Depends(get_current_user),
+    factory: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+    llm: LLMService = Depends(get_llm),
+    cache: CacheService = Depends(get_cache),
+    svc: ThesisService = Depends(get_thesis_service),
+) -> dict:
+    """
+    Generate a plain-English narrative interpreting this thesis's trend.
+    Reads corpus history (last 14 days of evidence + 30-day snapshot trend).
+    Results cached for 6 hours — LLM call is expensive.
+    """
+    thesis = await svc.get(thesis_id)
+    if not thesis:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thesis not found")
+
+    explain_svc = ThesisExplainService(factory=factory, llm=llm, cache=cache)
+    return await explain_svc.get_explain(
+        thesis_id=thesis_id,
+        thesis_name=thesis.name,
+        thesis_desc=thesis.description or "",
     )
 
 
