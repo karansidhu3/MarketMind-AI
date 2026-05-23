@@ -79,9 +79,9 @@ export async function getCompanyRadar(minMentions = 1): Promise<CompanyRadarItem
 
 // ── Research ──────────────────────────────────────────────────────────────────
 
-export async function research(query: string): Promise<ResearchResponse> {
+export async function research(query: string, daysBack?: number): Promise<ResearchResponse> {
   return request<ResearchResponse>('/research', {
     method: 'POST',
-    body: JSON.stringify({ query }),
+    body: JSON.stringify({ query, days_back: daysBack ?? null }),
   })
 }

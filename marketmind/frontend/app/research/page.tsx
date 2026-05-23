@@ -14,12 +14,19 @@ const STARTER_QUERIES = [
   'What are the key risks to data center growth?',
 ]
 
+const TIME_FILTERS = [
+  { label: 'All time', value: undefined },
+  { label: '30 days',  value: 30 },
+  { label: '7 days',   value: 7  },
+]
+
 export default function ResearchPage() {
-  const [query,   setQuery]   = useState('')
-  const [result,  setResult]  = useState<ResearchResponse | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error,   setError]   = useState('')
-  const [elapsed, setElapsed] = useState(0)
+  const [query,    setQuery]    = useState('')
+  const [result,   setResult]   = useState<ResearchResponse | null>(null)
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState('')
+  const [elapsed,  setElapsed]  = useState(0)
+  const [daysBack, setDaysBack] = useState<number | undefined>(undefined)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Auto-grow textarea
@@ -45,7 +52,7 @@ export default function ResearchPage() {
     setLoading(true)
     setResult(null)
     try {
-      setResult(await research(q_))
+      setResult(await research(q_, daysBack))
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Research failed.')
     } finally {
@@ -88,7 +95,23 @@ export default function ResearchPage() {
             />
           </div>
           <div className="flex items-center justify-between px-4 pb-3 pt-1">
-            <span className="text-text-tertiary text-xs">⏎ send · ⇧⏎ new line</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-text-tertiary text-xs mr-1">⏎ send</span>
+              {TIME_FILTERS.map(f => (
+                <button
+                  key={String(f.value)}
+                  onClick={() => setDaysBack(f.value)}
+                  className={cn(
+                    'text-xs px-2 py-0.5 rounded-full transition-colors',
+                    daysBack === f.value
+                      ? 'bg-accent/15 text-accent'
+                      : 'text-text-tertiary hover:text-text-secondary'
+                  )}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
             <button
               onClick={() => handleSubmit()}
               disabled={!query.trim() || loading}

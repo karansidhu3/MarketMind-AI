@@ -9,9 +9,11 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import (
+    DatetimeRange,
     Distance,
     FieldCondition,
     Filter,
@@ -44,8 +46,12 @@ class RetrievalService(ABC):
         query_embedding: list[float],
         top_k: int = 10,
         filters: dict | None = None,
+        days_back: int | None = None,
     ) -> list[SearchResult]:
-        """Return the top_k most similar vectors from the collection."""
+        """Return the top_k most similar vectors from the collection.
+
+        days_back: if set, only return documents ingested within the last N days.
+        """
 
     @abstractmethod
     async def upsert(
@@ -88,15 +94,27 @@ class QdrantRetrievalService(RetrievalService):
         query_embedding: list[float],
         top_k: int = 10,
         filters: dict | None = None,
+        days_back: int | None = None,
     ) -> list[SearchResult]:
-        qdrant_filter = None
+        must_conditions = []
+
         if filters:
-            qdrant_filter = Filter(
-                must=[
-                    FieldCondition(key=k, match=MatchValue(value=v))
-                    for k, v in filters.items()
-                ]
+            must_conditions.extend(
+                FieldCondition(key=k, match=MatchValue(value=v))
+                for k, v in filters.items()
             )
+
+        if days_back is not None:
+            cutoff = datetime.now(timezone.utc) - timedelta(days=days_back)
+            must_conditions.append(
+                FieldCondition(
+                    key="created_at",
+                    range=DatetimeRange(gte=cutoff),
+                )
+            )
+
+        qdrant_filter = Filter(must=must_conditions) if must_conditions else None
+
         results = await self._client.search(
             collection_name=collection,
             query_vector=query_embedding,

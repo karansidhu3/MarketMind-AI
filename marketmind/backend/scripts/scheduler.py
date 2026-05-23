@@ -19,6 +19,8 @@ import sys
 from datetime import datetime, date, timedelta, timezone
 from pathlib import Path
 
+import httpx
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 logging.basicConfig(
@@ -29,7 +31,8 @@ logging.basicConfig(
 logger = logging.getLogger("scheduler")
 
 INGEST_HOUR_UTC = int(os.getenv("INGEST_HOUR_UTC", "6"))
-REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379")
+REDIS_URL       = os.getenv("REDIS_URL", "redis://redis:6379")
+BACKEND_URL     = os.getenv("BACKEND_INTERNAL_URL", "http://localhost:8000")
 _DONE_KEY_PREFIX = "ingest:done:"  # ingest:done:2026-05-23
 
 
@@ -51,6 +54,19 @@ async def _run_ingestion() -> int:
     import ingest
     importlib.reload(ingest)
     return await ingest.main()
+
+
+async def _regenerate_feed() -> None:
+    """Invalidate today's feed cache so the next GET /feed call regenerates it."""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(f"{BACKEND_URL}/feed/regenerate")
+            if resp.status_code in (200, 202):
+                logger.info("Feed cache invalidated — will regenerate on next request")
+            else:
+                logger.warning("Feed regenerate returned %d — feed may be stale", resp.status_code)
+    except Exception:
+        logger.warning("Could not reach backend to regenerate feed — cache will expire naturally")
 
 
 def _next_scheduled() -> datetime:
@@ -79,6 +95,8 @@ async def main() -> None:
                     count = await _run_ingestion()
                     await _mark_done(redis)
                     logger.info("Ingestion complete — %d document(s) ingested", count)
+                    # Invalidate feed cache so it regenerates with today's signals
+                    await _regenerate_feed()
                 except Exception:
                     logger.exception("Ingestion failed — will retry in 1 hour")
                     await asyncio.sleep(3600)

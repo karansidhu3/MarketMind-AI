@@ -110,10 +110,10 @@ class ResearchService:
             logger.warning("Query expansion failed, using original query")
             return query
 
-    async def retrieve(self, query: str, top_k: int = RETRIEVE_K) -> list[SearchResult]:
+    async def retrieve(self, query: str, top_k: int = RETRIEVE_K, days_back: int | None = None) -> list[SearchResult]:
         await self._retrieval.ensure_collection(COLLECTION)
         embedding = await self._llm.embed(query)
-        return await self._retrieval.search(COLLECTION, embedding, top_k=top_k)
+        return await self._retrieval.search(COLLECTION, embedding, top_k=top_k, days_back=days_back)
 
     def rerank(self, query: str, results: list[SearchResult]) -> list[SearchResult]:
         """

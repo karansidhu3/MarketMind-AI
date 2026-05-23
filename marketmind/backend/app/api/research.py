@@ -24,9 +24,9 @@ async def research(
             detail="Query must not be empty.",
         )
     svc = ResearchService(llm=llm, retrieval=retrieval)
-    planned = await svc.plan(query)       # expanded query — used for embedding only
-    results = await svc.retrieve(planned)
-    reranked = svc.rerank(query, results) # original query — used for keyword overlap
+    planned = await svc.plan(query)
+    results = await svc.retrieve(planned, days_back=body.days_back)
+    reranked = svc.rerank(query, results)
     return await svc.synthesize(query, reranked)
 
 

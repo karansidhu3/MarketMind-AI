@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 class ResearchRequest(BaseModel):
     query: str
+    days_back: int | None = None  # None = all time; 7/30/90 = recent only
 
 
 class SourceRef(BaseModel):
