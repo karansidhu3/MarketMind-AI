@@ -251,4 +251,54 @@ company and must resolve to the same record.
 - This is a data quality issue that compounds over time and cannot be
   retroactively fixed without a full re-ingestion
 
-**Status:** Architecture decision only — normalisation strategy not yet implemented.
+**Status:** Implemented. `ingestion/normalise.py` provides `normalise()`,
+`is_same_company()`, and `pick_canonical()`. `_upsert_company_signal()` deduplicates
+per-thesis using `is_same_company`. The radar query groups by `normalised_name`
+in Python and applies `pick_canonical()` for the display name.
+
+---
+
+## ADR-020 — Radar ranks by unique source documents, not raw mention count
+
+**Decision:** The company radar sorts by `COUNT(DISTINCT document_id)` per
+normalised company name, not `SUM(mention_count)`.
+
+**Reason:**
+- Raw mention count is trivially inflated by a single verbose document. A 10-K
+  that mentions NVIDIA 40 times produces a `mention_count` of 40 from one filing.
+  A small grid hardware supplier mentioned once each in 5 independent 10-Ks has
+  `mention_count=5` but `doc_count=5`.
+- The radar's purpose is to surface companies appearing across *independent*
+  sources — each unique document is one independent observation.
+- Large caps will always have high raw mention counts. `doc_count` doesn't
+  eliminate them but it raises the bar: they need to be the *subject* of many
+  filings, not just a passing reference in one.
+
+**Implementation:** `ThesisService.get_company_radar()` fetches all company_signals,
+groups by `normalised_name` in Python, and aggregates `len({s.document_id for s in signals})`
+as `doc_count`. The frontend radar component uses `doc_count` for the relative-strength
+bar width and as the primary displayed metric.
+
+---
+
+## ADR-021 — `/no_think` prefix disables qwen3 chain-of-thought on latency-sensitive paths
+
+**Decision:** Prepend `/no_think\n\n` to all LLM prompts where `think=False`
+(the default). Pass `think=True` only for tasks that explicitly benefit from
+extended reasoning.
+
+**Reason:**
+- qwen3:8b uses extended chain-of-thought reasoning by default, generating hundreds
+  of tokens of internal reasoning before the actual response. This adds 60–180 seconds
+  per call — unacceptable for feed summaries, sentiment classification, company
+  extraction, and research synthesis.
+- Ollama 0.24.0 does not support `{"think": false}` in the API options object.
+  The `/no_think` prefix in the prompt text is qwen3's documented mechanism for
+  disabling chain-of-thought at the prompt level.
+- With `/no_think`, generation time drops to 5–20 seconds for most tasks while
+  maintaining acceptable quality for classification and summarization.
+
+**Implementation:** `OllamaLLMService.generate()` prepends `/no_think\n\n` when
+`think=False` (default). All current callers use the default. Reserved for future
+use: pass `think=True` for tasks like deep thesis analysis where reasoning quality
+matters more than latency.

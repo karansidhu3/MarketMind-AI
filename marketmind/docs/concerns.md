@@ -98,27 +98,26 @@ treated as a probability.
 ## C-004 — Unknown company surfacing quality
 
 **Severity:** High
-**Status:** Open
+**Status:** Partially addressed
 
 **Root cause:**
 NVIDIA, Microsoft, Apple, and Amazon will appear in almost every ingested
-document. The company radar ranks by mention count, which means large caps
-will permanently dominate the top positions regardless of how many documents
-are ingested. The radar's stated purpose — surfacing unknown companies before
-analysts cover them — is structurally undermined by the current design.
+document. The company radar ranked by raw mention count meant large caps
+permanently dominated the top positions regardless of how many documents
+were ingested. The radar's stated purpose — surfacing unknown companies
+before analysts cover them — was structurally undermined.
 
-**Proposed solution:**
-The radar needs a reference set of known/prominent companies to filter or
-discount. Two practical approaches:
+**What was done (ADR-020):**
+Radar now ranks by `COUNT(DISTINCT document_id)` grouped by `normalised_name`.
+A company mentioned once each in 5 independent filings outranks one mentioned
+40 times in a single 10-K. Company name variants are merged via normalise.py
+so counts aren't fragmented across "Eaton Corp" / "Eaton Corporation" etc.
 
-1. Maintain a static exclusion list of large caps (S&P 500 or similar) that
-   are discounted or hidden from the radar by default.
-2. Weight by mention specificity rather than mention count — a company
-   mentioned as the central subject of a filing is more interesting than a
-   company mentioned in passing alongside 20 others.
-
-Both approaches require some notion of company prominence that doesn't
-currently exist in the data model.
+**Remaining gap:**
+Large caps still appear prominently because they genuinely are mentioned in many
+documents. The document-count metric raises the bar but doesn't eliminate them.
+A static exclusion list of S&P 500 / well-known large caps would filter them
+from the radar by default, forcing users to opt-in to see them. Not yet implemented.
 
 ---
 
@@ -185,27 +184,27 @@ free text.
 ## C-007 — Company name normalisation
 
 **Severity:** High
-**Status:** Resolved
+**Status:** Resolved ✅
 
 **Root cause:**
-"NVIDIA Corp", "Nvidia Corporation", and "NVIDIA" are stored as three
-separate rows in `company_signals`. Mention counts fragment across name
-variants silently. No error is thrown. The company radar shows lower counts
-for every company than actually exist, and different variants of the same
-company may appear as separate entries.
+"NVIDIA Corp", "Nvidia Corporation", and "NVIDIA" were stored as three
+separate rows in `company_signals`. Mention counts fragmented across name
+variants silently.
 
-This is the most concrete near-term data quality issue. It compounds with
-every ingestion run and cannot be retroactively fixed without re-processing
-all existing company signals.
+**What was done:**
+`ingestion/normalise.py` implements:
+- `normalise(name)` — strips legal suffixes (Corp, Inc, Ltd, plc, LLC…),
+  normalises punctuation and casing → "Eaton Corporation plc" → "eaton"
+- `is_same_company(a, b)` — True if both normalise to the same string,
+  or if one is a prefix-match of the other (handles "Quanta" == "Quanta Services")
+- `pick_canonical(names)` — returns the longest/most-complete form for display
 
-**Proposed solution:**
-A normalisation step before writing to `company_signals`:
-1. Strip legal suffixes (Corp, Inc, Ltd, LLC, Holdings, etc.)
-2. Normalise casing and punctuation
-3. Optionally maintain a canonical name table mapping variants to a primary name
+`_upsert_company_signal()` in ThesisService scans all existing signals for a
+thesis and uses `is_same_company` to merge incoming names into existing rows,
+keeping the canonical (longest) display name via `pick_canonical`.
 
-The canonical name table becomes more valuable over time and could eventually
-map to tickers for companies where a match is known.
+The radar (`get_company_radar`) groups by `normalised_name` in Python and
+aggregates across all rows sharing the same normalised form.
 
 ---
 
@@ -327,10 +326,10 @@ requiring the feed to store the full content of each evidence record.
 | C-001 | Knowledge quality vs retrieval quality | High | Partially addressed |
 | C-002 | Confirmation bias / discovery gap | Medium | Open |
 | C-003 | Relationship extraction reliability | High | Open |
-| C-004 | Unknown company surfacing quality | High | Open |
+| C-004 | Unknown company surfacing quality | High | Partially addressed |
 | C-005 | Signal inflation risk | Medium | Open |
 | C-006 | Data model evolution risk | Medium | Open |
-| C-007 | Company name normalisation | High | Resolved |
+| C-007 | Company name normalisation | High | Resolved ✅ |
 | C-008 | Uncertainty propagation | High | Partially addressed |
 | C-009 | Thesis semantic drift | High | Open |
 | C-010 | Temporal decay / stale relationships | Medium | Open |
