@@ -27,11 +27,65 @@ const MOMENTUM = {
   },
 }
 
-export default function SignalCard({ signal }: { signal: ThesisSignal }) {
+interface SignalCardProps {
+  signal: ThesisSignal
+  compact?: boolean   // Brief mode: hides excerpt + company tags
+}
+
+export default function SignalCard({ signal, compact = false }: SignalCardProps) {
   const m    = MOMENTUM[signal.momentum]
   const Icon = m.icon
   const total = signal.supporting_count + signal.opposing_count
 
+  if (compact) {
+    // ── Brief / compact layout ─────────────────────────────────────────────
+    return (
+      <Link
+        href={`/thesis/${signal.thesis_id}`}
+        className={cn(
+          'flex items-center gap-3 bg-surface border border-border border-l-4 rounded-xl px-4 py-3',
+          'hover:bg-elevated transition-all duration-150 animate-slide-up',
+          m.borderColor
+        )}
+      >
+        {/* Momentum badge */}
+        <span className={cn(
+          'inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium shrink-0',
+          m.textColor, m.bgColor
+        )}>
+          <Icon size={9} strokeWidth={2.5} />
+          {m.label}
+        </span>
+
+        {/* Thesis name */}
+        <h3 className="text-text-primary font-medium text-sm flex-1 truncate leading-snug">
+          {signal.thesis_name}
+        </h3>
+
+        {/* New count */}
+        {signal.new_evidence_count > 0 && (
+          <span className="text-text-tertiary text-xs shrink-0">
+            +{signal.new_evidence_count}
+          </span>
+        )}
+
+        {/* Confidence + s/o */}
+        <div className="shrink-0 flex items-center gap-3">
+          {total > 0 && (
+            <div className="hidden sm:flex items-center gap-1.5">
+              <span className="text-green text-xs tabular-nums font-medium">{signal.supporting_count}↑</span>
+              <span className="text-red text-xs tabular-nums font-medium">{signal.opposing_count}↓</span>
+            </div>
+          )}
+          <span className={cn('text-base font-bold tabular-nums leading-none', m.textColor)}>
+            {formatConfidence(signal.confidence)}
+          </span>
+        </div>
+      </Link>
+    )
+  }
+
+  // ── Full layout ────────────────────────────────────────────────────────────
   return (
     <Link
       href={`/thesis/${signal.thesis_id}`}

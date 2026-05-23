@@ -78,6 +78,19 @@ It builds a corpus that compounds.
 - **Dark/light mode** — Sun/Moon toggle in sidebar; next-themes; CSS custom properties
   as RGB triplets; `suppressHydrationWarning` on `<html>`
 
+- **Toast notification system** — `components/ui/Toast.tsx` with `ToastProvider` + `useToast` hook;
+  wired into `app/layout.tsx`; used by feed regenerate and thesis re-evaluate actions
+- **Feed hero section** — LLM summary promoted to full-width hero with stat pills (theses tracked,
+  new signals, new companies, insider clusters), decorative accent glow, cached/live indicator
+- **Skeleton loading** — `HeroSkeleton`, `SignalCardSkeleton`, `RadarRowSkeleton` replace spinner;
+  layout-faithful skeletons animate with `animate-pulse` during feed load
+- **Brief/Full toggle** — segmented control on feed page only; Brief mode shows compact single-row
+  signal cards (momentum badge + thesis name + confidence inline); Full is the default expanded view
+- **"NEW" badge on radar** — companies first seen within 7 days get a green NEW pill in CompanyRadar
+- **Improved empty states** — feed shows guidance card with icon when no signals yet; radar shows
+  two-line empty message
+- **Thesis detail: toast for re-evaluate** — replaced inline `evalMsg` state with toast notification
+
 ### Remaining this sprint
 - **Feed provenance** (C-011) — thesis signals in daily feed should carry the evidence
   record IDs that produced them (traceability from feed → evidence → source)

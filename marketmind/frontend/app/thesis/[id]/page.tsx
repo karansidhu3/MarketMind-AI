@@ -10,6 +10,7 @@ import Link from 'next/link'
 import AppShell from '@/components/layout/AppShell'
 import { getThesis, getThesisEvidence, getSupplyChain, getConfidenceHistory, getLanguageDelta, evaluateThesis } from '@/lib/api'
 import { formatConfidence, formatDate, cn } from '@/lib/utils'
+import { useToast } from '@/components/ui/Toast'
 import type { ThesisOut, EvidenceOut, SupplyChainLink, ConfidenceSnapshot, LanguageDelta } from '@/lib/types'
 
 // ── Sentiment config ──────────────────────────────────────────────────────────
@@ -110,7 +111,7 @@ export default function ThesisDetailPage({ params }: { params: Promise<{ id: str
 
   // Re-evaluate state
   const [evalRunning, setEvalRunning] = useState(false)
-  const [evalMsg,     setEvalMsg]     = useState('')
+  const { toast } = useToast()
 
   useEffect(() => {
     setLoading(true)
@@ -144,12 +145,11 @@ export default function ThesisDetailPage({ params }: { params: Promise<{ id: str
 
   async function runEvaluate() {
     setEvalRunning(true)
-    setEvalMsg('')
     try {
       const res = await evaluateThesis(id)
-      setEvalMsg(res.message)
+      toast(res.message ?? 'Re-evaluation started in background', 'success')
     } catch (e: unknown) {
-      setEvalMsg(e instanceof Error ? e.message : 'Evaluation failed.')
+      toast(e instanceof Error ? e.message : 'Evaluation failed', 'error')
     } finally {
       setEvalRunning(false)
     }
@@ -233,11 +233,6 @@ export default function ThesisDetailPage({ params }: { params: Promise<{ id: str
                   </button>
                 </div>
               </div>
-              {evalMsg && (
-                <p className="text-text-tertiary text-xs mb-3 bg-elevated rounded-lg px-3 py-2">
-                  {evalMsg}
-                </p>
-              )}
               {thesis.description && (
                 <p className="text-text-secondary text-sm leading-relaxed mb-4">
                   {thesis.description}
