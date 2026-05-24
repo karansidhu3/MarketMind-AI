@@ -57,6 +57,7 @@ class ThesisExposure(BaseModel):
 
 class GapCompany(BaseModel):
     """A company on the radar that you don't hold, in a thesis you track."""
+    normalised_name: str = ""           # DB key — use for /companies/{key} deep-dive
     company_name: str
     ticker: str | None
     thesis_names: list[str]

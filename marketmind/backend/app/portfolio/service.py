@@ -250,6 +250,7 @@ class PortfolioService:
             company_name = sig_groups[norm][0].company_name if sig_groups.get(norm) else norm
 
             gaps.append(GapCompany(
+                normalised_name=norm,
                 company_name=company_name,
                 ticker=ticker,
                 thesis_names=thesis_names,

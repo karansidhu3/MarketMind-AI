@@ -36,9 +36,12 @@ const MOMENTUM = {
 interface SignalCardProps {
   signal: ThesisSignal
   compact?: boolean
+  /** Map from company_name → normalised_name for deep-dive panel */
+  companyNameMap?: Record<string, string>
+  onCompanyClick?: (normalisedName: string) => void
 }
 
-export default function SignalCard({ signal, compact = false }: SignalCardProps) {
+export default function SignalCard({ signal, compact = false, companyNameMap = {}, onCompanyClick }: SignalCardProps) {
   const m     = MOMENTUM[signal.momentum]
   const Icon  = m.icon
   const total = signal.supporting_count + signal.opposing_count
@@ -146,14 +149,25 @@ export default function SignalCard({ signal, compact = false }: SignalCardProps)
           {/* Companies */}
           {signal.top_companies.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-auto">
-              {signal.top_companies.slice(0, 5).map(c => (
-                <span
-                  key={c}
-                  className="text-[11px] text-text-secondary bg-elevated border border-border/60 px-2 py-0.5 rounded-md font-medium"
-                >
-                  {c}
-                </span>
-              ))}
+              {signal.top_companies.slice(0, 5).map(c => {
+                const normName = companyNameMap[c]
+                return normName && onCompanyClick ? (
+                  <button
+                    key={c}
+                    onClick={e => { e.preventDefault(); e.stopPropagation(); onCompanyClick(normName) }}
+                    className="text-[11px] text-text-secondary bg-elevated border border-border/60 px-2 py-0.5 rounded-md font-medium hover:text-accent hover:border-accent/40 transition-colors"
+                  >
+                    {c}
+                  </button>
+                ) : (
+                  <span
+                    key={c}
+                    className="text-[11px] text-text-secondary bg-elevated border border-border/60 px-2 py-0.5 rounded-md font-medium"
+                  >
+                    {c}
+                  </span>
+                )
+              })}
               {signal.top_companies.length > 5 && (
                 <span className="text-[11px] text-text-tertiary px-1 py-0.5">
                   +{signal.top_companies.length - 5} more

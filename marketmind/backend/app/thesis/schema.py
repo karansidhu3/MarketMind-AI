@@ -52,6 +52,7 @@ class ThesisOut(BaseModel):
 
 
 class CompanyRadarItem(BaseModel):
+    normalised_name: str = ""   # DB key — use for deep-dive API calls
     company_name: str
     ticker: str | None
     thesis_names: list[str]

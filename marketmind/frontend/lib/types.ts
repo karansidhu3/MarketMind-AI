@@ -82,6 +82,7 @@ export interface EvidenceOut {
 }
 
 export interface CompanyRadarItem {
+  normalised_name: string     // DB key — use for /companies/{key} API calls
   company_name: string
   ticker: string | null
   thesis_names: string[]
@@ -90,6 +91,44 @@ export interface CompanyRadarItem {
   first_seen: string
   last_seen: string
   weekly_counts: number[]     // evidence activity last 4 weeks, oldest → newest
+}
+
+// ── Company deep-dive ─────────────────────────────────────────────────────────
+
+export interface CompanyEvidenceItem {
+  id: string
+  thesis_id: string
+  thesis_name: string
+  sentiment: 'supporting' | 'opposing' | 'neutral'
+  excerpt: string
+  score: number
+  source_url: string
+  source_name: string
+  document_date: string | null
+}
+
+export interface CompanyThesisBreakdown {
+  thesis_id: string
+  thesis_name: string
+  confidence: number
+  doc_count: number
+  mention_count: number
+  supporting: number
+  opposing: number
+  neutral: number
+}
+
+export interface CompanyDetail {
+  normalised_name: string
+  display_name: string
+  ticker: string | null
+  first_seen: string
+  last_seen: string
+  doc_count: number
+  mention_count: number
+  weekly_counts: number[]
+  thesis_breakdown: CompanyThesisBreakdown[]
+  evidence: CompanyEvidenceItem[]
 }
 
 export interface SourceRef {
@@ -155,6 +194,7 @@ export interface ThesisExposure {
 }
 
 export interface GapCompany {
+  normalised_name: string
   company_name: string
   ticker: string | null
   thesis_names: string[]

@@ -189,6 +189,7 @@ class ThesisService:
                 weekly_counts.append(sum(1 for t in timestamps if w_start <= t < w_end))
 
             result.append(CompanyRadarItem(
+                normalised_name=norm,
                 company_name=canonical,
                 ticker=ticker,
                 thesis_names=thesis_names,

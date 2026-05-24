@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Bell, BellOff, X } from 'lucide-react'
 import { formatDateShort, cn } from '@/lib/utils'
 import { createAlert, deleteAlert } from '@/lib/api'
+import { useCompany } from '@/contexts/CompanyContext'
 import type { CompanyRadarItem, CompanyAlert } from '@/lib/types'
 
 const NEW_WITHIN_DAYS = 7
@@ -171,6 +172,7 @@ interface CompanyRadarProps {
 export default function CompanyRadar({ companies, initialAlerts = [] }: CompanyRadarProps) {
   const [alerts, setAlerts]           = useState<CompanyAlert[]>(initialAlerts)
   const [openPopover, setOpenPopover] = useState<string | null>(null)
+  const { openCompany } = useCompany()
 
   if (companies.length === 0) {
     return (
@@ -219,9 +221,13 @@ export default function CompanyRadar({ companies, initialAlerts = [] }: CompanyR
             {/* Name + thesis */}
             <div className="relative flex-1 min-w-0">
               <div className="flex items-baseline gap-1.5">
-                <span className="text-text-primary text-xs font-medium truncate leading-snug">
+                <button
+                  onClick={() => c.normalised_name && openCompany(c.normalised_name)}
+                  className="text-text-primary text-xs font-medium truncate leading-snug hover:text-accent transition-colors text-left"
+                  title="View company deep-dive"
+                >
                   {c.company_name}
-                </span>
+                </button>
                 {c.ticker && (
                   <span className="text-accent text-[11px] font-mono shrink-0 font-medium">{c.ticker}</span>
                 )}

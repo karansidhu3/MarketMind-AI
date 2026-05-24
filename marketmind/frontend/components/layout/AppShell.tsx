@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Header from './Header'
+import CompanyPanel from '@/components/company/CompanyPanel'
+import { CompanyProvider } from '@/contexts/CompanyContext'
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const router  = useRouter()
@@ -20,11 +22,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (!ready) return null
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <main className="pt-14 min-h-screen">
-        {children}
-      </main>
-    </div>
+    <CompanyProvider>
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="pt-14 min-h-screen">
+          {children}
+        </main>
+        <CompanyPanel />
+      </div>
+    </CompanyProvider>
   )
 }

@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import alerts, auth, feed, health, learn, portfolio, research, supply_chain, thesis, trends
+from app.api import alerts, auth, companies, feed, health, learn, portfolio, research, supply_chain, thesis, trends
 from app.config import get_settings
 from app.db.session import close_db, create_tables, get_session_factory, init_db
 from app.feed.service import FeedService
@@ -90,6 +90,7 @@ def create_app() -> FastAPI:
     app.include_router(learn.router)
     app.include_router(trends.router)
     app.include_router(portfolio.router)
+    app.include_router(companies.router)
 
     return app
 

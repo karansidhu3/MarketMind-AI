@@ -141,6 +141,12 @@ export async function getPortfolioAlignment(): Promise<import('./types').Portfol
   return request('/portfolio/alignment')
 }
 
+// ── Company deep-dive ─────────────────────────────────────────────────────────
+
+export async function getCompany(normalisedName: string): Promise<import('./types').CompanyDetail> {
+  return request(`/companies/${encodeURIComponent(normalisedName)}`)
+}
+
 // ── Research ──────────────────────────────────────────────────────────────────
 
 export async function research(query: string, daysBack?: number): Promise<ResearchResponse> {

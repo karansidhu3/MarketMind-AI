@@ -9,6 +9,7 @@ import CompanyRadar from '@/components/feed/CompanyRadar'
 import { getFeed, getCompanyRadar, regenerateFeed, getThesisExplain, getFeedExplainSummary, getAlerts } from '@/lib/api'
 import { formatDate, greet, cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
+import { useCompany } from '@/contexts/CompanyContext'
 import type { FeedResponse, CompanyRadarItem, ThesisSignal, ThesisExplain, CompanyAlert } from '@/lib/types'
 
 // ── Skeleton components ───────────────────────────────────────────────────────
@@ -358,6 +359,16 @@ export default function FeedPage() {
   // Data = technical cards, Explain = plain-English narrative per thesis (ADR-022)
   const [explainMode,  setExplainMode]  = useState(false)
   const { toast } = useToast()
+  const { openCompany } = useCompany()
+
+  // Build company_name → normalised_name map from radar data (used by SignalCard company tags)
+  const companyNameMap = React.useMemo<Record<string, string>>(() => {
+    const map: Record<string, string> = {}
+    for (const c of radar) {
+      if (c.normalised_name) map[c.company_name] = c.normalised_name
+    }
+    return map
+  }, [radar])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -493,7 +504,12 @@ export default function FeedPage() {
                   ) : (
                     /* Data mode: full technical signal cards */
                     feed.thesis_signals.map(signal => (
-                      <SignalCard key={signal.thesis_id} signal={signal} />
+                      <SignalCard
+                        key={signal.thesis_id}
+                        signal={signal}
+                        companyNameMap={companyNameMap}
+                        onCompanyClick={openCompany}
+                      />
                     ))
                   )}
                 </div>
@@ -538,7 +554,16 @@ export default function FeedPage() {
                           className="bg-surface border border-border rounded-xl px-4 py-3 animate-fade-in"
                         >
                           <div className="flex items-center gap-2 mb-1.5">
-                            <span className="text-text-primary text-sm font-medium">{co.company_name}</span>
+                            {companyNameMap[co.company_name] ? (
+                              <button
+                                onClick={() => openCompany(companyNameMap[co.company_name])}
+                                className="text-text-primary text-sm font-medium hover:text-accent transition-colors"
+                              >
+                                {co.company_name}
+                              </button>
+                            ) : (
+                              <span className="text-text-primary text-sm font-medium">{co.company_name}</span>
+                            )}
                             {co.ticker && (
                               <span className="text-accent text-xs font-mono">{co.ticker}</span>
                             )}

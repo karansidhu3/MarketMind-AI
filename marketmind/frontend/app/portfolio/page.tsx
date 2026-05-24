@@ -8,6 +8,7 @@ import {
 import AppShell from '@/components/layout/AppShell'
 import { getHoldings, addHolding, updateHolding, deleteHolding, getPortfolioAlignment } from '@/lib/api'
 import { formatConfidence, cn } from '@/lib/utils'
+import { useCompany } from '@/contexts/CompanyContext'
 import type { HoldingOut, PortfolioAlignment, ThesisExposure, GapCompany } from '@/lib/types'
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
@@ -189,15 +190,26 @@ function ExposureCard({ exposure }: { exposure: ThesisExposure }) {
 
 // ── Gap company row ───────────────────────────────────────────────────────────
 
-function GapRow({ gap, rank }: { gap: GapCompany; rank: number }) {
+function GapRow({ gap, rank, onCompanyClick }: { gap: GapCompany; rank: number; onCompanyClick?: (name: string) => void }) {
   return (
-    <div className="relative group flex items-center gap-3 px-4 py-3 border-b border-border/60 last:border-0 hover:bg-elevated/50 transition-colors">
+    <div
+      className={cn(
+        "relative group flex items-center gap-3 px-4 py-3 border-b border-border/60 last:border-0 hover:bg-elevated/50 transition-colors",
+        onCompanyClick && gap.normalised_name ? "cursor-pointer" : ""
+      )}
+      onClick={() => onCompanyClick && gap.normalised_name && onCompanyClick(gap.normalised_name)}
+    >
       <span className="text-text-tertiary text-[11px] tabular-nums w-4 shrink-0 text-right font-medium">
         {rank}
       </span>
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-1.5">
-          <span className="text-text-primary text-xs font-medium truncate">{gap.company_name}</span>
+          <span className={cn(
+            "text-text-primary text-xs font-medium truncate",
+            onCompanyClick && gap.normalised_name ? "group-hover:text-accent transition-colors" : ""
+          )}>
+            {gap.company_name}
+          </span>
           {gap.ticker && (
             <span className="text-accent text-[11px] font-mono shrink-0">{gap.ticker}</span>
           )}
@@ -235,6 +247,7 @@ export default function PortfolioPage() {
   const [editingId,  setEditingId]  = useState<string | null>(null)
   const [deleting,   setDeleting]   = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const { openCompany } = useCompany()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -504,7 +517,7 @@ export default function PortfolioPage() {
                       </div>
                       <div className="bg-surface border border-border rounded-xl">
                         {alignment.gaps.map((gap, i) => (
-                          <GapRow key={`${gap.company_name}-${i}`} gap={gap} rank={i + 1} />
+                          <GapRow key={`${gap.company_name}-${i}`} gap={gap} rank={i + 1} onCompanyClick={openCompany} />
                         ))}
                       </div>
                     </div>
