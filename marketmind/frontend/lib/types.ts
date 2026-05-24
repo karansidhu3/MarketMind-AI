@@ -133,6 +133,42 @@ export interface ThesisExplain {
   from_cache: boolean
 }
 
+// ── Portfolio ─────────────────────────────────────────────────────────────────
+
+export interface HoldingOut {
+  id: string
+  ticker: string
+  company_name: string
+  shares: number
+  cost_basis: number | null
+  added_at: string
+}
+
+export interface ThesisExposure {
+  thesis_id: string
+  thesis_name: string
+  confidence: number
+  momentum: string
+  held_companies: string[]
+  total_companies: number
+  coverage_pct: number
+}
+
+export interface GapCompany {
+  company_name: string
+  ticker: string | null
+  thesis_names: string[]
+  doc_count: number
+  thesis_confidence: number
+}
+
+export interface PortfolioAlignment {
+  total_holdings: number
+  overall_coverage: number
+  theses: ThesisExposure[]
+  gaps: GapCompany[]
+}
+
 export interface LanguageDelta {
   status: 'ok' | 'insufficient_data'
   message?: string                 // only when status=insufficient_data

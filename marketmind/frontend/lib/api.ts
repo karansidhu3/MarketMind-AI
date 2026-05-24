@@ -119,6 +119,28 @@ export async function deleteAlert(id: string): Promise<void> {
   await request(`/alerts/${id}`, { method: 'DELETE' })
 }
 
+// ── Portfolio ─────────────────────────────────────────────────────────────────
+
+export async function getHoldings(): Promise<import('./types').HoldingOut[]> {
+  return request('/portfolio/holdings')
+}
+
+export async function addHolding(data: { ticker: string; company_name: string; shares: number; cost_basis?: number }): Promise<import('./types').HoldingOut> {
+  return request('/portfolio/holdings', { method: 'POST', body: JSON.stringify(data) })
+}
+
+export async function updateHolding(id: string, data: { shares?: number; cost_basis?: number }): Promise<import('./types').HoldingOut> {
+  return request(`/portfolio/holdings/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+}
+
+export async function deleteHolding(id: string): Promise<void> {
+  await request(`/portfolio/holdings/${id}`, { method: 'DELETE' })
+}
+
+export async function getPortfolioAlignment(): Promise<import('./types').PortfolioAlignment> {
+  return request('/portfolio/alignment')
+}
+
 // ── Research ──────────────────────────────────────────────────────────────────
 
 export async function research(query: string, daysBack?: number): Promise<ResearchResponse> {

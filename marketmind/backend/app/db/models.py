@@ -132,3 +132,19 @@ class ConfidenceSnapshot(Base):
     supporting_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     opposing_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     evidence_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class Holding(Base):
+    """
+    User's portfolio holdings. Stored locally, never leaves the machine.
+    Used for thesis alignment scoring and exposure gap detection (Sprint 7).
+    Framing: alignment gaps, not buy/sell recommendations (ADR-023).
+    """
+    __tablename__ = "holdings"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    ticker: Mapped[str] = mapped_column(String(20), nullable=False, unique=True, index=True)
+    company_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    shares: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    cost_basis: Mapped[float | None] = mapped_column(Float, nullable=True)  # per share, optional
+    added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

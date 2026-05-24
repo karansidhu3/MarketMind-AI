@@ -2,15 +2,16 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Zap, BookOpen, Search, LogOut, Sun, Moon } from 'lucide-react'
+import { Zap, BookOpen, Search, LogOut, Sun, Moon, BriefcaseBusiness } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 
 const NAV = [
-  { href: '/feed',     icon: Zap,      label: 'Feed'     },
-  { href: '/thesis',   icon: BookOpen, label: 'Theses'   },
-  { href: '/research', icon: Search,   label: 'Research' },
+  { href: '/feed',      icon: Zap,                label: 'Feed'      },
+  { href: '/thesis',    icon: BookOpen,            label: 'Theses'    },
+  { href: '/portfolio', icon: BriefcaseBusiness,   label: 'Portfolio' },
+  { href: '/research',  icon: Search,              label: 'Research'  },
 ]
 
 export default function Header() {
