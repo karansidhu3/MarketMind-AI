@@ -53,6 +53,10 @@ export async function regenerateFeed(): Promise<void> {
   await request('/feed/regenerate', { method: 'POST' })
 }
 
+export async function getFeedExplainSummary(): Promise<{ summary: string; from_cache: boolean }> {
+  return request('/feed/explain-summary')
+}
+
 // ── Theses ───────────────────────────────────────────────────────────────────
 
 export async function getTheses(): Promise<ThesisOut[]> {

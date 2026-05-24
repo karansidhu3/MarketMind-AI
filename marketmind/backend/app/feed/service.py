@@ -33,6 +33,20 @@ Insider filing clusters:
 
 Write the summary now:"""
 
+_EXPLAIN_SUMMARY_PROMPT = """\
+/no_think
+You are sending a quick morning update to a smart friend who invests but doesn't work in finance.
+Speak casually and directly. No jargon. No percentages. No words like "thesis", "corpus", \
+"sentiment", or "signals". Pretend you're texting, not writing a report.
+
+Here's what the data shows today:
+{thesis_block}
+
+Write 2-3 sentences in plain English. Tell them what's moving, what's quiet, and the one \
+thing worth paying attention to. Sound like a person, not a press release."""
+
+EXPLAIN_SUMMARY_TTL = 6 * 3600  # 6 hours — separate from the 25h feed cache
+
 
 class FeedService:
     def __init__(
@@ -61,6 +75,48 @@ class FeedService:
 
     async def invalidate(self, feed_date: date) -> None:
         await self._cache.delete(f"feed:generated:{feed_date.isoformat()}")
+
+    async def get_explain_summary(self, feed_date: date) -> dict:
+        """
+        Plain-English version of the daily briefing — casual tone, no jargon.
+        Cached separately from the feed (6h TTL).
+        """
+        cache_key = f"feed:explain-summary:{feed_date.isoformat()}"
+        cached = await self._cache.get(cache_key)
+        if cached:
+            data = json.loads(cached)
+            data["from_cache"] = True
+            return data
+
+        # Reuse the already-generated feed so we don't re-query the DB
+        feed = await self.get_feed(feed_date)
+
+        if not feed.thesis_signals:
+            result = {
+                "summary": "Nothing new came in today — the trackers are quiet. Check back after the next ingestion run.",
+                "from_cache": False,
+            }
+            await self._cache.set(cache_key, json.dumps(result), ttl_seconds=EXPLAIN_SUMMARY_TTL)
+            return result
+
+        thesis_block = "\n".join(
+            f"- {s.thesis_name}: {s.new_evidence_count} new mention(s), "
+            f"trend is {s.momentum}, top companies: {', '.join(s.top_companies[:2]) or 'none identified'}"
+            for s in feed.thesis_signals
+        )
+
+        summary = "A few things moved today — check the cards below for details."
+        try:
+            raw = await self._llm.generate(
+                _EXPLAIN_SUMMARY_PROMPT.format(thesis_block=thesis_block)
+            )
+            summary = raw.strip().removeprefix("<think>").split("</think>")[-1].strip()
+        except Exception:
+            logger.warning("Explain summary generation failed for %s", feed_date)
+
+        result = {"summary": summary, "from_cache": False}
+        await self._cache.set(cache_key, json.dumps(result), ttl_seconds=EXPLAIN_SUMMARY_TTL)
+        return result
 
     # ── Generation ────────────────────────────────────────────────────────────
 

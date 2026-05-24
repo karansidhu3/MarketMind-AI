@@ -30,6 +30,20 @@ async def get_feed_by_date(
     return await svc.get_feed(feed_date)
 
 
+@router.get("/explain-summary")
+async def get_explain_summary(
+    feed_date: date = None,
+    _user: CurrentUser = Depends(get_current_user),
+    svc: FeedService = Depends(get_feed_service),
+) -> dict:
+    """
+    Plain-English version of today's briefing — casual tone, no financial jargon.
+    Used by the feed page's Explain mode hero section.
+    Cached separately from the main feed (6h TTL).
+    """
+    return await svc.get_explain_summary(feed_date or date.today())
+
+
 @router.post("/regenerate", status_code=status.HTTP_202_ACCEPTED)
 async def regenerate_feed(
     _user: CurrentUser = Depends(get_current_user),

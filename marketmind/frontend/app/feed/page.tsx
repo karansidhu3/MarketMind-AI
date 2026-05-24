@@ -6,7 +6,7 @@ import Link from 'next/link'
 import AppShell from '@/components/layout/AppShell'
 import SignalCard from '@/components/feed/SignalCard'
 import CompanyRadar from '@/components/feed/CompanyRadar'
-import { getFeed, getCompanyRadar, regenerateFeed, getThesisExplain } from '@/lib/api'
+import { getFeed, getCompanyRadar, regenerateFeed, getThesisExplain, getFeedExplainSummary } from '@/lib/api'
 import { formatDate, greet, cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 import type { FeedResponse, CompanyRadarItem, ThesisSignal, ThesisExplain } from '@/lib/types'
@@ -104,7 +104,20 @@ function RadarRowSkeleton() {
 
 // ── Feed hero ─────────────────────────────────────────────────────────────────
 
-function FeedHero({ feed }: { feed: FeedResponse }) {
+function FeedHero({ feed, explainMode }: { feed: FeedResponse; explainMode: boolean }) {
+  const [explainSummary, setExplainSummary] = useState<string | null>(null)
+  const [explainLoading, setExplainLoading] = useState(false)
+
+  // Fetch plain-English summary the first time Explain mode is activated
+  useEffect(() => {
+    if (!explainMode || explainSummary !== null) return
+    setExplainLoading(true)
+    getFeedExplainSummary()
+      .then(r => setExplainSummary(r.summary))
+      .catch(() => setExplainSummary('Could not generate plain-English briefing.'))
+      .finally(() => setExplainLoading(false))
+  }, [explainMode]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const totalNewSignals = feed.thesis_signals.reduce(
     (sum, s) => sum + s.new_evidence_count, 0
   )
@@ -115,6 +128,11 @@ function FeedHero({ feed }: { feed: FeedResponse }) {
     { value: feed.new_companies.length,       label: 'new companies'    },
     { value: feed.insider_clusters.length,    label: 'insider clusters' },
   ]
+
+  // Which summary to show
+  const summaryText = explainMode
+    ? (explainLoading ? null : explainSummary)
+    : feed.summary
 
   return (
     <div className="relative bg-surface border border-border rounded-2xl p-6 mb-8 overflow-hidden">
@@ -128,12 +146,18 @@ function FeedHero({ feed }: { feed: FeedResponse }) {
       <div className="relative">
         {/* Title row */}
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
-            <Sparkles size={14} className="text-accent" />
+          <div className={cn(
+            'w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors',
+            explainMode ? 'bg-green/10' : 'bg-accent/10'
+          )}>
+            {explainMode
+              ? <BookOpen size={14} className="text-green" />
+              : <Sparkles size={14} className="text-accent" />
+            }
           </div>
           <div>
             <p className="text-text-primary text-sm font-semibold leading-tight">
-              Intelligence Briefing
+              {explainMode ? 'Plain English Briefing' : 'Intelligence Briefing'}
             </p>
             <p className="text-text-tertiary text-xs mt-0.5">
               {formatDate(feed.feed_date)}
@@ -145,10 +169,16 @@ function FeedHero({ feed }: { feed: FeedResponse }) {
           </div>
         </div>
 
-        {/* LLM summary */}
-        {feed.summary ? (
+        {/* Summary — switches between analyst tone and casual tone */}
+        {explainLoading ? (
+          <div className="space-y-2 mb-5">
+            <Skeleton className="h-3.5 w-full" />
+            <Skeleton className="h-3.5 w-[88%]" />
+            <Skeleton className="h-3.5 w-3/4" />
+          </div>
+        ) : summaryText ? (
           <p className="text-text-primary text-sm leading-relaxed mb-5">
-            {feed.summary}
+            {summaryText}
           </p>
         ) : (
           <p className="text-text-tertiary text-sm italic mb-5">
@@ -156,7 +186,7 @@ function FeedHero({ feed }: { feed: FeedResponse }) {
           </p>
         )}
 
-        {/* Stat pills */}
+        {/* Stat pills — same in both modes */}
         <div className="flex flex-wrap gap-2">
           {stats.map(s => (
             <div
@@ -399,8 +429,8 @@ export default function FeedPage() {
         {/* ── Main content ─────────────────────────────────────── */}
         {!loading && !error && feed && (
           <>
-            {/* Hero — LLM briefing + stats */}
-            <FeedHero feed={feed} />
+            {/* Hero — switches between analyst tone and plain-English based on mode */}
+            <FeedHero feed={feed} explainMode={explainMode} />
 
             <div className="flex gap-6 items-start">
 
