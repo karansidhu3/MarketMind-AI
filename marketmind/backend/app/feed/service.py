@@ -35,15 +35,21 @@ Write the summary now:"""
 
 _EXPLAIN_SUMMARY_PROMPT = """\
 /no_think
-You are sending a quick morning update to a smart friend who invests but doesn't work in finance.
-Speak casually and directly. No jargon. No percentages. No words like "thesis", "corpus", \
-"sentiment", or "signals". Pretend you're texting, not writing a report.
+Rewrite the following investment briefing in casual plain English for someone who invests \
+but doesn't work in finance. Keep all the specific company names and facts — just strip the \
+jargon and make it sound like a friend texting, not a financial report.
 
-Here's what the data shows today:
-{thesis_block}
+Original briefing:
+{original_summary}
 
-Write 2-3 sentences in plain English. Tell them what's moving, what's quiet, and the one \
-thing worth paying attention to. Sound like a person, not a press release."""
+Rules:
+- Same key facts, different tone
+- No words like "thesis", "corpus", "sentiment", "signals", or "bottleneck"
+- No bullets, no headers, no percentages
+- 2-3 sentences max
+- Sound like a person, not a press release
+
+Rewritten:"""
 
 EXPLAIN_SUMMARY_TTL = 6 * 3600  # 6 hours — separate from the 25h feed cache
 
@@ -78,8 +84,9 @@ class FeedService:
 
     async def get_explain_summary(self, feed_date: date) -> dict:
         """
-        Plain-English version of the daily briefing — casual tone, no jargon.
-        Cached separately from the feed (6h TTL).
+        Plain-English rewrite of the daily briefing — same facts, casual tone, no jargon.
+        Derives from feed.summary so Data and Explain modes are always in sync.
+        Only caches when a real LLM response was generated (not empty-feed fallbacks).
         """
         cache_key = f"feed:explain-summary:{feed_date.isoformat()}"
         cached = await self._cache.get(cache_key)
@@ -88,33 +95,29 @@ class FeedService:
             data["from_cache"] = True
             return data
 
-        # Reuse the already-generated feed so we don't re-query the DB
+        # Use the existing feed — guaranteed to match what Data mode shows
         feed = await self.get_feed(feed_date)
 
-        if not feed.thesis_signals:
-            result = {
+        # No signals today — return contextual message but don't cache it
+        # (so it retries after ingestion runs rather than serving stale "quiet day" for 6h)
+        if not feed.thesis_signals or not feed.summary:
+            return {
                 "summary": "Nothing new came in today — the trackers are quiet. Check back after the next ingestion run.",
                 "from_cache": False,
             }
-            await self._cache.set(cache_key, json.dumps(result), ttl_seconds=EXPLAIN_SUMMARY_TTL)
-            return result
 
-        thesis_block = "\n".join(
-            f"- {s.thesis_name}: {s.new_evidence_count} new mention(s), "
-            f"trend is {s.momentum}, top companies: {', '.join(s.top_companies[:2]) or 'none identified'}"
-            for s in feed.thesis_signals
-        )
-
-        summary = "A few things moved today — check the cards below for details."
+        # Rewrite the existing analyst summary in casual English
+        summary = feed.summary  # fallback: just use the original if LLM fails
         try:
             raw = await self._llm.generate(
-                _EXPLAIN_SUMMARY_PROMPT.format(thesis_block=thesis_block)
+                _EXPLAIN_SUMMARY_PROMPT.format(original_summary=feed.summary)
             )
             summary = raw.strip().removeprefix("<think>").split("</think>")[-1].strip()
         except Exception:
-            logger.warning("Explain summary generation failed for %s", feed_date)
+            logger.warning("Explain summary rewrite failed for %s", feed_date)
 
         result = {"summary": summary, "from_cache": False}
+        # Only cache successful rewrites — not the "quiet day" fallback above
         await self._cache.set(cache_key, json.dumps(result), ttl_seconds=EXPLAIN_SUMMARY_TTL)
         return result
 

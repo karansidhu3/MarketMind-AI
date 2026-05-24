@@ -297,13 +297,13 @@ function ExplainCard({ signal }: { signal: ThesisSignal }) {
 
 function EmptySignals() {
   return (
-    <div className="bg-surface border border-border rounded-xl py-16 px-8 text-center">
+    <div className="bg-surface border border-border rounded-xl py-14 px-8 text-center">
       <div className="w-10 h-10 rounded-xl bg-elevated flex items-center justify-center mx-auto mb-3">
         <Zap size={18} className="text-text-tertiary" />
       </div>
-      <p className="text-text-primary text-sm font-medium mb-1.5">No signals yet</p>
-      <p className="text-text-tertiary text-xs leading-relaxed max-w-[220px] mx-auto">
-        Run ingestion to start building your intelligence corpus. Thesis scoring happens automatically after each ingest.
+      <p className="text-text-primary text-sm font-medium mb-1.5">Nothing new today</p>
+      <p className="text-text-tertiary text-xs leading-relaxed max-w-[260px] mx-auto">
+        No documents matched your theses since midnight. This clears daily — check back after the next ingestion run, or trigger one manually.
       </p>
     </div>
   )
