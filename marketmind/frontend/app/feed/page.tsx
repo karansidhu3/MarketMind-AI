@@ -347,6 +347,23 @@ function EmptySignals() {
   )
 }
 
+// ── New company name — needs hook so must be its own component ────────────────
+
+function NewCompanyName({ name, normalisedName }: { name: string; normalisedName?: string }) {
+  const { openCompany } = useCompany()
+  if (normalisedName) {
+    return (
+      <button
+        onClick={() => openCompany(normalisedName)}
+        className="text-text-primary text-sm font-medium hover:text-accent transition-colors"
+      >
+        {name}
+      </button>
+    )
+  }
+  return <span className="text-text-primary text-sm font-medium">{name}</span>
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function FeedPage() {
@@ -359,7 +376,6 @@ export default function FeedPage() {
   // Data = technical cards, Explain = plain-English narrative per thesis (ADR-022)
   const [explainMode,  setExplainMode]  = useState(false)
   const { toast } = useToast()
-  const { openCompany } = useCompany()
 
   // Build company_name → normalised_name map from radar data (used by SignalCard company tags)
   const companyNameMap = React.useMemo<Record<string, string>>(() => {
@@ -508,7 +524,6 @@ export default function FeedPage() {
                         key={signal.thesis_id}
                         signal={signal}
                         companyNameMap={companyNameMap}
-                        onCompanyClick={openCompany}
                       />
                     ))
                   )}
@@ -554,16 +569,7 @@ export default function FeedPage() {
                           className="bg-surface border border-border rounded-xl px-4 py-3 animate-fade-in"
                         >
                           <div className="flex items-center gap-2 mb-1.5">
-                            {companyNameMap[co.company_name] ? (
-                              <button
-                                onClick={() => openCompany(companyNameMap[co.company_name])}
-                                className="text-text-primary text-sm font-medium hover:text-accent transition-colors"
-                              >
-                                {co.company_name}
-                              </button>
-                            ) : (
-                              <span className="text-text-primary text-sm font-medium">{co.company_name}</span>
-                            )}
+                            <NewCompanyName name={co.company_name} normalisedName={companyNameMap[co.company_name]} />
                             {co.ticker && (
                               <span className="text-accent text-xs font-mono">{co.ticker}</span>
                             )}

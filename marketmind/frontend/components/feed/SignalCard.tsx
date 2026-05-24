@@ -1,6 +1,9 @@
+'use client'
+
 import { TrendingUp, TrendingDown, Minus, ArrowUpRight, GitCompare } from 'lucide-react'
 import Link from 'next/link'
 import { cn, formatConfidence } from '@/lib/utils'
+import { useCompany } from '@/contexts/CompanyContext'
 import type { ThesisSignal } from '@/lib/types'
 
 const MOMENTUM = {
@@ -38,10 +41,11 @@ interface SignalCardProps {
   compact?: boolean
   /** Map from company_name → normalised_name for deep-dive panel */
   companyNameMap?: Record<string, string>
-  onCompanyClick?: (normalisedName: string) => void
 }
 
-export default function SignalCard({ signal, compact = false, companyNameMap = {}, onCompanyClick }: SignalCardProps) {
+export default function SignalCard({ signal, compact = false, companyNameMap = {} }: SignalCardProps) {
+  // Renders inside AppShell → CompanyProvider, so hook resolves correctly
+  const { openCompany } = useCompany()
   const m     = MOMENTUM[signal.momentum]
   const Icon  = m.icon
   const total = signal.supporting_count + signal.opposing_count
@@ -151,10 +155,10 @@ export default function SignalCard({ signal, compact = false, companyNameMap = {
             <div className="flex flex-wrap gap-1.5 mt-auto">
               {signal.top_companies.slice(0, 5).map(c => {
                 const normName = companyNameMap[c]
-                return normName && onCompanyClick ? (
+                return normName ? (
                   <button
                     key={c}
-                    onClick={e => { e.preventDefault(); e.stopPropagation(); onCompanyClick(normName) }}
+                    onClick={e => { e.preventDefault(); e.stopPropagation(); openCompany(normName) }}
                     className="text-[11px] text-text-secondary bg-elevated border border-border/60 px-2 py-0.5 rounded-md font-medium hover:text-accent hover:border-accent/40 transition-colors"
                   >
                     {c}

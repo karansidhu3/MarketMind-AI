@@ -190,14 +190,18 @@ function ExposureCard({ exposure }: { exposure: ThesisExposure }) {
 
 // ── Gap company row ───────────────────────────────────────────────────────────
 
-function GapRow({ gap, rank, onCompanyClick }: { gap: GapCompany; rank: number; onCompanyClick?: (name: string) => void }) {
+function GapRow({ gap, rank }: { gap: GapCompany; rank: number }) {
+  // GapRow renders inside AppShell → CompanyProvider, so the hook resolves correctly here
+  const { openCompany } = useCompany()
+  const clickable = !!gap.normalised_name
+
   return (
     <div
       className={cn(
         "relative group flex items-center gap-3 px-4 py-3 border-b border-border/60 last:border-0 hover:bg-elevated/50 transition-colors",
-        onCompanyClick && gap.normalised_name ? "cursor-pointer" : ""
+        clickable ? "cursor-pointer" : ""
       )}
-      onClick={() => onCompanyClick && gap.normalised_name && onCompanyClick(gap.normalised_name)}
+      onClick={() => clickable && openCompany(gap.normalised_name)}
     >
       <span className="text-text-tertiary text-[11px] tabular-nums w-4 shrink-0 text-right font-medium">
         {rank}
@@ -206,7 +210,7 @@ function GapRow({ gap, rank, onCompanyClick }: { gap: GapCompany; rank: number; 
         <div className="flex items-baseline gap-1.5">
           <span className={cn(
             "text-text-primary text-xs font-medium truncate",
-            onCompanyClick && gap.normalised_name ? "group-hover:text-accent transition-colors" : ""
+            clickable ? "group-hover:text-accent transition-colors" : ""
           )}>
             {gap.company_name}
           </span>
@@ -247,7 +251,6 @@ export default function PortfolioPage() {
   const [editingId,  setEditingId]  = useState<string | null>(null)
   const [deleting,   setDeleting]   = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
-  const { openCompany } = useCompany()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -517,7 +520,7 @@ export default function PortfolioPage() {
                       </div>
                       <div className="bg-surface border border-border rounded-xl">
                         {alignment.gaps.map((gap, i) => (
-                          <GapRow key={`${gap.company_name}-${i}`} gap={gap} rank={i + 1} onCompanyClick={openCompany} />
+                          <GapRow key={`${gap.company_name}-${i}`} gap={gap} rank={i + 1} />
                         ))}
                       </div>
                     </div>
