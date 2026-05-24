@@ -3,8 +3,11 @@ from __future__ import annotations
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.api.dependencies import CurrentUser, get_current_user, get_feed_service
+from app.api.dependencies import CurrentUser, get_current_user, get_feed_service, get_session_factory
+from app.db.models import DailyFeed
 from app.feed.schema import FeedResponse
 from app.feed.service import FeedService
 
@@ -18,6 +21,21 @@ async def get_today_feed(
 ) -> FeedResponse:
     """Today's bottleneck intelligence feed. Cached for 25h."""
     return await svc.get_feed(date.today())
+
+
+@router.get("/dates")
+async def get_feed_dates(
+    _user: CurrentUser = Depends(get_current_user),
+    factory: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> list[str]:
+    """All dates that have a stored feed, newest first. Used by timeline scrubber."""
+    async with factory() as session:
+        rows = (
+            await session.execute(
+                select(DailyFeed.feed_date).order_by(DailyFeed.feed_date.desc())
+            )
+        ).scalars().all()
+    return [d.isoformat() for d in rows]
 
 
 @router.get("/explain-summary")

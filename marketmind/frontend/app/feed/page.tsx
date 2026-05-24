@@ -1,12 +1,12 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
-import { RefreshCw, AlertCircle, Sparkles, Zap, TrendingUp, TrendingDown, Minus, BookOpen, BarChart2, Bell } from 'lucide-react'
+import { RefreshCw, AlertCircle, Sparkles, Zap, TrendingUp, TrendingDown, Minus, BookOpen, BarChart2, Bell, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
 import Link from 'next/link'
 import AppShell from '@/components/layout/AppShell'
 import SignalCard from '@/components/feed/SignalCard'
 import CompanyRadar from '@/components/feed/CompanyRadar'
-import { getFeed, getCompanyRadar, regenerateFeed, getThesisExplain, getFeedExplainSummary, getAlerts } from '@/lib/api'
+import { getFeed, getFeedDates, getCompanyRadar, regenerateFeed, getThesisExplain, getFeedExplainSummary, getAlerts } from '@/lib/api'
 import { formatDate, greet, cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 import { useCompany } from '@/contexts/CompanyContext'
@@ -109,10 +109,12 @@ function FeedHero({
   feed,
   explainMode,
   onToggleMode,
+  isHistorical,
 }: {
   feed: FeedResponse
   explainMode: boolean
   onToggleMode: (val: boolean) => void
+  isHistorical?: boolean
 }) {
   const [explainSummary, setExplainSummary] = useState<string | null>(null)
   const [explainLoading, setExplainLoading] = useState(false)
@@ -168,16 +170,18 @@ function FeedHero({
             <p className="text-text-primary text-sm font-semibold leading-tight">
               {explainMode ? 'Plain English Briefing' : 'Intelligence Briefing'}
             </p>
-            <p className="text-text-tertiary text-xs mt-0.5">
+            <p className="text-text-tertiary text-xs mt-0.5 flex items-center gap-1.5">
               {formatDate(feed.feed_date)}
-              {feed.from_cache
-                ? <span className="ml-1.5 opacity-60">· cached</span>
-                : <span className="ml-1.5 text-green">· live</span>
+              {isHistorical
+                ? <span className="text-amber/80 bg-amber/10 px-1.5 py-0.5 rounded-full text-[10px] font-medium">archived</span>
+                : feed.from_cache
+                  ? <span className="opacity-60">· cached</span>
+                  : <span className="text-green">· live</span>
               }
             </p>
           </div>
-          {/* Data / Explain toggle — lives inside the hero */}
-          <div className="flex items-center bg-elevated border border-border/80 rounded-lg p-0.5 gap-0.5 shrink-0">
+          {/* Data / Explain toggle — hidden for historical feeds (explain uses today's corpus) */}
+          {!isHistorical && <div className="flex items-center bg-elevated border border-border/80 rounded-lg p-0.5 gap-0.5 shrink-0">
             <button
               onClick={() => onToggleMode(false)}
               title="Technical view — signal counts, confidence, companies"
@@ -204,7 +208,7 @@ function FeedHero({
               <BookOpen size={10} />
               Explain
             </button>
-          </div>
+          </div>}
         </div>
 
         {/* Summary — switches between analyst tone and casual tone */}
@@ -364,18 +368,137 @@ function NewCompanyName({ name, normalisedName }: { name: string; normalisedName
   return <span className="text-text-primary text-sm font-medium">{name}</span>
 }
 
+// ── Timeline scrubber ─────────────────────────────────────────────────────────
+
+interface TimelineScrubberProps {
+  dates: string[]          // ISO date strings, newest first
+  viewDate: string | null  // null = today
+  onSelect: (date: string | null) => void
+  loading: boolean
+}
+
+function TimelineScrubber({ dates, viewDate, onSelect, loading }: TimelineScrubberProps) {
+  const [showPicker, setShowPicker] = useState(false)
+  const isToday = viewDate === null
+
+  // Index of currently viewed date in the sorted list (-1 = today = newest)
+  const currentIdx = viewDate ? dates.indexOf(viewDate) : -1
+  const canGoNewer = !isToday && currentIdx > 0
+  const canGoOlder = currentIdx < dates.length - 1 && (isToday ? dates.length > 0 : true)
+
+  function goNewer() {
+    if (isToday) return
+    if (currentIdx <= 0) { onSelect(null); return }
+    onSelect(dates[currentIdx - 1])
+  }
+
+  function goOlder() {
+    if (isToday) {
+      if (dates.length > 0) onSelect(dates[0])
+    } else if (currentIdx < dates.length - 1) {
+      onSelect(dates[currentIdx + 1])
+    }
+  }
+
+  if (dates.length <= 1) return null   // nothing to scrub with only today
+
+  return (
+    <div className="flex items-center gap-1.5">
+      {/* Older */}
+      <button
+        onClick={goOlder}
+        disabled={loading || !canGoOlder}
+        className="p-1.5 rounded-lg text-text-tertiary hover:text-text-secondary hover:bg-elevated border border-border transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        title="Older feed"
+      >
+        <ChevronLeft size={13} />
+      </button>
+
+      {/* Date chip — click to show calendar picker */}
+      <div className="relative">
+        <button
+          onClick={() => setShowPicker(p => !p)}
+          className={cn(
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors',
+            isToday
+              ? 'border-border text-text-tertiary hover:bg-elevated hover:text-text-secondary'
+              : 'border-accent/50 text-accent bg-accent/8 hover:bg-accent/12'
+          )}
+        >
+          <Calendar size={11} />
+          {isToday ? 'Today' : formatDate(viewDate!)}
+        </button>
+
+        {/* Date picker dropdown */}
+        {showPicker && (
+          <div className="absolute top-full mt-1.5 right-0 z-20 bg-surface border border-border rounded-xl shadow-xl p-1.5 min-w-[180px] animate-slide-up">
+            <button
+              onClick={() => { onSelect(null); setShowPicker(false) }}
+              className={cn(
+                'w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-colors',
+                isToday ? 'bg-elevated text-text-primary' : 'text-text-secondary hover:bg-elevated'
+              )}
+            >
+              Today
+            </button>
+            <div className="my-1 border-t border-border/50" />
+            <div className="max-h-48 overflow-y-auto">
+              {dates.map(d => (
+                <button
+                  key={d}
+                  onClick={() => { onSelect(d); setShowPicker(false) }}
+                  className={cn(
+                    'w-full text-left px-3 py-2 rounded-lg text-xs transition-colors',
+                    viewDate === d ? 'bg-elevated text-text-primary font-medium' : 'text-text-secondary hover:bg-elevated'
+                  )}
+                >
+                  {formatDate(d)}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Newer */}
+      <button
+        onClick={goNewer}
+        disabled={loading || !canGoNewer}
+        className="p-1.5 rounded-lg text-text-tertiary hover:text-text-secondary hover:bg-elevated border border-border transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        title="Newer feed"
+      >
+        <ChevronRight size={13} />
+      </button>
+
+      {/* Back to today pill — only when viewing history */}
+      {!isToday && (
+        <button
+          onClick={() => onSelect(null)}
+          className="ml-1 px-2.5 py-1.5 rounded-lg text-xs text-text-tertiary hover:text-text-secondary border border-border hover:bg-elevated transition-colors"
+        >
+          ← Today
+        </button>
+      )}
+    </div>
+  )
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function FeedPage() {
   const [feed,         setFeed]         = useState<FeedResponse | null>(null)
   const [radar,        setRadar]        = useState<CompanyRadarItem[]>([])
   const [alerts,       setAlerts]       = useState<CompanyAlert[]>([])
+  const [feedDates,    setFeedDates]    = useState<string[]>([])
+  const [viewDate,     setViewDate]     = useState<string | null>(null)  // null = today
   const [loading,      setLoading]      = useState(true)
   const [error,        setError]        = useState('')
   const [regenerating, setRegenerating] = useState(false)
   // Data = technical cards, Explain = plain-English narrative per thesis (ADR-022)
   const [explainMode,  setExplainMode]  = useState(false)
   const { toast } = useToast()
+
+  const isHistorical = viewDate !== null
 
   // Build company_name → normalised_name map from radar data (used by SignalCard company tags)
   const companyNameMap = React.useMemo<Record<string, string>>(() => {
@@ -386,14 +509,19 @@ export default function FeedPage() {
     return map
   }, [radar])
 
-  const load = useCallback(async () => {
+  // Load radar + alerts once (always current, not historical)
+  useEffect(() => {
+    Promise.all([getCompanyRadar(), getAlerts(), getFeedDates()])
+      .then(([r, a, d]) => { setRadar(r); setAlerts(a); setFeedDates(d) })
+      .catch(() => {})
+  }, [])
+
+  const loadFeed = useCallback(async (date: string | null) => {
     setLoading(true)
     setError('')
     try {
-      const [f, r, a] = await Promise.all([getFeed(), getCompanyRadar(), getAlerts()])
+      const f = await getFeed(date ?? undefined)
       setFeed(f)
-      setRadar(r)
-      setAlerts(a)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load feed.')
     } finally {
@@ -401,13 +529,20 @@ export default function FeedPage() {
     }
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { loadFeed(viewDate) }, [loadFeed, viewDate])
+
+  function handleSelectDate(date: string | null) {
+    setViewDate(date)
+    setExplainMode(false)  // reset to data mode when navigating
+  }
 
   async function handleRegenerate() {
     setRegenerating(true)
     try {
       await regenerateFeed()
-      await load()
+      const [f, d] = await Promise.all([getFeed(), getFeedDates()])
+      setFeed(f)
+      setFeedDates(d)
       toast('Feed regenerated successfully', 'success')
     } catch (e: unknown) {
       toast(e instanceof Error ? e.message : 'Regeneration failed', 'error')
@@ -421,22 +556,38 @@ export default function FeedPage() {
       <div className="max-w-[1400px] mx-auto px-8 py-8">
 
         {/* ── Page header row ───────────────────────────────────── */}
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
           <div>
-            <p className="text-text-primary font-semibold text-base leading-tight">{greet()}</p>
-            <p className="text-text-tertiary text-xs mt-0.5">Your thesis intelligence, updated daily.</p>
+            <p className="text-text-primary font-semibold text-base leading-tight">
+              {isHistorical ? 'Historical Feed' : greet()}
+            </p>
+            <p className="text-text-tertiary text-xs mt-0.5">
+              {isHistorical ? 'You\'re viewing a past feed snapshot.' : 'Your thesis intelligence, updated daily.'}
+            </p>
           </div>
 
-          {/* Regenerate — icon + label, subtle */}
-          <button
-            onClick={handleRegenerate}
-            disabled={regenerating || loading}
-            className="flex items-center gap-1.5 text-xs text-text-tertiary hover:text-text-secondary px-3 py-1.5 rounded-lg border border-border hover:bg-elevated transition-all disabled:opacity-40"
-            title="Regenerate feed"
-          >
-            <RefreshCw size={12} className={regenerating ? 'animate-spin' : ''} />
-            <span className="hidden sm:inline">{regenerating ? 'Regenerating…' : 'Regenerate'}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Timeline scrubber */}
+            <TimelineScrubber
+              dates={feedDates}
+              viewDate={viewDate}
+              onSelect={handleSelectDate}
+              loading={loading}
+            />
+
+            {/* Regenerate — disabled when viewing history */}
+            {!isHistorical && (
+              <button
+                onClick={handleRegenerate}
+                disabled={regenerating || loading}
+                className="flex items-center gap-1.5 text-xs text-text-tertiary hover:text-text-secondary px-3 py-1.5 rounded-lg border border-border hover:bg-elevated transition-all disabled:opacity-40"
+                title="Regenerate feed"
+              >
+                <RefreshCw size={12} className={regenerating ? 'animate-spin' : ''} />
+                <span className="hidden sm:inline">{regenerating ? 'Regenerating…' : 'Regenerate'}</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* ── Loading — skeleton layout ────────────────────────── */}
@@ -469,7 +620,7 @@ export default function FeedPage() {
         {!loading && !error && feed && (
           <>
             {/* Hero — switches between analyst tone and plain-English based on mode */}
-            <FeedHero feed={feed} explainMode={explainMode} onToggleMode={setExplainMode} />
+            <FeedHero feed={feed} explainMode={explainMode} onToggleMode={setExplainMode} isHistorical={isHistorical} />
 
             <div className="flex gap-6 items-start">
 

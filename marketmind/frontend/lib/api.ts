@@ -49,6 +49,10 @@ export async function getFeed(date?: string): Promise<FeedResponse> {
   return request<FeedResponse>(path)
 }
 
+export async function getFeedDates(): Promise<string[]> {
+  return request<string[]>('/feed/dates')
+}
+
 export async function regenerateFeed(): Promise<void> {
   await request('/feed/regenerate', { method: 'POST' })
 }
