@@ -5,55 +5,58 @@ import type { ThesisSignal } from '@/lib/types'
 
 const MOMENTUM = {
   rising: {
-    icon: TrendingUp,
-    label: 'Rising',
+    icon:        TrendingUp,
+    label:       'Rising',
     textColor:   'text-green',
     bgColor:     'bg-green/10',
     borderColor: 'border-l-green',
+    cardTint:    'bg-green/[0.02]',
+    barColor:    'bg-green/50',
   },
   flat: {
-    icon: Minus,
-    label: 'Flat',
+    icon:        Minus,
+    label:       'Flat',
     textColor:   'text-amber',
     bgColor:     'bg-amber/10',
     borderColor: 'border-l-amber',
+    cardTint:    'bg-amber/[0.02]',
+    barColor:    'bg-amber/50',
   },
   falling: {
-    icon: TrendingDown,
-    label: 'Falling',
+    icon:        TrendingDown,
+    label:       'Falling',
     textColor:   'text-red',
     bgColor:     'bg-red/10',
     borderColor: 'border-l-red',
+    cardTint:    'bg-red/[0.02]',
+    barColor:    'bg-red/50',
   },
 }
 
 interface SignalCardProps {
   signal: ThesisSignal
-  compact?: boolean   // Brief mode: hides excerpt + company tags
+  compact?: boolean
 }
 
 export default function SignalCard({ signal, compact = false }: SignalCardProps) {
-  const m    = MOMENTUM[signal.momentum]
-  const Icon = m.icon
+  const m     = MOMENTUM[signal.momentum]
+  const Icon  = m.icon
   const total = signal.supporting_count + signal.opposing_count
 
-  // URL to thesis evidence tab, highlighting today's evidence IDs
   const evidenceHref = signal.evidence_ids.length > 0
     ? `/thesis/${signal.thesis_id}?from=feed&eids=${signal.evidence_ids.slice(0, 10).join(',')}`
     : `/thesis/${signal.thesis_id}`
 
   if (compact) {
-    // ── Brief / compact layout ─────────────────────────────────────────────
     return (
       <Link
         href={evidenceHref}
         className={cn(
-          'flex items-center gap-3 bg-surface border border-border border-l-4 rounded-xl px-4 py-3',
+          'flex items-center gap-3 border border-border border-l-4 rounded-xl px-4 py-3',
           'hover:bg-elevated transition-all duration-150 animate-slide-up',
-          m.borderColor
+          m.borderColor, m.cardTint
         )}
       >
-        {/* Momentum badge */}
         <span className={cn(
           'inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium shrink-0',
           m.textColor, m.bgColor
@@ -62,12 +65,10 @@ export default function SignalCard({ signal, compact = false }: SignalCardProps)
           {m.label}
         </span>
 
-        {/* Thesis name */}
         <h3 className="text-text-primary font-medium text-sm flex-1 truncate leading-snug">
           {signal.thesis_name}
         </h3>
 
-        {/* Provenance: new count as link hint */}
         {signal.new_evidence_count > 0 && (
           <span className="text-text-tertiary text-xs shrink-0 flex items-center gap-0.5">
             +{signal.new_evidence_count}
@@ -75,7 +76,6 @@ export default function SignalCard({ signal, compact = false }: SignalCardProps)
           </span>
         )}
 
-        {/* Confidence + s/o */}
         <div className="shrink-0 flex items-center gap-3">
           {total > 0 && (
             <div className="hidden sm:flex items-center gap-1.5">
@@ -96,25 +96,25 @@ export default function SignalCard({ signal, compact = false }: SignalCardProps)
     <Link
       href={evidenceHref}
       className={cn(
-        'block bg-surface border border-border border-l-4 rounded-xl p-4',
-        'hover:bg-elevated transition-all duration-150 animate-slide-up',
-        m.borderColor
+        'group block border border-border border-l-4 rounded-xl p-5',
+        'hover:border-border hover:shadow-sm transition-all duration-200 animate-slide-up',
+        m.borderColor, m.cardTint
       )}
     >
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-5">
         {/* Left: name + badge + highlight + companies */}
         <div className="flex-1 min-w-0">
           {/* Badge row */}
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-2.5">
             <span className={cn(
-              'inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium',
+              'inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-semibold',
               m.textColor, m.bgColor
             )}>
               <Icon size={10} strokeWidth={2.5} />
               {m.label}
             </span>
             {signal.new_evidence_count > 0 && (
-              <span className="inline-flex items-center gap-0.5 text-text-tertiary text-xs">
+              <span className="inline-flex items-center gap-0.5 text-text-tertiary text-xs bg-elevated px-2 py-0.5 rounded-full">
                 +{signal.new_evidence_count} today
                 <ArrowUpRight size={9} className="opacity-60" />
               </span>
@@ -122,7 +122,7 @@ export default function SignalCard({ signal, compact = false }: SignalCardProps)
           </div>
 
           {/* Thesis name */}
-          <h3 className="text-text-primary font-semibold text-base leading-snug mb-1.5">
+          <h3 className="text-text-primary font-semibold text-sm leading-snug mb-2 group-hover:text-accent transition-colors duration-150">
             {signal.thesis_name}
           </h3>
 
@@ -133,9 +133,9 @@ export default function SignalCard({ signal, compact = false }: SignalCardProps)
             </p>
           )}
 
-          {/* Language shift — auto-surfaced from cache, no click needed */}
+          {/* Language shift — auto-surfaced from cache */}
           {signal.language_shift && (
-            <div className="flex items-start gap-1.5 mb-3 px-2.5 py-2 rounded-lg bg-accent/5 border border-accent/15">
+            <div className="flex items-start gap-2 mb-3 px-3 py-2 rounded-lg bg-accent/5 border border-accent/12">
               <GitCompare size={10} className="text-accent shrink-0 mt-0.5" />
               <p className="text-text-secondary text-xs leading-relaxed line-clamp-2">
                 {signal.language_shift}
@@ -145,34 +145,37 @@ export default function SignalCard({ signal, compact = false }: SignalCardProps)
 
           {/* Companies */}
           {signal.top_companies.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1.5 mt-auto">
               {signal.top_companies.slice(0, 5).map(c => (
-                <span key={c} className="text-xs text-text-tertiary bg-elevated px-2 py-0.5 rounded-md">
+                <span
+                  key={c}
+                  className="text-[11px] text-text-secondary bg-elevated border border-border/60 px-2 py-0.5 rounded-md font-medium"
+                >
                   {c}
                 </span>
               ))}
               {signal.top_companies.length > 5 && (
-                <span className="text-xs text-text-tertiary">
-                  +{signal.top_companies.length - 5}
+                <span className="text-[11px] text-text-tertiary px-1 py-0.5">
+                  +{signal.top_companies.length - 5} more
                 </span>
               )}
             </div>
           )}
         </div>
 
-        {/* Right: big confidence + supporting/opposing */}
-        <div className="shrink-0 text-right space-y-1">
-          <div className={cn('text-3xl font-bold tabular-nums leading-none', m.textColor)}>
+        {/* Right: confidence + ratio */}
+        <div className="shrink-0 text-right space-y-1 min-w-[64px]">
+          <div className={cn('text-3xl font-bold tabular-nums leading-none tracking-tight', m.textColor)}>
             {formatConfidence(signal.confidence)}
           </div>
-          <div className="text-text-tertiary text-xs">confidence</div>
+          <div className="text-text-tertiary text-[10px] uppercase tracking-wide font-medium">confidence</div>
 
           {total > 0 && (
-            <div className="flex items-center gap-2 justify-end pt-1">
-              <span className="text-green text-xs tabular-nums font-medium">
+            <div className="flex items-center gap-1.5 justify-end pt-1">
+              <span className="text-green text-[11px] tabular-nums font-semibold bg-green/8 px-1.5 py-0.5 rounded-md">
                 {signal.supporting_count}↑
               </span>
-              <span className="text-red text-xs tabular-nums font-medium">
+              <span className="text-red text-[11px] tabular-nums font-semibold bg-red/8 px-1.5 py-0.5 rounded-md">
                 {signal.opposing_count}↓
               </span>
             </div>
@@ -180,14 +183,10 @@ export default function SignalCard({ signal, compact = false }: SignalCardProps)
         </div>
       </div>
 
-      {/* Confidence bar */}
-      <div className="mt-3 h-[2px] bg-border rounded-full overflow-hidden">
+      {/* Confidence bar — thicker, gradient */}
+      <div className="mt-4 h-[3px] bg-border/60 rounded-full overflow-hidden">
         <div
-          className={cn('h-full rounded-full transition-all', {
-            'bg-green/60':  signal.momentum === 'rising',
-            'bg-amber/60':  signal.momentum === 'flat',
-            'bg-red/60':    signal.momentum === 'falling',
-          })}
+          className={cn('h-full rounded-full transition-all duration-500', m.barColor)}
           style={{ width: `${Math.max(signal.confidence * 100, 3)}%` }}
         />
       </div>

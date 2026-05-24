@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Sidebar from './Sidebar'
+import Header from './Header'
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const router  = useRouter()
@@ -17,15 +17,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [router])
 
-  if (!ready) {
-    // Blank screen flash is minimal — background color matches, so no flicker
-    return null
-  }
+  if (!ready) return null
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <main className="flex-1 ml-[200px] min-h-screen">
+    <div className="min-h-screen bg-background">
+      <Header />
+      <main className="pt-14 min-h-screen">
         {children}
       </main>
     </div>

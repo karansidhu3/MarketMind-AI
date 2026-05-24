@@ -354,7 +354,7 @@ export default function FeedPage() {
 
   return (
     <AppShell>
-      <div className="max-w-[1200px] mx-auto px-8 py-8">
+      <div className="max-w-[1400px] mx-auto px-8 py-8">
 
         {/* ── Controls row ─────────────────────────────────────── */}
         <div className="flex items-center justify-between mb-6">
@@ -565,11 +565,11 @@ export default function FeedPage() {
 
               {/* ── Right: company radar ─────────────────────────── */}
               <div className="flex-[3] min-w-0">
-                <div className="sticky top-8">
+                <div className="sticky top-[76px]">
                   <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest mb-2 px-1">
                     Company Radar
                   </h2>
-                  <div className="bg-surface border border-border rounded-xl overflow-hidden">
+                  <div className="bg-surface border border-border rounded-xl">
                     <CompanyRadar companies={radar.slice(0, 20)} initialAlerts={alerts} />
                   </div>
                 </div>
