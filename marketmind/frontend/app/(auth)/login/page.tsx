@@ -2,14 +2,15 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { AlertCircle } from 'lucide-react'
 import { login } from '@/lib/api'
 
 export default function LoginPage() {
   const router = useRouter()
-  const [email, setEmail]       = useState('')
+  const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError]       = useState('')
-  const [loading, setLoading]   = useState(false)
+  const [error,    setError]    = useState('')
+  const [loading,  setLoading]  = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -27,48 +28,69 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="w-full max-w-[340px] px-4">
-      {/* Logo */}
-      <div className="mb-9 text-center">
-        <div className="inline-flex items-center gap-2 mb-3">
-          <span className="text-accent font-bold text-lg leading-none">●</span>
-          <span className="text-text-primary font-semibold text-lg tracking-tight">MarketMind</span>
+    <div className="w-full max-w-[360px]">
+      {/* Card */}
+      <div className="bg-surface/90 border border-border/60 rounded-2xl shadow-2xl shadow-background/60 backdrop-blur-sm p-8">
+
+        {/* Logo */}
+        <div className="flex flex-col items-center mb-8">
+          <div className="relative mb-4 flex items-center justify-center w-10 h-10">
+            <div className="w-3 h-3 rounded-full bg-accent" />
+            <div className="absolute inset-0 rounded-full border-2 border-accent/20 animate-pulse-subtle" />
+            <div className="absolute inset-[-6px] rounded-full border border-accent/10" />
+          </div>
+          <h1 className="text-text-primary font-semibold text-base tracking-tight">
+            Market<span className="text-accent">Mind</span>
+          </h1>
+          <p className="text-text-tertiary text-xs mt-1.5 text-center leading-relaxed">
+            Investment intelligence, locally run.
+          </p>
         </div>
-        <p className="text-text-tertiary text-sm">Investment intelligence, locally run.</p>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="space-y-2">
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-elevated border border-border text-text-primary placeholder:text-text-tertiary text-sm focus:outline-none focus:border-accent focus:bg-elevated transition-all"
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-elevated border border-border text-text-primary placeholder:text-text-tertiary text-sm focus:outline-none focus:border-accent focus:bg-elevated transition-all"
+            />
+          </div>
+
+          {error && (
+            <div className="flex items-center gap-2 text-red text-xs bg-red/8 border border-red/20 rounded-lg px-3 py-2">
+              <AlertCircle size={12} className="shrink-0" />
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:opacity-90 active:opacity-80 disabled:opacity-50 transition-opacity mt-1"
+          >
+            {loading ? 'Signing in…' : 'Sign in'}
+          </button>
+        </form>
+
+        {/* Footer hint */}
+        <p className="text-text-tertiary/60 text-[11px] text-center mt-6 leading-relaxed">
+          Local deployment · No external data sent
+        </p>
       </div>
-
-      <form onSubmit={handleSubmit} className="space-y-2.5">
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          required
-          autoComplete="email"
-          className="w-full px-3.5 py-2.5 rounded-lg bg-surface border border-border text-text-primary placeholder:text-text-tertiary text-sm focus:outline-none focus:border-accent transition-colors"
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          required
-          autoComplete="current-password"
-          className="w-full px-3.5 py-2.5 rounded-lg bg-surface border border-border text-text-primary placeholder:text-text-tertiary text-sm focus:outline-none focus:border-accent transition-colors"
-        />
-
-        {error && (
-          <p className="text-red text-xs px-0.5 pt-0.5">{error}</p>
-        )}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full mt-1 py-2.5 rounded-lg bg-accent text-white text-sm font-medium hover:opacity-90 active:opacity-80 disabled:opacity-50 transition-opacity"
-        >
-          {loading ? 'Signing in…' : 'Sign in'}
-        </button>
-      </form>
     </div>
   )
 }

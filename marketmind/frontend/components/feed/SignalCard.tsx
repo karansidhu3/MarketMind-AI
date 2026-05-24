@@ -183,13 +183,21 @@ export default function SignalCard({ signal, compact = false }: SignalCardProps)
         </div>
       </div>
 
-      {/* Confidence bar — thicker, gradient */}
-      <div className="mt-4 h-[3px] bg-border/60 rounded-full overflow-hidden">
-        <div
-          className={cn('h-full rounded-full transition-all duration-500', m.barColor)}
-          style={{ width: `${Math.max(signal.confidence * 100, 3)}%` }}
-        />
-      </div>
+      {/* Supporting / opposing ratio bar — green:red split */}
+      {total > 0 ? (
+        <div className="mt-4 h-[3px] bg-border/50 rounded-full overflow-hidden flex">
+          <div
+            className="h-full bg-green/55 transition-all duration-500"
+            style={{ width: `${(signal.supporting_count / total) * 100}%` }}
+          />
+          <div
+            className="h-full bg-red/55 transition-all duration-500"
+            style={{ width: `${(signal.opposing_count / total) * 100}%` }}
+          />
+        </div>
+      ) : (
+        <div className="mt-4 h-[3px] bg-border/40 rounded-full" />
+      )}
     </Link>
   )
 }

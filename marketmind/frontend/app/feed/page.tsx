@@ -104,7 +104,15 @@ function RadarRowSkeleton() {
 
 // ── Feed hero ─────────────────────────────────────────────────────────────────
 
-function FeedHero({ feed, explainMode }: { feed: FeedResponse; explainMode: boolean }) {
+function FeedHero({
+  feed,
+  explainMode,
+  onToggleMode,
+}: {
+  feed: FeedResponse
+  explainMode: boolean
+  onToggleMode: (val: boolean) => void
+}) {
   const [explainSummary, setExplainSummary] = useState<string | null>(null)
   const [explainLoading, setExplainLoading] = useState(false)
 
@@ -144,10 +152,10 @@ function FeedHero({ feed, explainMode }: { feed: FeedResponse; explainMode: bool
       />
 
       <div className="relative">
-        {/* Title row */}
+        {/* Title row — icon + label on left, Data/Explain toggle on right */}
         <div className="flex items-center gap-3 mb-4">
           <div className={cn(
-            'w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors',
+            'w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-200',
             explainMode ? 'bg-green/10' : 'bg-accent/10'
           )}>
             {explainMode
@@ -155,7 +163,7 @@ function FeedHero({ feed, explainMode }: { feed: FeedResponse; explainMode: bool
               : <Sparkles size={14} className="text-accent" />
             }
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <p className="text-text-primary text-sm font-semibold leading-tight">
               {explainMode ? 'Plain English Briefing' : 'Intelligence Briefing'}
             </p>
@@ -166,6 +174,35 @@ function FeedHero({ feed, explainMode }: { feed: FeedResponse; explainMode: bool
                 : <span className="ml-1.5 text-green">· live</span>
               }
             </p>
+          </div>
+          {/* Data / Explain toggle — lives inside the hero */}
+          <div className="flex items-center bg-elevated border border-border/80 rounded-lg p-0.5 gap-0.5 shrink-0">
+            <button
+              onClick={() => onToggleMode(false)}
+              title="Technical view — signal counts, confidence, companies"
+              className={cn(
+                'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-150',
+                !explainMode
+                  ? 'bg-surface text-text-primary shadow-sm border border-border/50'
+                  : 'text-text-tertiary hover:text-text-secondary'
+              )}
+            >
+              <BarChart2 size={10} />
+              Data
+            </button>
+            <button
+              onClick={() => onToggleMode(true)}
+              title="Plain English — what's happening and why it matters"
+              className={cn(
+                'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-150',
+                explainMode
+                  ? 'bg-surface text-text-primary shadow-sm border border-border/50'
+                  : 'text-text-tertiary hover:text-text-secondary'
+              )}
+            >
+              <BookOpen size={10} />
+              Explain
+            </button>
           </div>
         </div>
 
@@ -356,50 +393,23 @@ export default function FeedPage() {
     <AppShell>
       <div className="max-w-[1400px] mx-auto px-8 py-8">
 
-        {/* ── Controls row ─────────────────────────────────────── */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-text-primary text-lg font-semibold">{greet()}</h1>
-
-          <div className="flex items-center gap-2">
-            {/* Data / Explain toggle */}
-            <div className="flex items-center bg-surface border border-border rounded-lg p-0.5 gap-0.5">
-              <button
-                onClick={() => setExplainMode(false)}
-                title="Technical view — signal counts, confidence, companies"
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all',
-                  !explainMode
-                    ? 'bg-elevated text-text-primary shadow-sm'
-                    : 'text-text-tertiary hover:text-text-secondary'
-                )}
-              >
-                <BarChart2 size={11} />
-                Data
-              </button>
-              <button
-                onClick={() => setExplainMode(true)}
-                title="Plain English — what's happening and why it matters"
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all',
-                  explainMode
-                    ? 'bg-elevated text-text-primary shadow-sm'
-                    : 'text-text-tertiary hover:text-text-secondary'
-                )}
-              >
-                <BookOpen size={11} />
-                Explain
-              </button>
-            </div>
-
-            <button
-              onClick={handleRegenerate}
-              disabled={regenerating || loading}
-              className="flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary px-3 py-1.5 rounded-lg bg-surface border border-border hover:bg-elevated transition-colors disabled:opacity-40"
-            >
-              <RefreshCw size={12} className={regenerating ? 'animate-spin' : ''} />
-              Regenerate
-            </button>
+        {/* ── Page header row ───────────────────────────────────── */}
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <p className="text-text-primary font-semibold text-base leading-tight">{greet()}</p>
+            <p className="text-text-tertiary text-xs mt-0.5">Your thesis intelligence, updated daily.</p>
           </div>
+
+          {/* Regenerate — icon + label, subtle */}
+          <button
+            onClick={handleRegenerate}
+            disabled={regenerating || loading}
+            className="flex items-center gap-1.5 text-xs text-text-tertiary hover:text-text-secondary px-3 py-1.5 rounded-lg border border-border hover:bg-elevated transition-all disabled:opacity-40"
+            title="Regenerate feed"
+          >
+            <RefreshCw size={12} className={regenerating ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">{regenerating ? 'Regenerating…' : 'Regenerate'}</span>
+          </button>
         </div>
 
         {/* ── Loading — skeleton layout ────────────────────────── */}
@@ -432,7 +442,7 @@ export default function FeedPage() {
         {!loading && !error && feed && (
           <>
             {/* Hero — switches between analyst tone and plain-English based on mode */}
-            <FeedHero feed={feed} explainMode={explainMode} />
+            <FeedHero feed={feed} explainMode={explainMode} onToggleMode={setExplainMode} />
 
             <div className="flex gap-6 items-start">
 
@@ -444,17 +454,9 @@ export default function FeedPage() {
                   <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest">
                     Thesis Signals
                   </h2>
-                  <div className="flex items-center gap-3">
-                    {explainMode && (
-                      <span className="text-text-tertiary text-xs flex items-center gap-1">
-                        <BookOpen size={10} />
-                        Plain English mode
-                      </span>
-                    )}
-                    <span className="text-text-tertiary text-xs tabular-nums">
-                      {feed.thesis_signals.length} active
-                    </span>
-                  </div>
+                  <span className="text-text-tertiary text-xs tabular-nums">
+                    {feed.thesis_signals.length} active
+                  </span>
                 </div>
 
                 {/* Alert triggers — shown when a company crosses its threshold */}

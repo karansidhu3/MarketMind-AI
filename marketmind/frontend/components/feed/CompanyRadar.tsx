@@ -190,6 +190,8 @@ export default function CompanyRadar({ companies, initialAlerts = [] }: CompanyR
 
   return (
     <div>
+      {/* Scrollable row list — capped so the panel never overflows the viewport */}
+      <div className="max-h-[calc(100vh-140px)] overflow-y-auto">
       {companies.map((c, i) => {
         const pct       = (c.doc_count / maxDocs) * 100
         const freshly   = isNew(c.first_seen)
@@ -297,7 +299,9 @@ export default function CompanyRadar({ companies, initialAlerts = [] }: CompanyR
           </div>
         )
       })}
+      </div>{/* end scroll container */}
 
+      {/* Footer — pinned outside the scroll area */}
       <p className="text-text-tertiary text-[10px] px-3 pt-2 pb-2 border-t border-border/60 leading-relaxed">
         Ranked by unique source docs · <span className="text-green font-medium">NEW</span> = first seen within {NEW_WITHIN_DAYS}d · sparkline = 4-week trend
       </p>
