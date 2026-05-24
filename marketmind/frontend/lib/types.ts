@@ -26,11 +26,28 @@ export interface InsiderCluster {
   filed_within_days: number
 }
 
+export interface AlertTrigger {
+  normalised_name: string
+  display_name: string
+  threshold: number
+  current_doc_count: number
+}
+
+export interface CompanyAlert {
+  id: string
+  normalised_name: string
+  display_name: string
+  threshold: number
+  current_doc_count: number
+  triggered: boolean
+}
+
 export interface FeedResponse {
   feed_date: string
   thesis_signals: ThesisSignal[]
   new_companies: NewCompany[]
   insider_clusters: InsiderCluster[]
+  alert_triggers: AlertTrigger[]
   summary: string
   generated_at: string
   from_cache: boolean

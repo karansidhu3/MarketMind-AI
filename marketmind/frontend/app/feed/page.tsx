@@ -1,15 +1,15 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
-import { RefreshCw, AlertCircle, Sparkles, Zap, TrendingUp, TrendingDown, Minus, BookOpen, BarChart2 } from 'lucide-react'
+import { RefreshCw, AlertCircle, Sparkles, Zap, TrendingUp, TrendingDown, Minus, BookOpen, BarChart2, Bell } from 'lucide-react'
 import Link from 'next/link'
 import AppShell from '@/components/layout/AppShell'
 import SignalCard from '@/components/feed/SignalCard'
 import CompanyRadar from '@/components/feed/CompanyRadar'
-import { getFeed, getCompanyRadar, regenerateFeed, getThesisExplain, getFeedExplainSummary } from '@/lib/api'
+import { getFeed, getCompanyRadar, regenerateFeed, getThesisExplain, getFeedExplainSummary, getAlerts } from '@/lib/api'
 import { formatDate, greet, cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
-import type { FeedResponse, CompanyRadarItem, ThesisSignal, ThesisExplain } from '@/lib/types'
+import type { FeedResponse, CompanyRadarItem, ThesisSignal, ThesisExplain, CompanyAlert } from '@/lib/types'
 
 // ── Skeleton components ───────────────────────────────────────────────────────
 
@@ -314,6 +314,7 @@ function EmptySignals() {
 export default function FeedPage() {
   const [feed,         setFeed]         = useState<FeedResponse | null>(null)
   const [radar,        setRadar]        = useState<CompanyRadarItem[]>([])
+  const [alerts,       setAlerts]       = useState<CompanyAlert[]>([])
   const [loading,      setLoading]      = useState(true)
   const [error,        setError]        = useState('')
   const [regenerating, setRegenerating] = useState(false)
@@ -325,9 +326,10 @@ export default function FeedPage() {
     setLoading(true)
     setError('')
     try {
-      const [f, r] = await Promise.all([getFeed(), getCompanyRadar()])
+      const [f, r, a] = await Promise.all([getFeed(), getCompanyRadar(), getAlerts()])
       setFeed(f)
       setRadar(r)
+      setAlerts(a)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load feed.')
     } finally {
@@ -455,6 +457,29 @@ export default function FeedPage() {
                   </div>
                 </div>
 
+                {/* Alert triggers — shown when a company crosses its threshold */}
+                {feed.alert_triggers.length > 0 && (
+                  <div className="mb-4 rounded-xl border border-amber/25 bg-amber/5 p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Bell size={12} className="text-amber shrink-0" />
+                      <span className="text-amber text-xs font-semibold uppercase tracking-widest">
+                        Alert{feed.alert_triggers.length > 1 ? 's' : ''} Triggered
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {feed.alert_triggers.map(t => (
+                        <div key={t.normalised_name} className="flex items-center justify-between gap-3">
+                          <span className="text-text-primary text-sm font-medium">{t.display_name}</span>
+                          <span className="text-text-tertiary text-xs tabular-nums shrink-0">
+                            {t.current_doc_count} docs
+                            <span className="text-amber ml-1">(threshold: {t.threshold})</span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-3">
                   {feed.thesis_signals.length === 0 ? (
                     <EmptySignals />
@@ -545,7 +570,7 @@ export default function FeedPage() {
                     Company Radar
                   </h2>
                   <div className="bg-surface border border-border rounded-xl overflow-hidden">
-                    <CompanyRadar companies={radar.slice(0, 20)} />
+                    <CompanyRadar companies={radar.slice(0, 20)} initialAlerts={alerts} />
                   </div>
                 </div>
               </div>

@@ -107,6 +107,17 @@ class DailyFeed(Base):
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
+class CompanyAlert(Base):
+    """User-defined doc_count threshold for a radar company. Triggers in feed when crossed."""
+    __tablename__ = "company_alerts"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    normalised_name: Mapped[str] = mapped_column(String(200), nullable=False, unique=True, index=True)
+    display_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    threshold: Mapped[int] = mapped_column(Integer, nullable=False)  # alert when doc_count >= this
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
 class ConfidenceSnapshot(Base):
     """One row per thesis per day — enables confidence history charts."""
     __tablename__ = "confidence_snapshots"

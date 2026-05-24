@@ -1,4 +1,4 @@
-import type { CompanyRadarItem, ConfidenceSnapshot, EvidenceOut, FeedResponse, LanguageDelta, ResearchResponse, SupplyChainLink, ThesisExplain, ThesisOut } from './types'
+import type { CompanyAlert, CompanyRadarItem, ConfidenceSnapshot, EvidenceOut, FeedResponse, LanguageDelta, ResearchResponse, SupplyChainLink, ThesisExplain, ThesisOut } from './types'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -103,6 +103,20 @@ export async function evaluateThesis(id: string): Promise<{ status: string; mess
 
 export async function getThesisExplain(id: string): Promise<ThesisExplain> {
   return request<ThesisExplain>(`/theses/${id}/explain`)
+}
+
+// ── Alerts ────────────────────────────────────────────────────────────────────
+
+export async function getAlerts(): Promise<CompanyAlert[]> {
+  return request<CompanyAlert[]>('/alerts')
+}
+
+export async function createAlert(data: { normalised_name: string; display_name: string; threshold: number }): Promise<CompanyAlert> {
+  return request<CompanyAlert>('/alerts', { method: 'POST', body: JSON.stringify(data) })
+}
+
+export async function deleteAlert(id: string): Promise<void> {
+  await request(`/alerts/${id}`, { method: 'DELETE' })
 }
 
 // ── Research ──────────────────────────────────────────────────────────────────

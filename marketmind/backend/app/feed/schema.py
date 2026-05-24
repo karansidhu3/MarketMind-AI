@@ -33,11 +33,19 @@ class InsiderCluster(BaseModel):
     filed_within_days: int
 
 
+class AlertTrigger(BaseModel):
+    normalised_name: str
+    display_name: str
+    threshold: int
+    current_doc_count: int
+
+
 class FeedResponse(BaseModel):
     feed_date: date
     thesis_signals: list[ThesisSignal]
     new_companies: list[NewCompany]
     insider_clusters: list[InsiderCluster]
+    alert_triggers: list[AlertTrigger] = []
     summary: str
     generated_at: datetime
     from_cache: bool = False

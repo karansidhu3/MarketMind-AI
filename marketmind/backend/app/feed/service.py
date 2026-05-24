@@ -7,8 +7,8 @@ from datetime import date, datetime, timedelta, timezone
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.db.models import CompanySignal, ConfidenceSnapshot, DailyFeed, Evidence, InsiderTransaction, Thesis
-from app.feed.schema import FeedResponse, InsiderCluster, NewCompany, ThesisSignal
+from app.db.models import CompanyAlert, CompanySignal, ConfidenceSnapshot, DailyFeed, Evidence, InsiderTransaction, Thesis
+from app.feed.schema import AlertTrigger, FeedResponse, InsiderCluster, NewCompany, ThesisSignal
 from app.services.cache_service import CacheService
 from app.services.llm_service import LLMService
 from app.thesis.decay import weighted_confidence
@@ -131,6 +131,7 @@ class FeedService:
             thesis_signals = await self._thesis_signals(session, day_start, day_end)
             new_companies = await self._new_companies(session, feed_date)
             insider_clusters = await self._insider_clusters(session, day_start, day_end)
+            alert_triggers = await self._check_alerts(session)
             summary = await self._synthesise_summary(thesis_signals, new_companies, insider_clusters)
 
             # Persist snapshot so we can query historical feeds
@@ -155,6 +156,7 @@ class FeedService:
                 )
             await session.commit()
 
+
         # Write confidence snapshots (one row per active thesis per day)
         await self._write_snapshots(feed_date, thesis_signals)
 
@@ -163,6 +165,7 @@ class FeedService:
             thesis_signals=thesis_signals,
             new_companies=new_companies,
             insider_clusters=insider_clusters,
+            alert_triggers=alert_triggers,
             summary=summary,
             generated_at=datetime.now(timezone.utc),
         )
@@ -351,6 +354,33 @@ class FeedService:
             )
             for row in rows
         ]
+
+    async def _check_alerts(self, session: AsyncSession) -> list[AlertTrigger]:
+        """Check all company alerts and return those whose threshold has been reached."""
+        from collections import defaultdict
+
+        alerts = (await session.execute(select(CompanyAlert))).scalars().all()
+        if not alerts:
+            return []
+
+        # Compute doc_count per normalised_name (same logic as radar)
+        all_signals = (await session.execute(select(CompanySignal))).scalars().all()
+        groups: dict[str, set[str]] = defaultdict(set)
+        for sig in all_signals:
+            if sig.normalised_name:
+                groups[sig.normalised_name].add(sig.document_id)
+
+        triggered = []
+        for alert in alerts:
+            current = len(groups.get(alert.normalised_name, set()))
+            if current >= alert.threshold:
+                triggered.append(AlertTrigger(
+                    normalised_name=alert.normalised_name,
+                    display_name=alert.display_name,
+                    threshold=alert.threshold,
+                    current_doc_count=current,
+                ))
+        return triggered
 
     async def _write_snapshots(self, feed_date: date, signals: list[ThesisSignal]) -> None:
         """Upsert one ConfidenceSnapshot per thesis per day."""
