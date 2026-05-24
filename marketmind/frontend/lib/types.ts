@@ -68,10 +68,11 @@ export interface CompanyRadarItem {
   company_name: string
   ticker: string | null
   thesis_names: string[]
-  doc_count: number      // unique source documents — primary ranking signal
-  mention_count: number  // raw mentions across all docs
+  doc_count: number           // unique source documents — primary ranking signal
+  mention_count: number       // raw mentions across all docs
   first_seen: string
   last_seen: string
+  weekly_counts: number[]     // evidence activity last 4 weeks, oldest → newest
 }
 
 export interface SourceRef {

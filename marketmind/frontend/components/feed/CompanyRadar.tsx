@@ -9,6 +9,57 @@ function isNew(firstSeen: string): boolean {
   return new Date(firstSeen) >= cutoff
 }
 
+// ── Mini 4-week sparkline ─────────────────────────────────────────────────────
+
+function MiniSparkline({ counts }: { counts: number[] }) {
+  if (!counts || counts.length < 2 || counts.every(v => v === 0)) return null
+
+  const max = Math.max(...counts, 1)
+  const W = 36, H = 14, PAD = 1
+
+  const pts = counts.map((v, i) => {
+    const x = PAD + (i / (counts.length - 1)) * (W - 2 * PAD)
+    const y = H - PAD - (v / max) * (H - 2 * PAD)
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  }).join(' ')
+
+  const latest = counts[counts.length - 1]
+  const prev   = counts[counts.length - 2]
+  const rising = latest > prev
+  const flat   = latest === prev
+
+  const color = rising ? 'text-green' : flat ? 'text-text-tertiary' : 'text-red'
+
+  return (
+    <svg
+      width={W}
+      height={H}
+      className={color}
+      style={{ overflow: 'visible' }}
+    >
+      <title>{`4-week activity: ${counts.join(', ')}`}</title>
+      <polyline
+        points={pts}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity={0.85}
+      />
+      {/* Dot at latest point */}
+      <circle
+        cx={parseFloat(pts.split(' ').pop()!.split(',')[0])}
+        cy={parseFloat(pts.split(' ').pop()!.split(',')[1])}
+        r={2}
+        fill="currentColor"
+      />
+    </svg>
+  )
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
 export default function CompanyRadar({ companies }: { companies: CompanyRadarItem[] }) {
   if (companies.length === 0) {
     return (
@@ -66,13 +117,18 @@ export default function CompanyRadar({ companies }: { companies: CompanyRadarIte
               </p>
             </div>
 
-            {/* Doc count + date */}
-            <div className="relative shrink-0 text-right">
-              <div className="text-text-primary text-xs font-semibold tabular-nums">
-                {c.doc_count} <span className="text-text-tertiary font-normal">docs</span>
-              </div>
-              <div className="text-text-tertiary text-xs tabular-nums">
-                {formatDateShort(c.last_seen)}
+            {/* Sparkline + doc count + date */}
+            <div className="relative shrink-0 flex items-center gap-2">
+              {/* 4-week trajectory */}
+              <MiniSparkline counts={c.weekly_counts} />
+
+              <div className="text-right">
+                <div className="text-text-primary text-xs font-semibold tabular-nums">
+                  {c.doc_count} <span className="text-text-tertiary font-normal">docs</span>
+                </div>
+                <div className="text-text-tertiary text-xs tabular-nums">
+                  {formatDateShort(c.last_seen)}
+                </div>
               </div>
             </div>
           </div>
@@ -80,7 +136,7 @@ export default function CompanyRadar({ companies }: { companies: CompanyRadarIte
       })}
 
       <p className="text-text-tertiary text-[10px] px-3 pt-2 pb-1.5 border-t border-border">
-        Ranked by unique source documents · <span className="text-green">NEW</span> = first seen within {NEW_WITHIN_DAYS}d
+        Ranked by unique source documents · <span className="text-green">NEW</span> = first seen within {NEW_WITHIN_DAYS}d · sparkline = 4-week trend
       </p>
     </div>
   )

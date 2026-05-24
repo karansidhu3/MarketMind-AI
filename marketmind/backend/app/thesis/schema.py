@@ -55,7 +55,8 @@ class CompanyRadarItem(BaseModel):
     company_name: str
     ticker: str | None
     thesis_names: list[str]
-    doc_count: int       # unique source documents — primary ranking signal
-    mention_count: int   # raw mentions (can be inflated by a single verbose filing)
+    doc_count: int              # unique source documents — primary ranking signal
+    mention_count: int          # raw mentions (can be inflated by a single verbose filing)
     first_seen: datetime
     last_seen: datetime
+    weekly_counts: list[int] = []  # evidence activity last 4 weeks, oldest → newest

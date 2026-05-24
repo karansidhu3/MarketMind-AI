@@ -121,7 +121,8 @@ class ThesisService:
         Companies ranked by unique source documents, grouped by normalised_name
         so "Eaton Corporation plc" and "Eaton Corporation" are a single entry.
 
-        Uses Python-side aggregation so we can apply pick_canonical() on the name.
+        weekly_counts: evidence activity for the last 4 weeks (oldest → newest) across
+        all theses that track this company — proxy for emerging vs. fading momentum.
         """
         from collections import defaultdict
 
@@ -135,6 +136,21 @@ class ThesisService:
                 t.id: t.name
                 for t in (await session.execute(select(Thesis))).scalars().all()
             }
+
+            # Batch-load last 28 days of evidence timestamps per thesis (single query)
+            now = datetime.now(timezone.utc)
+            cutoff_28 = now - timedelta(days=28)
+            recent_rows = (
+                await session.execute(
+                    select(Evidence.thesis_id, Evidence.created_at)
+                    .where(Evidence.created_at >= cutoff_28)
+                )
+            ).all()
+
+        # Build thesis_id → [created_at, ...] lookup
+        evidence_by_thesis: dict[uuid.UUID, list[datetime]] = defaultdict(list)
+        for row in recent_rows:
+            evidence_by_thesis[row.thesis_id].append(row.created_at)
 
         # Group by normalised_name
         groups: dict[str, list[CompanySignal]] = defaultdict(list)
@@ -159,6 +175,19 @@ class ThesisService:
             first_seen     = min(s.first_seen for s in signals)
             last_seen      = max(s.last_seen  for s in signals)
 
+            # Weekly evidence counts across all theses tracking this company
+            # Week 0 = oldest (3–4 weeks ago), Week 3 = most recent (0–7 days ago)
+            thesis_ids = {s.thesis_id for s in signals}
+            timestamps = [
+                ts for tid in thesis_ids
+                for ts in evidence_by_thesis.get(tid, [])
+            ]
+            weekly_counts = []
+            for week_back in range(3, -1, -1):
+                w_start = now - timedelta(days=(week_back + 1) * 7)
+                w_end   = now - timedelta(days=week_back * 7)
+                weekly_counts.append(sum(1 for t in timestamps if w_start <= t < w_end))
+
             result.append(CompanyRadarItem(
                 company_name=canonical,
                 ticker=ticker,
@@ -167,6 +196,7 @@ class ThesisService:
                 mention_count=total_mentions,
                 first_seen=first_seen,
                 last_seen=last_seen,
+                weekly_counts=weekly_counts,
             ))
 
         return sorted(result, key=lambda x: x.doc_count, reverse=True)[:50]
