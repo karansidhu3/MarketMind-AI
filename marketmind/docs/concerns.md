@@ -14,7 +14,7 @@ Each entry has:
 ## C-001 — Knowledge quality vs retrieval quality
 
 **Severity:** High
-**Status:** Partially addressed
+**Status:** Partially addressed — targeted ingestion implemented, corpus still growing
 
 **Root cause:**
 The retrieval pipeline (query expansion, reranking, synthesis) is more
@@ -24,13 +24,23 @@ not how it is ranked. EDGAR's public feed returns whatever companies filed
 that day — mostly retail, healthcare, and financial services — not the AI
 infrastructure or power grid companies the theses care about.
 
-**Proposed solution:**
-Source targeting, not volume. Ingesting more irrelevant documents does not
-help. The fix is connectors aimed at filings from specific sectors and
-companies known to operate in thesis-relevant areas. Retrieval improvements
-should be paused until corpus relevance improves. Meaningful improvement in
-research quality is unlikely below 300-400 genuinely on-topic documents per
-thesis area.
+**What was done (ADR-026):**
+`TargetedSECConnector` added in Sprint 8. Fetches company-specific EDGAR Atom
+feeds by ticker (`/cgi-bin/browse-edgar?action=getcompany&CIK={ticker}&type=...`)
+rather than the generic daily fire-hose. 60 curated tickers across 5 thesis sectors:
+- AI Infra: NVDA, AMD, AVGO, MRVL, SMCI, DELL, CSCO, ANET, VRT…
+- Semiconductor Supply Chain: AMAT, KLAC, LRCX, MU, INTC, TSM…
+- Energy Grid: ETN, HUBB, PWR, AMPS, GE, NEE…
+- Defense: LMT, RTX, NOC, GD, KTOS…
+- Data Center Physical: DLR, EQIX, VRT, IR, JCI…
+Five targeted connectors run every ingestion cycle alongside the generic feeds.
+0.4s rate limiting between requests respects EDGAR's crawl policy.
+
+**Remaining gap:**
+Corpus is still young (days, not months). 300-400 genuinely on-topic documents
+per thesis area is the target for meaningful intelligence. This improves
+automatically as daily ingestion accumulates. No further code changes needed —
+the targeting is correct, now it just needs time.
 
 ---
 
@@ -325,7 +335,7 @@ that produced them. Provenance was broken at the feed layer.
 
 | ID | Concern | Severity | Status |
 |----|---------|----------|--------|
-| C-001 | Knowledge quality vs retrieval quality | High | Partially addressed |
+| C-001 | Knowledge quality vs retrieval quality | High | Partially addressed — targeted ingestion live, corpus growing |
 | C-002 | Confirmation bias / discovery gap | Medium | Open |
 | C-003 | Relationship extraction reliability | High | Deprioritised (ADR-024) |
 | C-004 | Unknown company surfacing quality | High | Partially addressed |

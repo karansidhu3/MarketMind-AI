@@ -391,6 +391,59 @@ Existing code is retained.
 
 ---
 
+## ADR-027 — Company deep-dive uses global React context, not prop drilling
+
+**Decision:** The company detail panel is mounted once inside `AppShell` and
+controlled via a global `CompanyContext`. Any component anywhere in the app
+calls `openCompany(normalisedName)` to trigger it. Company names are not
+wrapped in routable links — they open the panel in-place.
+
+**Reason:**
+- Company names appear in at least four places: radar rows, feed signal company
+  tags, "New on Radar" cards, and portfolio gap rows. Prop-drilling an
+  `onCompanyClick` callback through every component tree that contains a company
+  name is fragile and couples unrelated components.
+- A global context mounted once in `AppShell` makes any component a potential
+  trigger point with a single import. Adding a new click target requires one line.
+- `normalised_name` (the DB key from `company_signals`) is the stable identifier
+  passed through context. Display names and tickers are fetched from the API and
+  should not be used as keys (they vary across name variants).
+
+**Critical implementation note:**
+`useCompany()` must be called inside a component that renders *within* the
+`CompanyProvider` tree — i.e., inside `AppShell`'s children. Page-level
+components (`FeedPage`, `PortfolioPage`) are the *parents* of `AppShell` in
+JSX, so calling `useCompany()` at the page level gets the default no-op context.
+The fix: call the hook in leaf components (`GapRow`, `SignalCard`, `NewCompanyName`)
+which render inside the provider, not in the page component that wraps `AppShell`.
+
+---
+
+## ADR-028 — Feed timeline scrubber keeps radar live while feed is historical
+
+**Decision:** When viewing a historical feed date, the company radar on the right
+always reflects the current corpus state. Only the feed content (thesis signals,
+new companies, summary) changes with the selected date.
+
+**Reason:**
+- The radar is a live view of everything MarketMind has ever ingested. It answers
+  "what companies are accumulating signal right now?" Historical radar snapshots
+  are not stored and would be expensive to reconstruct.
+- The feed answers "what changed on a given day?" These are two different questions.
+  Mixing historical feed content with a historical radar would require storing the
+  full radar state daily — not worth the storage cost for a feature used occasionally.
+- Practically: users browsing historical feeds want to compare thesis signals
+  across days, not reconstruct what the radar looked like. The current radar
+  provides context for what companies are now significant, which is additive.
+
+**Historical mode behaviour:**
+- Regenerate button hidden (no point regenerating a past date)
+- Explain toggle hidden (explain uses today's corpus, not the archived snapshot)
+- Hero shows amber "archived" badge instead of cached/live indicator
+- `GET /feed/dates` returns available dates; scrubber only steps to existing dates
+
+---
+
 ## ADR-026 — Corpus targeting is the highest-leverage infrastructure investment
 
 **Decision:** Future ingestion work should prioritise targeted sector connectors

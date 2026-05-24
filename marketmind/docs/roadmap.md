@@ -47,6 +47,51 @@ After a product reduction exercise, the following decisions were made:
 
 ## Completed
 
+### Sprint 8 — Intelligence UX (partial) ✅
+Items completed so far:
+
+- **UI overhaul** — sidebar replaced with glassmorphism top nav (h-14, frosted glass,
+  hairline accent). Login page redesigned with ambient blobs + glassmorphism card.
+  Dual-color confidence bars (green/red split). Dark/light mode fully stable.
+- **Corpus targeting** — `TargetedSECConnector` fetches company-specific EDGAR
+  filings by ticker (not the daily fire-hose). 60 curated tickers across 5 thesis
+  sectors (AI Infra, Semiconductor Supply Chain, Energy Grid, Defense, Data Center).
+  Five targeted connectors run per thesis alongside generic feeds. Addresses C-001.
+- **Company deep-dive panel** — click any company name anywhere in the app
+  (radar, feed signal tags, "New on Radar", portfolio gaps) to open a slide-out
+  drawer. Shows 4-week bar chart trajectory, stats, per-thesis breakdown with
+  sentiment bars, and full evidence list with source links. `GET /companies/{normalised_name}`.
+  Global `CompanyContext` + `CompanyPanel` mounted once in `AppShell`.
+- **Feed timeline scrubber** — prev/next arrows + date dropdown on the feed page.
+  Radar stays live (always current); only feed content changes for historical dates.
+  Historical mode shows archived badge, hides Regenerate and Explain (which uses
+  today's corpus, not the archived date). `GET /feed/dates` returns available dates.
+
+### Sprint 7 — Portfolio Layer ✅
+- Holdings CRUD — ticker, company_name, shares, optional cost basis. Stored in
+  local Postgres. Never leaves the machine (ADR-001, ADR-023).
+- Thesis alignment scoring — each holding matched against company_signals by
+  ticker / normalised_name. Per-thesis coverage computed as held / total companies.
+- Gap detection — uncovered radar companies ranked by doc_count × thesis_confidence.
+  `normalised_name` included so gap rows open the company deep-dive panel on click.
+- Portfolio page — holdings table with inline add/edit/delete; overall coverage
+  banner (color-coded by coverage %); per-thesis exposure cards with coverage
+  bars; ranked gap list. Portfolio nav item added to header.
+- `GET /portfolio/holdings`, `POST`, `PATCH`, `DELETE`, `GET /portfolio/alignment`.
+
+### Sprint 6 — Intelligence Surfacing ✅
+- Feed provenance (C-011) — `evidence_ids` in feed signals → thesis detail deep-links
+  with "Showing N signals from today's feed" banner + auto-scroll + highlight.
+- Temporal decay (C-010) — `decay.py` exponential half-life 90 days. Applied in
+  `ThesisService._enrich()` and `FeedService._thesis_signals()`.
+- Explain/Data mode (ADR-022) — Data = technical cards. Explain = per-thesis LLM
+  narrative from corpus history. Toggle lives inside the hero card header.
+- Auto language delta in feed — `language_shift` field on `ThesisSignal` surfaces
+  one meaningful term shift per thesis inline, no click required.
+- Company alert thresholds — bell icon on radar rows, threshold popover, triggered
+  section in feed when company crosses doc_count threshold.
+- Radar trajectory view — 4-week sparkline SVG on every radar row.
+
 ### Sprint 1 — Foundation
 - FastAPI backend, Next.js frontend, Docker infrastructure
 - Redis, Qdrant, Ollama integration, health endpoints
@@ -102,115 +147,26 @@ After a product reduction exercise, the following decisions were made:
 
 ---
 
-## Current — Sprint 6 — Intelligence Surfacing
+## Current — Sprint 8 — Resume Ready + Demo Polish
 
-Goal: make the daily 2-minute experience actually useful without financial knowledge.
-The feed should interpret trends, not just report numbers.
+Goal: make the product demonstrable to people who haven't built it, and make the
+daily experience polished enough to use as a live portfolio tool.
 
-### Remaining from Sprint 5
-- **Feed provenance** (C-011) — evidence record IDs in feed signals for traceability
-- **Temporal decay** (C-010) — recency weighting so old evidence counts less than recent
-
-### Sprint 6 features
-
-- **Explain / Data mode** (replaces Brief/Full) — "Data" is current technical view;
-  "Explain" uses LLM to generate a plain English trend narrative per thesis:
-  "Most of what we're reading about AI Infrastructure is positive. Companies are
-  expanding data centers and ordering more power equipment. This trend has been
-  strengthening for two weeks, not weakening." Uses the corpus history, not just
-  today's documents. Toggle is feed-page-scoped.
-
-- **Auto language delta in feed** — instead of buried behind a click in thesis
-  detail, surface one meaningful language shift per thesis in the feed automatically.
-  "New term appearing in Power Grid filings this week: grid interconnection queue."
-  No click required.
-
-- **Company alert threshold** — user sets a doc_count threshold per company on the
-  radar ("alert me when Powell Industries hits 8 independent documents"). Notification
-  appears in feed on next load. Turns passive radar into active watchlist.
-
-- **Thesis suggestion from clusters** — background clustering pass over ingested
-  documents surfaces recurring themes not covered by any active thesis.
-  "14 companies all mention grid-scale battery storage this month — you have no
-  thesis for this yet." Directly addresses C-002 (discovery gap).
-
-- **Radar trajectory view** — instead of showing doc_count as a static number,
-  show the 4-week trend. A company at 12 docs with an acceleration curve is more
-  interesting than one at 20 docs that's been flat for 6 weeks. The curve is
-  the intelligence.
-
----
-
-## Sprint 7 — Portfolio Layer
-
-The "so what" sprint. Right now MarketMind tells you things are happening.
-Portfolio integration answers the question the feed never answers.
-
-- **Holdings input** — user adds positions (ticker, shares, optional cost basis).
-  Stored locally. Never leaves the machine (consistent with local-first ADR-001).
-
-- **Thesis alignment score** — each holding is mapped to active theses.
-  Portfolio receives an overall alignment score: "Your portfolio is 71% aligned
-  with your active theses." When a thesis strengthens, you see your exposure.
-
-- **Gap detection** — "Power Grid thesis confidence has been rising for 8 weeks.
-  Companies on your radar in this sector: Eaton (you hold 20 shares), Vertiv
-  (no position), Powell Industries (no position — 12 independent documents this month)."
-  This is the unique output. No terminal does this.
-
-- **Portfolio-aware feed** — feed signals know your holdings. "AI Infrastructure
-  rising — you hold NVDA (high exposure), MSFT (moderate). Power Grid rising —
-  you have minimal exposure in this sector."
-
-- **Framing: thesis alignment, not buy/sell** — MarketMind surfaces what the corpus
-  says about your exposure gaps. It does not recommend trades. The user decides
-  what to do. This is intentional — buy/sell recommendations require precision
-  the confidence score does not have.
-
----
-
-## Sprint 8 — Resume Ready + Demo Polish
-
-- **Public demo mode** — read-only view with sample corpus, no login required.
-  For showing recruiters and in portfolio links without exposing personal data.
-
-- **"Explain this signal" on demand** — click any thesis card anywhere in the app
-  to get a plain English synthesis of why MarketMind thinks this trend is real:
-  "Here's what we're actually seeing across 47 filings and why this has been
-  strengthening." Uses trend history, not just today.
-
-- **Mobile responsive** — current UI is desktop-only. At minimum, feed page
-  readable on mobile for the morning check.
-
-- **Thesis export** — one-click export of a thesis summary (PDF or shareable
-  text): hypothesis, confidence trend, top companies, key evidence excerpts.
-  Good for sharing research with others.
-
-- **Corpus targeting** — source connectors aimed at specific sectors rather than
-  global EDGAR feeds. Addresses C-001 (the existential concern). Without this,
-  all the intelligence surfacing runs on the wrong raw material.
-
----
-
-## Sprint 8 — Resume Ready + Demo Polish
+### Remaining
 
 - **Public demo mode** — read-only `/demo` route with static sample data, no login
   required. Send to recruiters as a live link. Changes the resume story from "I
-  built this" to "you can use it right now." Sample data is static JSON — no live
-  LLM needed for the demo view.
+  built this" to "you can use it right now." Static JSON, no live LLM needed.
 
-- **"Why is this signal meaningful?" on-demand** — per-signal explainer button on
-  any evidence card. Opens a modal showing the reasoning chain: "This filing from
-  Vertiv mentions transformer delivery timelines 4 times. It also references NVIDIA
-  and Microsoft as customers. We classified it as supporting your AI Infrastructure
-  thesis because 8 of the 12 keywords matched." Useful for demos, useful for
-  debugging whether the system is working correctly.
+- **Mobile-responsive feed** — at minimum, the feed page is readable on mobile
+  for the morning check. Current layout is desktop-only.
 
-- **Mobile responsive feed** — at minimum, the feed page is readable on mobile
-  for the morning check. Current UI is desktop-only.
-
-- **Thesis export** — one-click export of a thesis summary (PDF or shareable text):
+- **Thesis export** — one-click export of a thesis summary (PDF or plain text):
   hypothesis, confidence trend, top companies, key evidence excerpts.
+
+---
+
+## Sprint 9 — Track Record + Prediction
 
 ---
 

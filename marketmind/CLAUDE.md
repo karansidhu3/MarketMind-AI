@@ -69,11 +69,11 @@ Everything runs locally. Zero API costs.
 
 ---
 
-## Current sprint: Sprint 6 — Intelligence Surfacing
+## Current sprint: Sprint 8 — Resume Ready + Demo Polish
 
-Sprint 5 is complete. Sprint 6 starts now.
+Sprints 1–7 complete. Sprint 8 in progress.
 
-### What has been built (Sprints 1–5 complete)
+### What has been built (Sprints 1–8 partial)
 
 **Sprint 1** — Infrastructure: FastAPI, Next.js, Docker, Qdrant, Redis, Ollama.
 
@@ -104,42 +104,50 @@ RSS connectors. Embeddings via nomic-embed-text. Qdrant storage. UUID5 deduplica
 - Toast notification system (ToastProvider + useToast hook in layout)
 - Feed hero section (LLM summary as full-width briefing with stat pills)
 - Skeleton loading (HeroSkeleton, SignalCardSkeleton, RadarRowSkeleton)
-- Brief/Full toggle on feed page (compact vs full signal cards)
 - "NEW" badge on radar (companies first seen within 7 days)
-- Improved empty states with guidance text
 
-### Sprint 6 priorities (in order)
+**Sprint 6** — Intelligence surfacing (all complete ✅):
+- Feed provenance C-011 — evidence_ids in ThesisSignal, thesis detail highlights feed records
+- Temporal decay C-010 — decay.py, 90-day half-life, applied in ThesisService + FeedService
+- Explain/Data mode ADR-022 — per-thesis LLM narrative from corpus history, toggle in hero
+- Auto language delta in feed — language_shift field surfaced inline per signal
+- Company alert thresholds — bell icon on radar, threshold popover, feed triggered section
+- Radar 4-week sparkline — SVG trend on every radar row
 
-1. **Feed provenance** (C-011) — evidence record IDs in feed signals. Small backend
-   change, high traceability value. Completes Sprint 5 remaining.
+**Sprint 7** — Portfolio layer (complete ✅):
+- Holding model (ticker, shares, cost_basis) — auto-created in Postgres on startup
+- PortfolioService — holdings CRUD, thesis alignment, gap detection (doc_count × confidence rank)
+- GET/POST /portfolio/holdings, PATCH/DELETE /portfolio/holdings/{id}, GET /portfolio/alignment
+- Portfolio page — holdings table, coverage banner, thesis exposure cards, gap list
 
-2. **Temporal decay** (C-010) — recency weighting so evidence from 18 months ago
-   doesn't count the same as evidence from yesterday.
+**Sprint 8** — Resume ready (in progress):
+- UI overhaul — sidebar → glassmorphism top nav; login redesign; dual-color confidence bars
+- Corpus targeting — TargetedSECConnector + 60 curated tickers across 5 thesis sectors
+- Company deep-dive panel — slide-out drawer (ADR-027), GET /companies/{normalised_name}
+- Feed timeline scrubber — prev/next arrows, date picker, GET /feed/dates (ADR-028)
 
-3. **Explain / Data mode** (ADR-022) — replaces Brief/Full. "Data" = current technical
-   cards. "Explain" = LLM generates 2-3 plain English sentences per thesis interpreting
-   the trend using corpus history (not today's documents). Toggle scoped to feed page.
+### Sprint 8 remaining
 
-4. **Auto language delta in feed** — surface one meaningful language shift per thesis
-   directly in the feed, no click required. Currently buried in thesis detail.
-
-5. **Company alert threshold** — user sets doc_count threshold per radar company,
-   gets notified in feed when it's crossed.
-
-6. **Radar trajectory view** — show 4-week doc_count trend alongside current count.
-   The curve is more informative than the number.
-
-### Sprint 7 (next)
-
-Portfolio layer: holdings input → thesis alignment score → exposure gap detection →
-portfolio-aware feed. See ADR-023 for framing decisions (alignment gaps, not buy/sell).
-
----
+- **Public demo mode** — read-only /demo route, static JSON sample data, no login
+- **Mobile-responsive feed** — minimum viable mobile layout for morning check
+- **Thesis export** — one-click PDF/text summary per thesis
 
 ### Ingestion sources (scripts/ingest.py)
+Generic feeds:
 - SEC EDGAR: 8-K (40), 10-Q (20), 10-K (10), Form 4 (40)
-- Yahoo Finance: ~20 tickers across AI/infrastructure sectors
+- Yahoo Finance: ~60 tickers across all thesis sectors
 - MarketWatch RSS, Seeking Alpha RSS
+
+Targeted connectors (TargetedSECConnector, added Sprint 8):
+- AI Infra (NVDA, AMD, AVGO, MRVL, SMCI, DELL, CSCO, ANET, VRT…)
+- Semiconductor Supply Chain (AMAT, KLAC, LRCX, MU, INTC, TSM…)
+- Energy Grid (ETN, HUBB, PWR, AMPS, GE, NEE…)
+- Defense (LMT, RTX, NOC, GD, KTOS…)
+- Data Center Physical (DLR, EQIX, VRT, IR, JCI…)
+
+Daily schedule: ingestor container fires at INGEST_HOUR_UTC (default 06:00 UTC).
+Smart catch-up: if today's run hasn't happened (Redis key `ingest:done:{date}` missing),
+it runs immediately on container start — no need to be on at 06:00.
 
 ---
 
@@ -197,7 +205,7 @@ marketmind/
   CLAUDE.md                          ← this file (always read first)
   docs/
     roadmap.md                       ← vision, sprint history, near-term plan
-    decisions.md                     ← ADR-001 through ADR-026
+    decisions.md                     ← ADR-001 through ADR-028
     concerns.md                      ← C-001 through C-011, known issues + status
   backend/
     app/
@@ -205,22 +213,28 @@ marketmind/
       main.py                        ← FastAPI lifespan, registers all routers
       db/
         session.py                   ← SQLAlchemy engine + session factory
-        models.py                    ← all ORM models
+        models.py                    ← all ORM models (Holding added Sprint 7)
       thesis/
         service.py                   ← ThesisService: CRUD, scoring, radar (normalised),
                                         evaluate_against_corpus (background)
-        schema.py                    ← ThesisOut, CompanyRadarItem (has doc_count field)
+        schema.py                    ← ThesisOut, CompanyRadarItem (normalised_name added Sprint 8)
         seed.py                      ← 5 pre-seeded system theses
         delta.py                     ← LanguageDeltaService (30-day window comparison, 6h cache)
+        decay.py                     ← weighted_confidence() — 90-day half-life exponential decay
       feed/
         service.py                   ← FeedService (feed generation, Redis cache, _write_snapshots)
       supply_chain/
         extractor.py                 ← LLM supply chain extraction (not extending — ADR-024)
+      portfolio/
+        service.py                   ← holdings CRUD, alignment scoring, gap detection
+        schema.py                    ← HoldingOut, ThesisExposure, GapCompany, PortfolioAlignment
       ingestion/
         worker.py                    ← IngestionWorker (embed → store → score → extract)
         normalise.py                 ← normalise(), is_same_company(), pick_canonical()
         connectors/
-          sec_edgar.py, form4.py, yahoo_finance.py, rss.py
+          sec_edgar.py               ← generic EDGAR daily feed
+          sec_edgar_targeted.py      ← TargetedSECConnector — ticker-specific EDGAR feeds (Sprint 8)
+          form4.py, yahoo_finance.py, rss.py
       services/
         llm_service.py               ← OllamaLLMService: /no_think prefix, 300s timeout
         retrieval_service.py         ← QdrantRetrievalService: search + scroll_all()
@@ -228,42 +242,55 @@ marketmind/
       api/
         thesis.py                    ← /theses CRUD + /radar + /evidence + /confidence-history
                                         + /language-delta + /evaluate (BackgroundTasks)
-        feed.py                      ← /feed endpoints
+        feed.py                      ← /feed, /feed/dates, /feed/{date}, /feed/regenerate
+        companies.py                 ← /companies/{normalised_name} — deep-dive panel (Sprint 8)
+        portfolio.py                 ← /portfolio/holdings CRUD + /portfolio/alignment
         research.py                  ← /research (days_back param)
         supply_chain.py              ← /supply-chain/{company}
         dependencies.py              ← get_llm, get_retrieval, get_thesis_service,
                                         get_feed_service, get_cache, get_session_factory
     scripts/
-      ingest.py                      ← manual ingestion (runs all connectors)
-      scheduler.py                   ← daily scheduler + calls POST /feed/regenerate after ingest
+      ingest.py                      ← manual ingestion (generic + 5 targeted connectors)
+      scheduler.py                   ← daily scheduler, catch-up logic, POST /feed/regenerate
     requirements.txt
   frontend/
     app/
       layout.tsx                     ← ThemeProvider + ToastProvider, suppressHydrationWarning
       globals.css                    ← CSS vars as RGB triplets (enables bg-green/10 etc.)
-      (auth)/login/page.tsx          ← JWT login → localStorage mm_token
-      feed/page.tsx                  ← hero section, skeleton loading, Brief/Full toggle,
+      (auth)/
+        layout.tsx                   ← ambient glow blobs + dot-grid background
+        login/page.tsx               ← glassmorphism card, JWT login → localStorage mm_token
+      feed/page.tsx                  ← hero, Data/Explain toggle, timeline scrubber,
                                         SignalCard feed, CompanyRadar
       thesis/
         page.tsx                     ← thesis list + inline create form
         [id]/page.tsx                ← thesis detail (sparkline, counter-arg, delta,
                                         supply chain tab, re-evaluate button with toast)
+      portfolio/page.tsx             ← holdings table, coverage banner, exposure cards, gap list
       research/page.tsx              ← query + time filters + elapsed timer + results
     components/
-      layout/AppShell.tsx            ← auth guard + sidebar wrapper
-      layout/Sidebar.tsx             ← nav links + Sun/Moon theme toggle
-      feed/SignalCard.tsx            ← signal card with compact prop (Brief/Full mode)
-      feed/CompanyRadar.tsx          ← relative-strength bars, doc_count, NEW badge
+      layout/
+        AppShell.tsx                 ← auth guard, CompanyProvider wrapper, CompanyPanel mount
+        Header.tsx                   ← glassmorphism top nav, feed/thesis/portfolio/research links
+      company/
+        CompanyPanel.tsx             ← slide-out drawer: trajectory chart, thesis breakdown,
+                                        evidence list (ADR-027)
+      feed/
+        SignalCard.tsx               ← full/compact signal card, company tag click → panel
+        CompanyRadar.tsx             ← relative-strength bars, sparkline, alert popover
       ui/Toast.tsx                   ← ToastProvider + useToast hook + ToastItem
       ThemeProvider.tsx              ← next-themes, defaultTheme="dark", attribute="class"
+    contexts/
+      CompanyContext.tsx             ← openCompany/closeCompany global state (ADR-027)
     lib/
-      api.ts                         ← all API calls
+      api.ts                         ← all API calls (getCompany, getFeedDates added Sprint 8)
       types.ts                       ← all TypeScript interfaces
       utils.ts                       ← formatConfidence, formatDate, formatDateShort, cn, greet
     tailwind.config.js               ← rgb(var(--color) / <alpha-value>) pattern throughout
     next.config.js                   ← output: "standalone" (required for Docker build)
   infrastructure/
     docker-compose.yml               ← postgres, redis, qdrant, ollama, backend, ingestor, frontend
+                                       all containers: restart: unless-stopped
   .env                               ← DATABASE_URL, REDIS_URL, QDRANT_URL, OLLAMA_URL, JWT_SECRET
   .claude/launch.json                ← preview server config (npm --prefix frontend run dev, port 3001)
 ```
@@ -286,6 +313,8 @@ marketmind/
 - **ADR-024** — Supply chain extraction deprioritised (code retained, not extended)
 - **ADR-025** — Insider transaction tracking deprioritised (code retained, not extended)
 - **ADR-026** — Corpus targeting is the highest-leverage infrastructure investment
+- **ADR-027** — Company deep-dive uses global React context; hook must be called inside provider tree
+- **ADR-028** — Timeline scrubber: radar always live, only feed content is historical
 
 ---
 
@@ -297,18 +326,18 @@ High severity — open:
 - **C-009** Thesis semantic drift: expanding keywords silently inflates confidence
 
 High severity — partially addressed:
+- **C-001** Corpus relevance: targeted ingestion live (60 tickers, 5 sectors), corpus growing
 - **C-004** Company radar large-cap dominance: doc_count + normalisation helps;
   static exclusion list still outstanding
 
 Medium severity — open:
-- **C-001** Corpus relevance: EDGAR public feed returns wrong sectors (existential)
 - **C-002** Discovery gap: signals outside defined theses are invisible
 - **C-005** Signal inflation: LLM forced to summarise even when nothing happened
-- **C-010** Temporal decay: old evidence weighted same as recent
-- **C-011** Feed provenance: feed signals don't link to specific evidence IDs
 
 Resolved:
 - **C-007** Company name normalisation ✅
+- **C-010** Temporal decay ✅ — decay.py, 90-day half-life, applied in thesis + feed services
+- **C-011** Feed provenance ✅ — evidence_ids in ThesisSignal, thesis detail deep-links from feed
 
 ---
 
