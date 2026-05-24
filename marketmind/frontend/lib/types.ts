@@ -8,7 +8,8 @@ export interface ThesisSignal {
   confidence: number
   top_companies: string[]
   highlight: string
-  evidence_ids: string[]   // IDs of today's evidence records — C-011 provenance
+  evidence_ids: string[]
+  language_shift?: string | null   // IDs of today's evidence records — C-011 provenance
 }
 
 export interface NewCompany {

@@ -221,6 +221,17 @@ class FeedService:
             highlight = today_rows[0].excerpt[:300] if today_rows else ""
             evidence_ids = [str(e.id) for e in today_rows]
 
+            # Pull language delta summary from cache if already computed (free — no LLM call)
+            language_shift: str | None = None
+            try:
+                delta_cached = await self._cache.get(f"delta:{thesis.id}:30")
+                if delta_cached:
+                    delta_data = json.loads(delta_cached)
+                    if delta_data.get("status") == "ok" and delta_data.get("summary"):
+                        language_shift = delta_data["summary"]
+            except Exception:
+                pass
+
             signals.append(
                 ThesisSignal(
                     thesis_id=str(thesis.id),
@@ -233,6 +244,7 @@ class FeedService:
                     top_companies=list(company_rows),
                     highlight=highlight,
                     evidence_ids=evidence_ids,
+                    language_shift=language_shift,
                 )
             )
 

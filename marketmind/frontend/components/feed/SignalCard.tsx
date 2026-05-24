@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown, Minus, ArrowUpRight } from 'lucide-react'
+import { TrendingUp, TrendingDown, Minus, ArrowUpRight, GitCompare } from 'lucide-react'
 import Link from 'next/link'
 import { cn, formatConfidence } from '@/lib/utils'
 import type { ThesisSignal } from '@/lib/types'
@@ -131,6 +131,16 @@ export default function SignalCard({ signal, compact = false }: SignalCardProps)
             <p className="text-text-secondary text-xs leading-relaxed mb-3 line-clamp-2">
               {signal.highlight}
             </p>
+          )}
+
+          {/* Language shift — auto-surfaced from cache, no click needed */}
+          {signal.language_shift && (
+            <div className="flex items-start gap-1.5 mb-3 px-2.5 py-2 rounded-lg bg-accent/5 border border-accent/15">
+              <GitCompare size={10} className="text-accent shrink-0 mt-0.5" />
+              <p className="text-text-secondary text-xs leading-relaxed line-clamp-2">
+                {signal.language_shift}
+              </p>
+            </div>
           )}
 
           {/* Companies */}

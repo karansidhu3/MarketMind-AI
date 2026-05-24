@@ -14,8 +14,9 @@ class ThesisSignal(BaseModel):
     momentum: str  # "rising" | "flat" | "falling"
     confidence: float
     top_companies: list[str]
-    highlight: str                  # most relevant excerpt from today
-    evidence_ids: list[str] = []   # IDs of today's evidence records (C-011 provenance)
+    highlight: str                      # most relevant excerpt from today
+    evidence_ids: list[str] = []       # IDs of today's evidence records (C-011 provenance)
+    language_shift: str | None = None  # cached language delta summary, if available
 
 
 class NewCompany(BaseModel):
