@@ -101,8 +101,17 @@ async def main() -> None:
                     logger.exception("Ingestion failed — will retry in 1 hour")
                     await asyncio.sleep(3600)
                     continue
+                # Loop back to the top immediately after a successful run.
+                # If the run spanned midnight, today's date has changed and
+                # _already_ran_today() will return False for the new day,
+                # triggering a catch-up run rather than skipping it.
+                continue
 
             # ── Wait for next scheduled slot ─────────────────────────────────
+            # Loop back immediately after a run completes so we re-check the
+            # date. If a run spanned midnight, today's date has changed and we
+            # need to run again for the new day rather than waiting until
+            # tomorrow's scheduled slot.
             next_run = _next_scheduled()
             wait_seconds = (next_run - datetime.now(timezone.utc)).total_seconds()
             logger.info(
@@ -111,6 +120,9 @@ async def main() -> None:
                 wait_seconds / 60,
             )
             await asyncio.sleep(wait_seconds)
+            # After waking, loop back to the top — _already_ran_today() checks
+            # the current date, so if we slept past midnight a catch-up run
+            # fires immediately.
 
     finally:
         await redis.aclose()

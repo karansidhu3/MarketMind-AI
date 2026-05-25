@@ -18,6 +18,7 @@ Corpus targeting strategy (ADR-026):
 import asyncio
 import logging
 import sys
+from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -150,6 +151,8 @@ SOURCES = [
 
 
 async def main() -> int:
+    import redis.asyncio as aioredis
+
     settings = get_settings()
 
     init_db(settings.database_url)
@@ -171,9 +174,21 @@ async def main() -> int:
     if seeded:
         logger.info("Seeded %d system theses", seeded)
 
+    # Per-connector checkpointing — survives lid-close restarts.
+    # Each connector sets a Redis key when it finishes. On restart, completed
+    # connectors are skipped instantly. Keys expire after 25h so each new day
+    # starts fresh.
+    redis = aioredis.from_url(settings.redis_url, decode_responses=True)
+    today = date.today().isoformat()
+
     total = 0
     try:
         for label, connector in SOURCES:
+            checkpoint_key = f"ingest:connector:{today}:{label}"
+            if await redis.exists(checkpoint_key):
+                logger.info("── Skipping (already done today): %s", label)
+                continue
+
             logger.info("── Starting: %s", label)
             worker = IngestionWorker(
                 connector=connector,
@@ -185,8 +200,10 @@ async def main() -> int:
             )
             count = await worker.run()
             logger.info("── Finished: %s — %d document(s) ingested", label, count)
+            await redis.set(checkpoint_key, str(count), ex=25 * 3600)
             total += count
     finally:
+        await redis.aclose()
         await llm.close()
         await retrieval.close()
         await close_db()
