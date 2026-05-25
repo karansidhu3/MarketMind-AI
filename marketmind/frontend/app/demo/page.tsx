@@ -64,7 +64,7 @@ function ThesisPulseCard({ signal }: { signal: ThesisSignal }) {
           style={{ width: `${pct}%` }}
         />
       </div>
-      <p className="text-text-tertiary text-[10px] mt-1 tabular-nums">{pct}% conf.</p>
+      <p className="text-text-tertiary text-[10px] mt-1 tabular-nums">{pct}% support</p>
     </div>
   )
 }
@@ -151,7 +151,7 @@ function DemoHero({ explainMode, onToggleMode }: { explainMode: boolean; onToggl
             <>
               <span className="text-border/60 text-xs">·</span>
               <span className="text-green text-xs">
-                <span className="font-medium">{risingCount}</span> thesis{risingCount !== 1 ? 'es' : ''} gaining ↑
+                <span className="font-medium">{risingCount}</span> theme{risingCount !== 1 ? 's' : ''} gaining ↑
               </span>
             </>
           )}
@@ -285,7 +285,7 @@ export default function DemoPage() {
           <div className="flex-[7] min-w-0">
             <div className="flex items-center justify-between mb-3 px-1">
               <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest">
-                Thesis Signals
+                Theme Signals
               </h2>
               <span className="text-text-tertiary text-xs tabular-nums">
                 {DEMO_FEED.thesis_signals.length} active

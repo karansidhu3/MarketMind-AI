@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react'
 import { RefreshCw, AlertCircle, Sparkles, Zap, TrendingUp, TrendingDown, Minus, BookOpen, BarChart2, Bell, ChevronLeft, ChevronRight, Calendar, Quote } from 'lucide-react'
+import { Tooltip } from '@/components/ui/Tooltip'
 import Link from 'next/link'
 import AppShell from '@/components/layout/AppShell'
 import SignalCard from '@/components/feed/SignalCard'
@@ -162,7 +163,7 @@ function ThesisPulseCard({ signal }: { signal: ThesisSignal }) {
           style={{ width: `${pct}%` }}
         />
       </div>
-      <p className="text-text-tertiary text-[10px] mt-1 tabular-nums">{pct}% conf.</p>
+      <p className="text-text-tertiary text-[10px] mt-1 tabular-nums">{pct}% support</p>
     </Link>
   )
 }
@@ -281,7 +282,7 @@ function FeedHero({
             <>
               <span className="text-border/60 text-xs">·</span>
               <span className="text-green text-xs">
-                <span className="font-medium">{risingCount}</span> thesis{risingCount !== 1 ? 'es' : ''} gaining ↑
+                <span className="font-medium">{risingCount}</span> theme{risingCount !== 1 ? 's' : ''} gaining ↑
               </span>
             </>
           )}
@@ -766,7 +767,7 @@ export default function FeedPage() {
                 {/* Section header */}
                 <div className="flex items-center justify-between mb-3 px-1">
                   <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest">
-                    Thesis Signals
+                    Theme Signals
                   </h2>
                   <span className="text-text-tertiary text-xs tabular-nums">
                     {feed.thesis_signals.length} active
@@ -886,9 +887,12 @@ export default function FeedPage() {
               {/* ── Right: company radar ─────────────────────────── */}
               <div className="flex-[3] min-w-0">
                 <div className="sticky top-[76px]">
-                  <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest mb-2 px-1">
-                    Company Radar
-                  </h2>
+                  <div className="flex items-center gap-1.5 mb-2 px-1">
+                    <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest">
+                      Company Radar
+                    </h2>
+                    <Tooltip content="Companies ranked by unique source documents — not total mentions. Acceleration over time matters more than absolute count." />
+                  </div>
                   <div className="bg-surface border border-border rounded-xl">
                     <CompanyRadar companies={radar.slice(0, 20)} initialAlerts={alerts} />
                   </div>

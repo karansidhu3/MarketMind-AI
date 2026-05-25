@@ -61,9 +61,9 @@ export default function ThesisPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-text-primary text-2xl font-semibold tracking-tight">Theses</h1>
+            <h1 className="text-text-primary text-2xl font-semibold tracking-tight">Investment Themes</h1>
             <p className="text-text-tertiary text-sm mt-0.5">
-              Investment hypotheses tracked over time.
+              Themes you track — scored daily against SEC filings and news.
             </p>
           </div>
           <button
@@ -71,7 +71,7 @@ export default function ThesisPage() {
             className="flex items-center gap-1.5 text-sm text-white bg-accent px-3.5 py-2 rounded-lg hover:opacity-90 transition-opacity"
           >
             <Plus size={14} strokeWidth={2.5} />
-            New thesis
+            New Theme
           </button>
         </div>
 
@@ -79,7 +79,7 @@ export default function ThesisPage() {
         {showNew && (
           <div className="bg-surface border border-border rounded-xl p-5 mb-6 animate-slide-up">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-text-primary text-sm font-semibold">New thesis</h2>
+              <h2 className="text-text-primary text-sm font-semibold">New Investment Theme</h2>
               <button onClick={() => setShowNew(false)} className="text-text-tertiary hover:text-text-secondary">
                 <X size={15} />
               </button>
@@ -87,7 +87,7 @@ export default function ThesisPage() {
             <form onSubmit={handleCreate} className="space-y-3">
               <input
                 type="text"
-                placeholder="Thesis name"
+                placeholder="Theme name (e.g. AI Infrastructure Bottlenecks)"
                 value={name}
                 onChange={e => setName(e.target.value)}
                 required
@@ -172,7 +172,7 @@ export default function ThesisPage() {
         {/* Empty */}
         {!loading && !error && theses.length === 0 && (
           <div className="text-center py-20 text-text-tertiary text-sm">
-            No theses found.
+            No themes found.
           </div>
         )}
       </div>

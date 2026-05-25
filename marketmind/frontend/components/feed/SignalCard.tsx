@@ -4,6 +4,7 @@ import { TrendingUp, TrendingDown, Minus, ArrowUpRight, GitCompare } from 'lucid
 import Link from 'next/link'
 import { cn, formatConfidence } from '@/lib/utils'
 import { useCompany } from '@/contexts/CompanyContext'
+import { Tooltip } from '@/components/ui/Tooltip'
 import type { ThesisSignal } from '@/lib/types'
 
 const MOMENTUM = {
@@ -113,13 +114,15 @@ export default function SignalCard({ signal, compact = false, companyNameMap = {
         <div className="flex-1 min-w-0">
           {/* Badge row */}
           <div className="flex items-center gap-2 mb-2.5">
-            <span className={cn(
-              'inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-semibold',
-              m.textColor, m.bgColor
-            )}>
-              <Icon size={10} strokeWidth={2.5} />
-              {m.label}
-            </span>
+            <Tooltip content="Direction of signal activity over the past 30 days compared to the prior period.">
+              <span className={cn(
+                'inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-semibold cursor-default',
+                m.textColor, m.bgColor
+              )}>
+                <Icon size={10} strokeWidth={2.5} />
+                {m.label}
+              </span>
+            </Tooltip>
             {signal.new_evidence_count > 0 && (
               <span className="inline-flex items-center gap-0.5 text-text-tertiary text-xs bg-elevated px-2 py-0.5 rounded-full">
                 +{signal.new_evidence_count} today
@@ -147,6 +150,10 @@ export default function SignalCard({ signal, compact = false, companyNameMap = {
               <p className="text-text-secondary text-xs leading-relaxed line-clamp-2">
                 {signal.language_shift}
               </p>
+              <Tooltip
+                content="New or intensified terms appearing in recent filings compared to 30 days ago — an early signal of shifting narrative."
+                position="bottom"
+              />
             </div>
           )}
 
@@ -186,7 +193,13 @@ export default function SignalCard({ signal, compact = false, companyNameMap = {
           <div className={cn('text-3xl font-bold tabular-nums leading-none tracking-tight', m.textColor)}>
             {formatConfidence(signal.confidence)}
           </div>
-          <div className="text-text-tertiary text-[10px] uppercase tracking-wide font-medium">confidence</div>
+          <div className="flex items-center justify-end gap-1">
+            <div className="text-text-tertiary text-[10px] uppercase tracking-wide font-medium">support rate</div>
+            <Tooltip
+              content="% of scored signals that support this theme. Based on LLM sentiment analysis of SEC filings and news."
+              position="bottom"
+            />
+          </div>
 
           {total > 0 && (
             <div className="flex items-center gap-1.5 justify-end pt-1">
