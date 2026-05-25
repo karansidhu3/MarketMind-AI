@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
-import { RefreshCw, AlertCircle, Sparkles, Zap, TrendingUp, TrendingDown, Minus, BookOpen, BarChart2, Bell, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
+import { RefreshCw, AlertCircle, Sparkles, Zap, TrendingUp, TrendingDown, Minus, BookOpen, BarChart2, Bell, ChevronLeft, ChevronRight, Calendar, Quote } from 'lucide-react'
 import Link from 'next/link'
 import AppShell from '@/components/layout/AppShell'
 import SignalCard from '@/components/feed/SignalCard'
@@ -103,6 +103,70 @@ function RadarRowSkeleton() {
   )
 }
 
+// ── Feed hero helpers ─────────────────────────────────────────────────────────
+
+function activityLevel(signals: ThesisSignal[]) {
+  const total   = signals.reduce((s, t) => s + t.new_evidence_count, 0)
+  const rising  = signals.filter(s => s.momentum === 'rising').length
+  const falling = signals.filter(s => s.momentum === 'falling').length
+  if (total === 0)            return { label: 'Quiet',     color: 'text-text-tertiary', bg: 'bg-elevated border-border', dot: 'bg-text-tertiary' }
+  if (rising >= 2 || total >= 12) return { label: 'Active',    color: 'text-green',          bg: 'bg-green/10 border-green/25', dot: 'bg-green' }
+  if (falling >= 2)           return { label: 'Declining', color: 'text-red',            bg: 'bg-red/10 border-red/25',   dot: 'bg-red' }
+  return                             { label: 'Steady',    color: 'text-amber',          bg: 'bg-amber/10 border-amber/25', dot: 'bg-amber' }
+}
+
+// Short thesis name for the pulse cards
+function shortName(name: string): string {
+  const map: Record<string, string> = {
+    'AI Infrastructure Bottlenecks':        'AI Infra',
+    'Semiconductor Supply Chain Stress':    'Semi Chain',
+    'Energy Grid Modernisation':            'Grid',
+    'Defense Production Ramp':              'Defense',
+    'Data Center Physical Infrastructure':  'Data Center',
+  }
+  return map[name] ?? name.split(' ').slice(0, 2).join(' ')
+}
+
+function ThesisPulseCard({ signal }: { signal: ThesisSignal }) {
+  const rising  = signal.momentum === 'rising'
+  const falling = signal.momentum === 'falling'
+  const Icon    = rising ? TrendingUp : falling ? TrendingDown : Minus
+  const pct     = Math.round(signal.confidence * 100)
+
+  return (
+    <Link
+      href={`/thesis/${signal.thesis_id}`}
+      className={cn(
+        'flex-1 min-w-[110px] max-w-[160px] rounded-xl border p-3 transition-all duration-150 hover:scale-[1.02] hover:shadow-sm',
+        rising  ? 'border-green/30 bg-green/5 hover:bg-green/8' :
+        falling ? 'border-red/30 bg-red/5 hover:bg-red/8' :
+                  'border-border bg-elevated hover:bg-surface'
+      )}
+    >
+      <div className="flex items-center gap-1 mb-1.5">
+        <Icon
+          size={11}
+          className={rising ? 'text-green' : falling ? 'text-red' : 'text-text-tertiary'}
+        />
+        <p className="text-text-primary text-[11px] font-semibold truncate leading-tight">
+          {shortName(signal.thesis_name)}
+        </p>
+      </div>
+      <p className="text-text-tertiary text-[11px] tabular-nums mb-2">
+        {signal.new_evidence_count} signal{signal.new_evidence_count !== 1 ? 's' : ''}
+      </p>
+      {/* Confidence bar */}
+      <div className="h-[3px] bg-border/60 rounded-full overflow-hidden">
+        <div
+          className={cn('h-full rounded-full transition-all', rising ? 'bg-green' : falling ? 'bg-red' : 'bg-text-tertiary/60')}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <p className="text-text-tertiary text-[10px] mt-1 tabular-nums">{pct}% conf.</p>
+    </Link>
+  )
+}
+
 // ── Feed hero ─────────────────────────────────────────────────────────────────
 
 function FeedHero({
@@ -118,7 +182,6 @@ function FeedHero({
 }) {
   const [explainText,      setExplainText]      = useState('')
   const [explainStreaming, setExplainStreaming]  = useState(false)
-  // Ref prevents re-fetching if user toggles Data→Explain→Data→Explain
   const explainStarted = React.useRef(false)
 
   useEffect(() => {
@@ -138,16 +201,11 @@ function FeedHero({
     })()
   }, [explainMode])
 
-  const totalNewSignals = feed.thesis_signals.reduce(
-    (sum, s) => sum + s.new_evidence_count, 0
-  )
-
-  const stats = [
-    { value: feed.thesis_signals.length,     label: 'theses tracked'   },
-    { value: totalNewSignals,                 label: 'new signals'      },
-    { value: feed.new_companies.length,       label: 'new companies'    },
-    { value: feed.insider_clusters.length,    label: 'insider clusters' },
-  ]
+  const totalSignals  = feed.thesis_signals.reduce((s, t) => s + t.new_evidence_count, 0)
+  const risingCount   = feed.thesis_signals.filter(s => s.momentum === 'rising').length
+  const activity      = activityLevel(feed.thesis_signals)
+  // Top signal = highest evidence-count thesis with a non-trivial highlight
+  const topSignal     = feed.thesis_signals.find(s => s.highlight && s.highlight.length > 40)
 
   return (
     <div className="relative bg-surface border border-border rounded-2xl p-6 mb-8 overflow-hidden">
@@ -159,20 +217,18 @@ function FeedHero({
       />
 
       <div className="relative">
-        {/* Title row — icon + label on left, Data/Explain toggle on right */}
+
+        {/* ── Row 1: header ──────────────────────────────────────────── */}
         <div className="flex items-center gap-3 mb-4">
           <div className={cn(
-            'w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-200',
+            'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
             explainMode ? 'bg-green/10' : 'bg-accent/10'
           )}>
-            {explainMode
-              ? <BookOpen size={14} className="text-green" />
-              : <Sparkles size={14} className="text-accent" />
-            }
+            {explainMode ? <BookOpen size={14} className="text-green" /> : <Sparkles size={14} className="text-accent" />}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-text-primary text-sm font-semibold leading-tight">
-              {explainMode ? 'Plain English Briefing' : 'Intelligence Briefing'}
+              Intelligence Brief
             </p>
             <p className="text-text-tertiary text-xs mt-0.5 flex items-center gap-1.5">
               {formatDate(feed.feed_date)}
@@ -184,75 +240,120 @@ function FeedHero({
               }
             </p>
           </div>
-          {/* Data / Explain toggle — hidden for historical feeds (explain uses today's corpus) */}
-          {!isHistorical && <div className="flex items-center bg-elevated border border-border/80 rounded-lg p-0.5 gap-0.5 shrink-0">
-            <button
-              onClick={() => onToggleMode(false)}
-              title="Technical view — signal counts, confidence, companies"
-              className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-150',
-                !explainMode
-                  ? 'bg-surface text-text-primary shadow-sm border border-border/50'
-                  : 'text-text-tertiary hover:text-text-secondary'
-              )}
-            >
-              <BarChart2 size={10} />
-              Data
-            </button>
-            <button
-              onClick={() => onToggleMode(true)}
-              title="Plain English — what's happening and why it matters"
-              className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-150',
-                explainMode
-                  ? 'bg-surface text-text-primary shadow-sm border border-border/50'
-                  : 'text-text-tertiary hover:text-text-secondary'
-              )}
-            >
-              <BookOpen size={10} />
-              Explain
-            </button>
-          </div>}
+          {!isHistorical && (
+            <div className="flex items-center bg-elevated border border-border/80 rounded-lg p-0.5 gap-0.5 shrink-0">
+              <button
+                onClick={() => onToggleMode(false)}
+                className={cn(
+                  'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-150',
+                  !explainMode ? 'bg-surface text-text-primary shadow-sm border border-border/50' : 'text-text-tertiary hover:text-text-secondary'
+                )}
+              >
+                <BarChart2 size={10} /> Data
+              </button>
+              <button
+                onClick={() => onToggleMode(true)}
+                className={cn(
+                  'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-150',
+                  explainMode ? 'bg-surface text-text-primary shadow-sm border border-border/50' : 'text-text-tertiary hover:text-text-secondary'
+                )}
+              >
+                <BookOpen size={10} /> Explain
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Summary — Data mode: analyst tone / Explain mode: streams in */}
-        {!explainMode ? (
-          feed.summary ? (
-            <p className="text-text-primary text-sm leading-relaxed mb-5">{feed.summary}</p>
-          ) : (
-            <p className="text-text-tertiary text-sm italic mb-5">
-              No summary available — click Regenerate to synthesise today&apos;s signals.
-            </p>
-          )
-        ) : explainStreaming && !explainText ? (
-          /* Waiting for first token — show skeleton */
-          <div className="space-y-2 mb-5">
-            <Skeleton className="h-3.5 w-full" />
-            <Skeleton className="h-3.5 w-[88%]" />
-            <Skeleton className="h-3.5 w-3/4" />
+        {/* ── Row 2: activity status bar ─────────────────────────────── */}
+        <div className={cn(
+          'flex items-center gap-3 px-3 py-2 rounded-lg border mb-4 flex-wrap gap-y-1',
+          activity.bg
+        )}>
+          <div className="flex items-center gap-2">
+            <span className={cn('w-2 h-2 rounded-full', activity.dot)} />
+            <span className={cn('text-xs font-semibold', activity.color)}>{activity.label}</span>
           </div>
-        ) : (
-          /* Text arrived — show with blinking cursor while still streaming */
-          <p className="text-text-primary text-sm leading-relaxed mb-5">
-            {explainText || 'Could not generate plain-English briefing.'}
-            {explainStreaming && (
-              <span className="inline-block w-[2px] h-[0.9em] bg-text-primary ml-[2px] align-middle animate-pulse" />
-            )}
-          </p>
+          <span className="text-border/60 text-xs">·</span>
+          <span className="text-text-secondary text-xs tabular-nums">
+            <span className="font-medium text-text-primary">{totalSignals}</span> new signals
+          </span>
+          {risingCount > 0 && (
+            <>
+              <span className="text-border/60 text-xs">·</span>
+              <span className="text-green text-xs">
+                <span className="font-medium">{risingCount}</span> thesis{risingCount !== 1 ? 'es' : ''} gaining ↑
+              </span>
+            </>
+          )}
+          {feed.new_companies.length > 0 && (
+            <>
+              <span className="text-border/60 text-xs">·</span>
+              <span className="text-text-secondary text-xs">
+                <span className="font-medium text-text-primary">{feed.new_companies.length}</span> new {feed.new_companies.length === 1 ? 'company' : 'companies'}
+              </span>
+            </>
+          )}
+        </div>
+
+        {/* ── Row 3: thesis pulse cards ──────────────────────────────── */}
+        {feed.thesis_signals.length > 0 && (
+          <div className="flex gap-2 mb-4 flex-wrap">
+            {feed.thesis_signals.map(s => (
+              <ThesisPulseCard key={s.thesis_id} signal={s} />
+            ))}
+          </div>
         )}
 
-        {/* Stat pills — same in both modes */}
-        <div className="flex flex-wrap gap-2">
-          {stats.map(s => (
-            <div
-              key={s.label}
-              className="flex items-center gap-1.5 text-xs bg-elevated border border-border px-2.5 py-1 rounded-full"
-            >
-              <span className="text-text-primary font-semibold tabular-nums">{s.value}</span>
-              <span className="text-text-tertiary">{s.label}</span>
+        {/* ── Row 4: top signal quote ────────────────────────────────── */}
+        {topSignal && !explainMode && (
+          <div className="mb-4 rounded-xl bg-elevated border border-border/60 px-4 py-3">
+            <div className="flex items-start gap-2">
+              <Quote size={12} className="text-accent shrink-0 mt-0.5 opacity-60" />
+              <p className="text-text-secondary text-sm leading-relaxed italic line-clamp-2">
+                {topSignal.highlight.slice(0, 220)}
+                {topSignal.highlight.length > 220 ? '…' : ''}
+              </p>
             </div>
-          ))}
+            <div className="mt-2 flex items-center gap-1.5">
+              <span className="text-text-tertiary text-[11px]">→</span>
+              <Link
+                href={`/thesis/${topSignal.thesis_id}`}
+                className="text-accent text-[11px] hover:underline"
+              >
+                {topSignal.thesis_name}
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* ── Row 5: summary text (Data) or explain narrative (Explain) ── */}
+        <div className={cn(
+          feed.thesis_signals.length > 0 ? 'pt-4 border-t border-border/40' : ''
+        )}>
+          {!explainMode ? (
+            feed.summary ? (
+              <p className="text-text-secondary text-sm leading-relaxed">{feed.summary}</p>
+            ) : (
+              <p className="text-text-tertiary text-sm italic">
+                No summary available — click Regenerate to synthesise today&apos;s signals.
+              </p>
+            )
+          ) : explainStreaming && !explainText ? (
+            <div className="space-y-2">
+              <Skeleton className="h-3.5 w-full" />
+              <Skeleton className="h-3.5 w-[88%]" />
+              <Skeleton className="h-3.5 w-3/4" />
+            </div>
+          ) : (
+            <p className="text-text-primary text-sm leading-relaxed">
+              {explainText || 'Could not generate plain-English briefing.'}
+              {explainStreaming && (
+                <span className="inline-block w-[2px] h-[0.9em] bg-text-primary ml-[2px] align-middle animate-pulse" />
+              )}
+            </p>
+          )}
         </div>
+
       </div>
     </div>
   )

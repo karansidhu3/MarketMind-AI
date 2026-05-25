@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, Zap } from 'lucide-react'
+import Link from 'next/link'
 import { login } from '@/lib/api'
 
 export default function LoginPage() {
@@ -86,8 +87,19 @@ export default function LoginPage() {
           </button>
         </form>
 
+        {/* Demo mode link */}
+        <div className="mt-5 pt-5 border-t border-border/40 flex items-center justify-center gap-2">
+          <Link
+            href="/demo"
+            className="flex items-center gap-1.5 text-[11px] text-text-tertiary hover:text-accent transition-colors"
+          >
+            <Zap size={10} />
+            Explore demo without signing in
+          </Link>
+        </div>
+
         {/* Footer hint */}
-        <p className="text-text-tertiary/60 text-[11px] text-center mt-6 leading-relaxed">
+        <p className="text-text-tertiary/60 text-[11px] text-center mt-4 leading-relaxed">
           Local deployment · No external data sent
         </p>
       </div>

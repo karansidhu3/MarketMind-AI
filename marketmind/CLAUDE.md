@@ -125,10 +125,14 @@ RSS connectors. Embeddings via nomic-embed-text. Qdrant storage. UUID5 deduplica
 - Corpus targeting — TargetedSECConnector + 60 curated tickers across 5 thesis sectors
 - Company deep-dive panel — slide-out drawer (ADR-027), GET /companies/{normalised_name}
 - Feed timeline scrubber — prev/next arrows, date picker, GET /feed/dates (ADR-028)
+- Intelligence Briefing redesign — activity badge, ThesisPulseCards, top-signal quote,
+  streaming Explain mode (SSE token-by-token), pre-warm caches after regeneration
+- Per-connector Redis checkpointing — restarts skip completed connectors (25h TTL)
+- Public demo mode ✅ — /demo route, static sample data, no login required;
+  DemoShell + DemoHeader; "Try demo" link on login page (app/demo/page.tsx + data.ts)
 
 ### Sprint 8 remaining
 
-- **Public demo mode** — read-only /demo route, static JSON sample data, no login
 - **Mobile-responsive feed** — minimum viable mobile layout for morning check
 - **Thesis export** — one-click PDF/text summary per thesis
 
@@ -259,9 +263,13 @@ marketmind/
       globals.css                    ← CSS vars as RGB triplets (enables bg-green/10 etc.)
       (auth)/
         layout.tsx                   ← ambient glow blobs + dot-grid background
-        login/page.tsx               ← glassmorphism card, JWT login → localStorage mm_token
-      feed/page.tsx                  ← hero, Data/Explain toggle, timeline scrubber,
-                                        SignalCard feed, CompanyRadar
+        login/page.tsx               ← glassmorphism card, JWT login → localStorage mm_token;
+                                        "Try demo" link → /demo
+      demo/
+        page.tsx                     ← public demo page (no auth), uses DemoShell + static data
+        data.ts                      ← DEMO_FEED, DEMO_RADAR, DEMO_NARRATIVES — sample data
+      feed/page.tsx                  ← hero, Data/Explain toggle (SSE streaming), timeline scrubber,
+                                        SignalCard feed, CompanyRadar, ThesisPulseCards
       thesis/
         page.tsx                     ← thesis list + inline create form
         [id]/page.tsx                ← thesis detail (sparkline, counter-arg, delta,
@@ -271,6 +279,7 @@ marketmind/
     components/
       layout/
         AppShell.tsx                 ← auth guard, CompanyProvider wrapper, CompanyPanel mount
+        DemoShell.tsx                ← public shell (no auth check), DemoHeader with "Sign in" CTA
         Header.tsx                   ← glassmorphism top nav, feed/thesis/portfolio/research links
       company/
         CompanyPanel.tsx             ← slide-out drawer: trajectory chart, thesis breakdown,

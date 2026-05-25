@@ -19,10 +19,13 @@ FEED_TTL = 25 * 3600  # 25h — expires after next day's feed is generated
 MOMENTUM_WINDOW_DAYS = 7
 
 _SUMMARY_PROMPT = """\
-You are a financial analyst. Summarise today's investment signal feed in 3-4 sentences.
-Be specific — name theses and companies. Focus on what is actionable.
+/no_think
+You are a market intelligence analyst writing a morning briefing. Be sharp and specific.
 
-Thesis signals today:
+Today: {total_signals} new signal{plural} across {thesis_count} active thesis{thesis_plural}.
+{activity_note}
+
+Thesis breakdown (momentum / signals today / top excerpt):
 {thesis_block}
 
 New companies surfaced:
@@ -31,7 +34,12 @@ New companies surfaced:
 Insider filing clusters:
 {insider_block}
 
-Write the summary now:"""
+Write exactly 2 sentences:
+1. Lead with THE single most significant development today — name a specific company or event from the excerpts above.
+2. Broader context — which theses are gaining or quiet, any pattern worth noting.
+
+Rules: Name actual companies. No words like "signals", "corpus", "thesis", "sentiment". \
+Sound like a sharp analyst texting a colleague — not a report."""
 
 _EXPLAIN_SUMMARY_PROMPT = """\
 /no_think
@@ -461,10 +469,25 @@ class FeedService:
         if not thesis_signals and not new_companies and not insider_clusters:
             return "No signals today. Run ingestion to populate the knowledge base."
 
-        thesis_block = "\n".join(
-            f"- {s.thesis_name}: {s.new_evidence_count} new signals, momentum {s.momentum}, confidence {s.confidence}"
-            for s in thesis_signals
-        ) or "None"
+        total_signals = sum(s.new_evidence_count for s in thesis_signals)
+        rising_count  = sum(1 for s in thesis_signals if s.momentum == "rising")
+
+        activity_note = ""
+        if rising_count >= 2:
+            activity_note = f"⚡ Active day — {rising_count} theses gaining momentum."
+        elif total_signals == 0:
+            activity_note = "Quiet day — low signal volume across all theses."
+
+        # Include the top excerpt per thesis so the LLM has concrete facts to reference
+        thesis_lines = []
+        for s in thesis_signals:
+            excerpt = f'  Excerpt: "{s.highlight[:180]}"' if s.highlight else ""
+            companies = f"  Companies: {', '.join(s.top_companies[:3])}" if s.top_companies else ""
+            thesis_lines.append(
+                f"- {s.thesis_name}: momentum {s.momentum}, {s.new_evidence_count} new signals\n"
+                f"{companies}\n{excerpt}"
+            )
+        thesis_block = "\n".join(thesis_lines) or "None"
 
         company_block = "\n".join(
             f"- {c.company_name} (related to: {', '.join(c.thesis_names)})"
@@ -479,6 +502,11 @@ class FeedService:
         try:
             return await self._llm.generate(
                 _SUMMARY_PROMPT.format(
+                    total_signals=total_signals,
+                    plural="s" if total_signals != 1 else "",
+                    thesis_count=len(thesis_signals),
+                    thesis_plural="es" if len(thesis_signals) != 1 else "",
+                    activity_note=activity_note,
                     thesis_block=thesis_block,
                     company_block=company_block,
                     insider_block=insider_block,
@@ -488,9 +516,10 @@ class FeedService:
             logger.warning("Feed summary generation failed, using fallback")
             parts = []
             if thesis_signals:
-                parts.append(f"{len(thesis_signals)} thesis signal(s) today.")
+                rising = [s.thesis_name for s in thesis_signals if s.momentum == "rising"]
+                if rising:
+                    parts.append(f"{', '.join(rising)} gaining momentum.")
+                parts.append(f"{total_signals} new signal(s) across {len(thesis_signals)} thesis areas.")
             if new_companies:
                 parts.append(f"{len(new_companies)} new company signal(s) surfaced.")
-            if insider_clusters:
-                parts.append(f"{len(insider_clusters)} insider buying cluster(s) detected.")
             return " ".join(parts)
