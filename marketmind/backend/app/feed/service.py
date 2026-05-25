@@ -82,6 +82,42 @@ class FeedService:
     async def invalidate(self, feed_date: date) -> None:
         await self._cache.delete(f"feed:generated:{feed_date.isoformat()}")
 
+    async def stream_explain_summary(self, feed_date: date):
+        """
+        Async generator — streams the plain-English feed summary token by token.
+        If cached, yields the full text as one chunk. If not, streams from LLM.
+        Caches the result once complete.
+        """
+        cache_key = f"feed:explain-summary:{feed_date.isoformat()}"
+        cached = await self._cache.get(cache_key)
+        if cached:
+            data = json.loads(cached)
+            yield data["summary"]
+            return
+
+        feed = await self.get_feed(feed_date)
+        if not feed.thesis_signals or not feed.summary:
+            yield "Nothing new came in today — the trackers are quiet. Check back after the next ingestion run."
+            return
+
+        full_text = ""
+        try:
+            async for token in self._llm.generate_stream(
+                _EXPLAIN_SUMMARY_PROMPT.format(original_summary=feed.summary)
+            ):
+                if "<think>" in token or "</think>" in token:
+                    continue
+                full_text += token
+                yield token
+        except Exception:
+            logger.warning("Explain summary stream failed for %s", feed_date)
+            fallback = feed.summary
+            yield fallback
+            full_text = fallback
+
+        result = {"summary": full_text.strip(), "from_cache": False}
+        await self._cache.set(cache_key, json.dumps(result), ttl_seconds=EXPLAIN_SUMMARY_TTL)
+
     async def get_explain_summary(self, feed_date: date) -> dict:
         """
         Plain-English rewrite of the daily briefing — same facts, casual tone, no jargon.

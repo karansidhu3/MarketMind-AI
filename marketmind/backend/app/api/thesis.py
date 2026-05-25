@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import date, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -177,6 +179,52 @@ async def explain_thesis(
         thesis_id=thesis_id,
         thesis_name=thesis.name,
         thesis_desc=thesis.description or "",
+    )
+
+
+@router.get("/{thesis_id}/explain/stream")
+async def stream_thesis_explain(
+    thesis_id: uuid.UUID,
+    _user: CurrentUser = Depends(get_current_user),
+    factory: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+    llm: LLMService = Depends(get_llm),
+    cache: CacheService = Depends(get_cache),
+    svc: ThesisService = Depends(get_thesis_service),
+):
+    """
+    SSE stream of the plain-English thesis narrative.
+
+    Event sequence:
+      data: {"trend": "strengthening", "from_cache": false}   ← always first
+      data: {"chunk": "token text..."}                         ← one or more
+      data: [DONE]
+
+    If cached, trend + full text arrive immediately as two events.
+    If not cached, trend arrives first so the UI can show the badge,
+    then narrative tokens stream as the LLM generates them.
+    """
+    thesis = await svc.get(thesis_id)
+    if not thesis:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thesis not found")
+
+    explain_svc = ThesisExplainService(factory=factory, llm=llm, cache=cache)
+
+    async def event_stream():
+        try:
+            async for event in explain_svc.stream_explain(
+                thesis_id=thesis_id,
+                thesis_name=thesis.name,
+                thesis_desc=thesis.description or "",
+            ):
+                yield f"data: {json.dumps(event)}\n\n"
+        except Exception:
+            pass
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 

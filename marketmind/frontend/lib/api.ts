@@ -151,6 +151,75 @@ export async function getCompany(normalisedName: string): Promise<import('./type
   return request(`/companies/${encodeURIComponent(normalisedName)}`)
 }
 
+// ── Streaming helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Parse a ReadableStream of SSE data into typed JSON events.
+ * Yields each parsed event object. Stops on [DONE].
+ */
+async function* parseSSEStream(body: ReadableStream<Uint8Array>): AsyncGenerator<Record<string, unknown>> {
+  const reader = body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? ''
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+        const payload = line.slice(6).trim()
+        if (payload === '[DONE]') return
+        try { yield JSON.parse(payload) } catch { /* skip malformed */ }
+      }
+    }
+  } finally {
+    reader.releaseLock()
+  }
+}
+
+/**
+ * Stream the plain-English feed explain summary token by token.
+ * Yields string tokens as they arrive. If cached, yields the full text at once.
+ */
+export async function* streamFeedExplainSummary(): AsyncGenerator<string> {
+  const token = getToken()
+  const res = await fetch(`${API_BASE}/feed/explain-summary/stream`, {
+    headers: { Authorization: token ? `Bearer ${token}` : '' },
+  })
+  if (res.status === 401) { localStorage.removeItem('mm_token'); window.location.href = '/login'; return }
+  if (!res.ok || !res.body) return
+  for await (const event of parseSSEStream(res.body)) {
+    if (typeof event.chunk === 'string') yield event.chunk
+  }
+}
+
+export type ThesisExplainStreamEvent =
+  | { type: 'meta'; trend: string; from_cache: boolean }
+  | { type: 'chunk'; text: string }
+
+/**
+ * Stream the plain-English thesis explain narrative.
+ * First yields a 'meta' event with trend + cache status, then 'chunk' events.
+ */
+export async function* streamThesisExplain(thesisId: string): AsyncGenerator<ThesisExplainStreamEvent> {
+  const token = getToken()
+  const res = await fetch(`${API_BASE}/theses/${thesisId}/explain/stream`, {
+    headers: { Authorization: token ? `Bearer ${token}` : '' },
+  })
+  if (res.status === 401) { localStorage.removeItem('mm_token'); window.location.href = '/login'; return }
+  if (!res.ok || !res.body) return
+  for await (const event of parseSSEStream(res.body)) {
+    if (typeof event.trend === 'string') {
+      yield { type: 'meta', trend: event.trend, from_cache: Boolean(event.from_cache) }
+    } else if (typeof event.chunk === 'string') {
+      yield { type: 'chunk', text: event.chunk }
+    }
+  }
+}
+
 // ── Research ──────────────────────────────────────────────────────────────────
 
 export async function research(query: string, daysBack?: number): Promise<ResearchResponse> {

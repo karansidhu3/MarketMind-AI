@@ -1,16 +1,30 @@
 from __future__ import annotations
 
+import json
+import logging
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.api.dependencies import CurrentUser, get_current_user, get_feed_service, get_session_factory
-from app.db.models import DailyFeed
+from app.api.dependencies import (
+    CurrentUser,
+    get_cache,
+    get_current_user,
+    get_feed_service,
+    get_llm,
+    get_session_factory,
+)
+from app.db.models import DailyFeed, Thesis
 from app.feed.schema import FeedResponse
 from app.feed.service import FeedService
+from app.services.cache_service import CacheService
+from app.services.llm_service import LLMService
+from app.thesis.explain import ThesisExplainService
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/feed", tags=["feed"])
 
 
@@ -52,6 +66,34 @@ async def get_explain_summary(
     return await svc.get_explain_summary(date.today())
 
 
+@router.get("/explain-summary/stream")
+async def stream_explain_summary(
+    _user: CurrentUser = Depends(get_current_user),
+    svc: FeedService = Depends(get_feed_service),
+):
+    """
+    SSE stream of the plain-English feed summary.
+    Tokens arrive as: data: {"chunk": "text"}\n\n
+    Stream ends with:  data: [DONE]\n\n
+
+    If cached, the full text is sent as a single chunk immediately.
+    If not cached, tokens stream as the LLM generates them.
+    """
+    async def event_stream():
+        try:
+            async for chunk in svc.stream_explain_summary(date.today()):
+                yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+        except Exception:
+            logger.warning("Feed explain-summary stream error")
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 @router.get("/{feed_date}", response_model=FeedResponse)
 async def get_feed_by_date(
     feed_date: date,
@@ -64,10 +106,66 @@ async def get_feed_by_date(
 
 @router.post("/regenerate", status_code=status.HTTP_202_ACCEPTED)
 async def regenerate_feed(
+    background_tasks: BackgroundTasks,
     _user: CurrentUser = Depends(get_current_user),
     svc: FeedService = Depends(get_feed_service),
+    factory: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+    llm: LLMService = Depends(get_llm),
+    cache: CacheService = Depends(get_cache),
 ) -> dict:
-    """Invalidate today's cache and trigger regeneration."""
+    """
+    Invalidate today's cache and trigger regeneration.
+    Also fires a background task to pre-warm all explain caches so Explain
+    mode loads instantly when the user opens the app.
+    """
     await svc.invalidate(date.today())
     feed = await svc.get_feed(date.today())
+
+    # Pre-warm explain caches in background — by the time the user opens the
+    # app after the morning ingestion run, all Explain content is ready.
+    explain_svc = ThesisExplainService(factory=factory, llm=llm, cache=cache)
+    background_tasks.add_task(_warm_explain_caches, svc, explain_svc, date.today(), factory)
+
     return {"status": "regenerated", "generated_at": feed.generated_at.isoformat()}
+
+
+# ── Background task ───────────────────────────────────────────────────────────
+
+async def _warm_explain_caches(
+    feed_svc: FeedService,
+    explain_svc: ThesisExplainService,
+    feed_date: date,
+    factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """
+    Pre-generate and cache all explain content after feed regeneration.
+    Runs as a background task — does not block the regenerate response.
+    """
+    # 1. Feed-level plain-English summary
+    try:
+        await feed_svc.get_explain_summary(feed_date)
+        logger.info("Pre-warmed feed explain summary for %s", feed_date)
+    except Exception:
+        logger.warning("Failed to pre-warm feed explain summary for %s", feed_date)
+
+    # 2. Per-thesis narratives (one LLM call each)
+    try:
+        async with factory() as session:
+            theses = (
+                await session.execute(
+                    select(Thesis).where(Thesis.is_active == True)  # noqa: E712
+                )
+            ).scalars().all()
+
+        for thesis in theses:
+            try:
+                await explain_svc.get_explain(
+                    thesis_id=thesis.id,
+                    thesis_name=thesis.name,
+                    thesis_desc=thesis.description or "",
+                )
+                logger.info("Pre-warmed explain for '%s'", thesis.name)
+            except Exception:
+                logger.warning("Failed to pre-warm explain for '%s'", thesis.name)
+    except Exception:
+        logger.warning("Failed to load theses for explain pre-warm")

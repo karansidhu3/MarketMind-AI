@@ -6,11 +6,11 @@ import Link from 'next/link'
 import AppShell from '@/components/layout/AppShell'
 import SignalCard from '@/components/feed/SignalCard'
 import CompanyRadar from '@/components/feed/CompanyRadar'
-import { getFeed, getFeedDates, getCompanyRadar, regenerateFeed, getThesisExplain, getFeedExplainSummary, getAlerts } from '@/lib/api'
+import { getFeed, getFeedDates, getCompanyRadar, regenerateFeed, getAlerts, streamFeedExplainSummary, streamThesisExplain } from '@/lib/api'
 import { formatDate, greet, cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 import { useCompany } from '@/contexts/CompanyContext'
-import type { FeedResponse, CompanyRadarItem, ThesisSignal, ThesisExplain, CompanyAlert } from '@/lib/types'
+import type { FeedResponse, CompanyRadarItem, ThesisSignal, CompanyAlert } from '@/lib/types'
 
 // ── Skeleton components ───────────────────────────────────────────────────────
 
@@ -116,18 +116,27 @@ function FeedHero({
   onToggleMode: (val: boolean) => void
   isHistorical?: boolean
 }) {
-  const [explainSummary, setExplainSummary] = useState<string | null>(null)
-  const [explainLoading, setExplainLoading] = useState(false)
+  const [explainText,      setExplainText]      = useState('')
+  const [explainStreaming, setExplainStreaming]  = useState(false)
+  // Ref prevents re-fetching if user toggles Data→Explain→Data→Explain
+  const explainStarted = React.useRef(false)
 
-  // Fetch plain-English summary the first time Explain mode is activated
   useEffect(() => {
-    if (!explainMode || explainSummary !== null) return
-    setExplainLoading(true)
-    getFeedExplainSummary()
-      .then(r => setExplainSummary(r.summary))
-      .catch(() => setExplainSummary('Could not generate plain-English briefing.'))
-      .finally(() => setExplainLoading(false))
-  }, [explainMode]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (!explainMode || explainStarted.current) return
+    explainStarted.current = true
+    setExplainStreaming(true)
+    ;(async () => {
+      try {
+        for await (const chunk of streamFeedExplainSummary()) {
+          setExplainText(prev => prev + chunk)
+        }
+      } catch {
+        setExplainText('Could not generate plain-English briefing.')
+      } finally {
+        setExplainStreaming(false)
+      }
+    })()
+  }, [explainMode])
 
   const totalNewSignals = feed.thesis_signals.reduce(
     (sum, s) => sum + s.new_evidence_count, 0
@@ -139,11 +148,6 @@ function FeedHero({
     { value: feed.new_companies.length,       label: 'new companies'    },
     { value: feed.insider_clusters.length,    label: 'insider clusters' },
   ]
-
-  // Which summary to show
-  const summaryText = explainMode
-    ? (explainLoading ? null : explainSummary)
-    : feed.summary
 
   return (
     <div className="relative bg-surface border border-border rounded-2xl p-6 mb-8 overflow-hidden">
@@ -211,20 +215,29 @@ function FeedHero({
           </div>}
         </div>
 
-        {/* Summary — switches between analyst tone and casual tone */}
-        {explainLoading ? (
+        {/* Summary — Data mode: analyst tone / Explain mode: streams in */}
+        {!explainMode ? (
+          feed.summary ? (
+            <p className="text-text-primary text-sm leading-relaxed mb-5">{feed.summary}</p>
+          ) : (
+            <p className="text-text-tertiary text-sm italic mb-5">
+              No summary available — click Regenerate to synthesise today&apos;s signals.
+            </p>
+          )
+        ) : explainStreaming && !explainText ? (
+          /* Waiting for first token — show skeleton */
           <div className="space-y-2 mb-5">
             <Skeleton className="h-3.5 w-full" />
             <Skeleton className="h-3.5 w-[88%]" />
             <Skeleton className="h-3.5 w-3/4" />
           </div>
-        ) : summaryText ? (
-          <p className="text-text-primary text-sm leading-relaxed mb-5">
-            {summaryText}
-          </p>
         ) : (
-          <p className="text-text-tertiary text-sm italic mb-5">
-            No summary available — click Regenerate to synthesise today's signals.
+          /* Text arrived — show with blinking cursor while still streaming */
+          <p className="text-text-primary text-sm leading-relaxed mb-5">
+            {explainText || 'Could not generate plain-English briefing.'}
+            {explainStreaming && (
+              <span className="inline-block w-[2px] h-[0.9em] bg-text-primary ml-[2px] align-middle animate-pulse" />
+            )}
           </p>
         )}
 
@@ -275,24 +288,38 @@ const TREND_CONFIG = {
 }
 
 function ExplainCard({ signal }: { signal: ThesisSignal }) {
-  const [data,    setData]    = useState<ThesisExplain | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState('')
+  const [narrative,  setNarrative]  = useState('')
+  const [streaming,  setStreaming]  = useState(true)
+  const [trend,      setTrend]      = useState('stable')
+  const [fromCache,  setFromCache]  = useState(false)
+  const [error,      setError]      = useState('')
 
   useEffect(() => {
-    setLoading(true)
+    setStreaming(true)
+    setNarrative('')
     setError('')
-    getThesisExplain(signal.thesis_id)
-      .then(setData)
-      .catch(e => setError(e instanceof Error ? e.message : 'Failed to load explanation.'))
-      .finally(() => setLoading(false))
+    ;(async () => {
+      try {
+        for await (const event of streamThesisExplain(signal.thesis_id)) {
+          if (event.type === 'meta') {
+            setTrend(event.trend)
+            setFromCache(event.from_cache)
+          } else {
+            setNarrative(prev => prev + event.text)
+          }
+        }
+      } catch {
+        setError('Could not generate explanation.')
+      } finally {
+        setStreaming(false)
+      }
+    })()
   }, [signal.thesis_id])
 
-  if (loading) return <ExplainCardSkeleton />
+  // Show skeleton only until the trend metadata arrives (first event)
+  if (streaming && !trend && !narrative) return <ExplainCardSkeleton />
 
-  const trend     = data?.trend ?? 'stable'
-  const cfg       = TREND_CONFIG[trend] ?? TREND_CONFIG.stable
-  const narrative = data?.narrative ?? (error ? 'Could not generate explanation.' : '')
+  const cfg = TREND_CONFIG[trend as keyof typeof TREND_CONFIG] ?? TREND_CONFIG.stable
 
   return (
     <Link
@@ -313,21 +340,29 @@ function ExplainCard({ signal }: { signal: ThesisSignal }) {
         </span>
       </div>
 
-      {/* Plain English narrative */}
+      {/* Plain English narrative — streams in with blinking cursor */}
       {error ? (
         <p className="text-text-tertiary text-xs italic">{error}</p>
+      ) : streaming && !narrative ? (
+        <div className="space-y-1.5">
+          <Skeleton className="h-3.5 w-full" />
+          <Skeleton className="h-3.5 w-[85%]" />
+        </div>
       ) : (
         <p className="text-text-secondary text-sm leading-relaxed">
           {narrative}
+          {streaming && (
+            <span className="inline-block w-[2px] h-[0.9em] bg-text-secondary ml-[2px] align-middle animate-pulse" />
+          )}
         </p>
       )}
 
-      {/* Footer: subtle signal count + cache indicator */}
+      {/* Footer: signal count + cache indicator */}
       <div className="mt-3 flex items-center gap-2">
         <span className="text-text-tertiary text-[11px]">
           {signal.new_evidence_count} new signal{signal.new_evidence_count !== 1 ? 's' : ''} today
         </span>
-        {data?.from_cache && (
+        {fromCache && (
           <span className="text-text-tertiary text-[11px] opacity-60">· cached</span>
         )}
       </div>

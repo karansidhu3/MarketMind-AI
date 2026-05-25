@@ -4,7 +4,9 @@ model SDK. All embedding and generation calls go through this interface.
 """
 from __future__ import annotations
 
+import json
 from abc import ABC, abstractmethod
+from typing import AsyncGenerator
 
 import httpx
 
@@ -62,6 +64,41 @@ class OllamaLLMService(LLMService):
         resp = await self._client.post("/api/generate", json=body)
         resp.raise_for_status()
         return resp.json()["response"]
+
+    async def generate_stream(
+        self,
+        prompt: str,
+        system: str | None = None,
+        think: bool = False,
+    ) -> AsyncGenerator[str, None]:
+        """
+        Stream tokens from the LLM as they are generated.
+
+        Yields individual text tokens as strings. The caller accumulates them.
+        Same think/no_think logic as generate() — latency-sensitive paths use
+        the default think=False.
+        """
+        if not think:
+            prompt = f"/no_think\n\n{prompt}"
+
+        body: dict = {"model": self._generate_model, "prompt": prompt, "stream": True}
+        if system:
+            body["system"] = system
+
+        async with self._client.stream("POST", "/api/generate", json=body) as resp:
+            resp.raise_for_status()
+            async for line in resp.aiter_lines():
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                token = data.get("response", "")
+                if token:
+                    yield token
+                if data.get("done"):
+                    break
 
     async def close(self) -> None:
         await self._client.aclose()
