@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { X, ExternalLink, TrendingUp, TrendingDown, Minus, Calendar, FileText, Building2 } from 'lucide-react'
+import { X, ExternalLink, TrendingUp, TrendingDown, Minus, Calendar, FileText, Building2, ArrowUpRight } from 'lucide-react'
+import Link from 'next/link'
 import { useCompany } from '@/contexts/CompanyContext'
 import { getCompany } from '@/lib/api'
 import { cn, formatDateShort } from '@/lib/utils'
@@ -123,7 +124,7 @@ function EvidenceRow({ ev }: { ev: CompanyEvidenceItem }) {
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-export default function CompanyPanel() {
+export default function CompanyPanel({ demoMode = false }: { demoMode?: boolean }) {
   const { selectedCompany, closeCompany } = useCompany()
   const [data, setData]       = useState<CompanyDetail | null>(null)
   const [loading, setLoading] = useState(false)
@@ -131,13 +132,14 @@ export default function CompanyPanel() {
   const panelRef              = useRef<HTMLDivElement>(null)
   const [activeTab, setActiveTab] = useState<'overview' | 'evidence'>('overview')
 
-  // Fetch company data whenever selected changes
+  // Fetch company data whenever selected changes (skip in demo mode)
   useEffect(() => {
     if (!selectedCompany) {
       setData(null)
       setError(null)
       return
     }
+    if (demoMode) return   // demo: panel opens but shows sign-in prompt
     let cancelled = false
     setLoading(true)
     setError(null)
@@ -146,7 +148,7 @@ export default function CompanyPanel() {
       .then(d => { if (!cancelled) { setData(d); setLoading(false) } })
       .catch(e => { if (!cancelled) { setError(e.message); setLoading(false) } })
     return () => { cancelled = true }
-  }, [selectedCompany])
+  }, [selectedCompany, demoMode])
 
   // Close on Escape
   useEffect(() => {
@@ -188,6 +190,10 @@ export default function CompanyPanel() {
                 <div className="h-4 w-36 bg-elevated rounded animate-pulse" />
                 <div className="h-3 w-20 bg-elevated rounded animate-pulse" />
               </div>
+            ) : demoMode && selectedCompany ? (
+              <h2 className="text-text-primary font-semibold text-base leading-tight truncate capitalize">
+                {selectedCompany.replace(/-/g, ' ')}
+              </h2>
             ) : data ? (
               <>
                 <div className="flex items-center gap-2">
@@ -239,6 +245,31 @@ export default function CompanyPanel() {
 
         {/* ── Body ── */}
         <div className="flex-1 overflow-y-auto">
+          {/* Demo mode: no API call — prompt to sign in */}
+          {demoMode && selectedCompany && (
+            <div className="flex flex-col items-center justify-center h-full px-8 text-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center">
+                <Building2 size={22} className="text-accent" />
+              </div>
+              <div>
+                <p className="text-text-primary text-sm font-semibold mb-1">
+                  {selectedCompany.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                </p>
+                <p className="text-text-tertiary text-xs leading-relaxed">
+                  Company deep-dives show 4-week trajectory, thesis exposure breakdown,
+                  and the full evidence trail. Available with live data.
+                </p>
+              </div>
+              <Link
+                href="/login"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent text-white text-xs font-medium hover:bg-accent/90 transition-colors"
+              >
+                Sign in for live data
+                <ArrowUpRight size={12} />
+              </Link>
+            </div>
+          )}
+
           {loading && (
             <div className="p-5 space-y-4">
               {[...Array(4)].map((_, i) => (

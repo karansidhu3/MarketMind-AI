@@ -20,7 +20,7 @@ export default function DemoShell({ children }: { children: React.ReactNode }) {
         <main className="pt-14 min-h-screen">
           {children}
         </main>
-        <CompanyPanel />
+        <CompanyPanel demoMode />
       </div>
     </CompanyProvider>
   )
