@@ -65,6 +65,16 @@ class GapCompany(BaseModel):
     thesis_confidence: float            # highest confidence among the theses it appears in
 
 
+class FeedGapSignal(BaseModel):
+    """A gap company (not held) that had new signals today. Used by the feed page."""
+    company_name: str
+    normalised_name: str
+    ticker: str | None
+    thesis_names: list[str]
+    new_signals_today: int   # CompanySignal entries updated since midnight UTC
+    doc_count: int           # all-time unique document count
+
+
 class PortfolioAlignment(BaseModel):
     total_holdings: int
     overall_coverage: float             # weighted average coverage across all theses

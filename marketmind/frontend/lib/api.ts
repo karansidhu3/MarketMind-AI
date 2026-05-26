@@ -145,6 +145,10 @@ export async function getPortfolioAlignment(): Promise<import('./types').Portfol
   return request('/portfolio/alignment')
 }
 
+export async function getPortfolioFeedSignals(): Promise<import('./types').FeedGapSignal[]> {
+  return request('/portfolio/feed-signals')
+}
+
 // ── Company deep-dive ─────────────────────────────────────────────────────────
 
 export async function getCompany(normalisedName: string): Promise<import('./types').CompanyDetail> {

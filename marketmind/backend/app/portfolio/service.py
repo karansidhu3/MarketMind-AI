@@ -11,12 +11,15 @@ import logging
 import uuid
 from collections import defaultdict
 
-from sqlalchemy import select
+from datetime import datetime, timezone
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.db.models import CompanySignal, Holding, Thesis
+from app.db.models import CompanySignal, Evidence, Holding, Thesis
 from app.ingestion.normalise import normalise
 from app.portfolio.schema import (
+    FeedGapSignal,
     GapCompany,
     HoldingCreate,
     HoldingOut,
@@ -24,8 +27,6 @@ from app.portfolio.schema import (
     PortfolioAlignment,
     ThesisExposure,
 )
-from app.thesis.decay import weighted_confidence
-from app.db.models import Evidence
 
 logger = logging.getLogger(__name__)
 
@@ -268,3 +269,96 @@ class PortfolioService:
             theses=exposures,
             gaps=gaps,
         )
+
+    # ── Feed gap signals ─────────────────────────────────────────────────────
+
+    async def get_feed_gap_signals(self) -> list[FeedGapSignal]:
+        """
+        Companies in the corpus that the user doesn't hold and that had new
+        CompanySignal activity today (since midnight UTC). Used by the feed
+        page to surface portfolio gaps with fresh signals without a full
+        alignment computation.
+
+        Returns empty list when there are no holdings or no gap activity today.
+        """
+        today_start = datetime.now(timezone.utc).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+
+        async with self._factory() as session:
+            holdings = (await session.execute(select(Holding))).scalars().all()
+            if not holdings:
+                return []
+
+            held_norms: set[str] = (
+                {normalise(h.ticker) for h in holdings}
+                | {normalise(h.company_name) for h in holdings}
+            )
+            held_norms.discard("")
+
+            # Companies with CompanySignal activity since midnight UTC
+            today_rows = (await session.execute(
+                select(
+                    CompanySignal.normalised_name,
+                    CompanySignal.company_name,
+                    CompanySignal.ticker,
+                    func.count(CompanySignal.id).label("signal_count"),
+                )
+                .where(CompanySignal.last_seen >= today_start)
+                .group_by(
+                    CompanySignal.normalised_name,
+                    CompanySignal.company_name,
+                    CompanySignal.ticker,
+                )
+            )).all()
+
+            if not today_rows:
+                return []
+
+            # Keep only companies the user doesn't hold
+            gap_rows = [
+                row for row in today_rows
+                if normalise(row.normalised_name) not in held_norms
+                and (not row.ticker or normalise(row.ticker) not in held_norms)
+            ]
+            if not gap_rows:
+                return []
+
+            gap_norm_names = [row.normalised_name for row in gap_rows]
+
+            # All-time unique doc counts per gap company
+            doc_count_rows = (await session.execute(
+                select(
+                    CompanySignal.normalised_name,
+                    func.count(func.distinct(CompanySignal.document_id)).label("doc_count"),
+                )
+                .where(CompanySignal.normalised_name.in_(gap_norm_names))
+                .group_by(CompanySignal.normalised_name)
+            )).all()
+            doc_counts = {row.normalised_name: row.doc_count for row in doc_count_rows}
+
+            # Thesis names per company
+            thesis_rows = (await session.execute(
+                select(CompanySignal.normalised_name, Thesis.name)
+                .join(Thesis, CompanySignal.thesis_id == Thesis.id)
+                .where(CompanySignal.normalised_name.in_(gap_norm_names))
+                .distinct()
+            )).all()
+            thesis_map: dict[str, list[str]] = defaultdict(list)
+            for row in thesis_rows:
+                if row.name not in thesis_map[row.normalised_name]:
+                    thesis_map[row.normalised_name].append(row.name)
+
+        results = [
+            FeedGapSignal(
+                company_name=row.company_name,
+                normalised_name=row.normalised_name,
+                ticker=row.ticker,
+                thesis_names=thesis_map.get(row.normalised_name, []),
+                new_signals_today=row.signal_count,
+                doc_count=doc_counts.get(row.normalised_name, 0),
+            )
+            for row in gap_rows
+        ]
+        results.sort(key=lambda x: x.new_signals_today, reverse=True)
+        return results[:8]

@@ -1,17 +1,17 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
-import { RefreshCw, AlertCircle, Sparkles, Zap, TrendingUp, TrendingDown, Minus, BookOpen, BarChart2, Bell, ChevronLeft, ChevronRight, Calendar, Quote, Layers } from 'lucide-react'
+import { RefreshCw, AlertCircle, Sparkles, Zap, TrendingUp, TrendingDown, Minus, BookOpen, BarChart2, Bell, ChevronLeft, ChevronRight, Calendar, Quote, Layers, BriefcaseBusiness } from 'lucide-react'
 import { Tooltip } from '@/components/ui/Tooltip'
 import Link from 'next/link'
 import AppShell from '@/components/layout/AppShell'
 import SignalCard from '@/components/feed/SignalCard'
 import CompanyRadar from '@/components/feed/CompanyRadar'
-import { getFeed, getFeedDates, getCompanyRadar, regenerateFeed, getAlerts, streamFeedExplainSummary, streamThesisExplain, streamUnifiedExplain } from '@/lib/api'
+import { getFeed, getFeedDates, getCompanyRadar, regenerateFeed, getAlerts, streamFeedExplainSummary, streamThesisExplain, streamUnifiedExplain, getPortfolioFeedSignals } from '@/lib/api'
 import { formatDate, greet, cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 import { useCompany } from '@/contexts/CompanyContext'
-import type { FeedResponse, CompanyRadarItem, ThesisSignal, CompanyAlert } from '@/lib/types'
+import type { FeedResponse, CompanyRadarItem, ThesisSignal, CompanyAlert, FeedGapSignal } from '@/lib/types'
 
 // ── Skeleton components ───────────────────────────────────────────────────────
 
@@ -581,6 +581,40 @@ function UnifiedExplainBlock({ signals }: { signals: ThesisSignal[] }) {
   )
 }
 
+// ── Portfolio gap signal row ──────────────────────────────────────────────────
+
+function GapSignalRow({ gap }: { gap: FeedGapSignal }) {
+  const { openCompany } = useCompany()
+  return (
+    <button
+      onClick={() => openCompany(gap.normalised_name)}
+      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-surface border border-border hover:bg-elevated hover:border-accent/20 transition-all text-left group"
+    >
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-text-primary text-sm font-medium group-hover:text-accent transition-colors">
+            {gap.company_name}
+          </span>
+          {gap.ticker && (
+            <span className="text-text-tertiary text-[11px] bg-elevated border border-border/60 px-1.5 py-0.5 rounded-md font-mono">
+              {gap.ticker}
+            </span>
+          )}
+        </div>
+        <p className="text-text-tertiary text-[11px] mt-0.5 truncate">
+          {gap.thesis_names.slice(0, 2).map(t => t.split(' ').slice(0, 2).join(' ')).join(' · ')}
+        </p>
+      </div>
+      <div className="shrink-0 text-right">
+        <span className="text-accent text-xs font-semibold bg-accent/10 border border-accent/20 px-2 py-0.5 rounded-full">
+          +{gap.new_signals_today} today
+        </span>
+        <p className="text-text-tertiary text-[10px] mt-1 tabular-nums">{gap.doc_count} total docs</p>
+      </div>
+    </button>
+  )
+}
+
 // ── Empty state ───────────────────────────────────────────────────────────────
 
 function EmptySignals() {
@@ -742,6 +776,7 @@ export default function FeedPage() {
   const [regenerating, setRegenerating] = useState(false)
   // Data = technical cards, Explain = plain-English narrative per thesis (ADR-022)
   const [explainMode,  setExplainMode]  = useState(false)
+  const [portfolioGaps, setPortfolioGaps] = useState<FeedGapSignal[]>([])
   const { toast } = useToast()
 
   const isHistorical = viewDate !== null
@@ -755,10 +790,10 @@ export default function FeedPage() {
     return map
   }, [radar])
 
-  // Load radar + alerts once (always current, not historical)
+  // Load radar + alerts + portfolio gaps once (always current, not historical)
   useEffect(() => {
-    Promise.all([getCompanyRadar(), getAlerts(), getFeedDates()])
-      .then(([r, a, d]) => { setRadar(r); setAlerts(a); setFeedDates(d) })
+    Promise.all([getCompanyRadar(), getAlerts(), getFeedDates(), getPortfolioFeedSignals()])
+      .then(([r, a, d, g]) => { setRadar(r); setAlerts(a); setFeedDates(d); setPortfolioGaps(g) })
       .catch(() => {})
   }, [])
 
@@ -924,6 +959,24 @@ export default function FeedPage() {
                     ))
                   )}
                 </div>
+
+                {/* Portfolio gaps with activity today */}
+                {portfolioGaps.length > 0 && !explainMode && (
+                  <section className="pt-6">
+                    <div className="flex items-center gap-1.5 mb-3 px-1">
+                      <BriefcaseBusiness size={11} className="text-text-tertiary" />
+                      <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest">
+                        Portfolio Gaps · Active Today
+                      </h2>
+                      <Tooltip content="Companies on the radar that you don't hold, with new signals since today's ingestion." />
+                    </div>
+                    <div className="space-y-2">
+                      {portfolioGaps.map(gap => (
+                        <GapSignalRow key={gap.normalised_name} gap={gap} />
+                      ))}
+                    </div>
+                  </section>
+                )}
 
                 {/* Insider clusters */}
                 {feed.insider_clusters.length > 0 && (

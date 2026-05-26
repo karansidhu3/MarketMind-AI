@@ -203,6 +203,15 @@ export interface GapCompany {
   thesis_confidence: number
 }
 
+export interface FeedGapSignal {
+  company_name: string
+  normalised_name: string
+  ticker: string | null
+  thesis_names: string[]
+  new_signals_today: number
+  doc_count: number
+}
+
 export interface PortfolioAlignment {
   total_holdings: number
   overall_coverage: number

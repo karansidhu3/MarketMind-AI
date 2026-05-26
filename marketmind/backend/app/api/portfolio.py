@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.api.dependencies import CurrentUser, get_current_user, get_session_factory
-from app.portfolio.schema import HoldingCreate, HoldingOut, HoldingUpdate, PortfolioAlignment
+from app.portfolio.schema import FeedGapSignal, HoldingCreate, HoldingOut, HoldingUpdate, PortfolioAlignment
 from app.portfolio.service import PortfolioService
 
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
@@ -57,6 +57,19 @@ async def delete_holding(
     ok = await svc.delete_holding(holding_id)
     if not ok:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Holding not found")
+
+
+@router.get("/feed-signals", response_model=list[FeedGapSignal])
+async def get_portfolio_feed_signals(
+    _user: CurrentUser = Depends(get_current_user),
+    svc: PortfolioService = Depends(_svc),
+) -> list[FeedGapSignal]:
+    """
+    Gap companies (not held, in corpus) that had new signals today.
+    Used by the feed page to surface portfolio gaps without a full alignment call.
+    Returns an empty list when there are no holdings or no activity today.
+    """
+    return await svc.get_feed_gap_signals()
 
 
 @router.get("/alignment", response_model=PortfolioAlignment)
