@@ -10,11 +10,18 @@ EDGAR company-specific Atom feed URL:
   /cgi-bin/browse-edgar?action=getcompany&CIK={ticker}&type={filing_type}&output=atom
 
 The CIK param accepts ticker symbols directly — EDGAR resolves them.
+
+The connector fetches ACTUAL filing text, not just the EDGAR index entry.
+Each Atom feed entry only contains 150–200 chars of metadata ("Filed: 2026-05-20
+AccNo: ... Size: ... Item 2.02: Results of Operations"). The real document is one
+HTTP hop further. We follow the index link, find the primary .htm file, and fetch
+that text so the keyword-gate and LLM scoring have real content to work with.
 """
 from __future__ import annotations
 
 import asyncio
 import logging
+import re
 
 import feedparser
 import httpx
@@ -25,20 +32,31 @@ from app.ingestion.schema import Document, SourceType
 logger = logging.getLogger(__name__)
 
 _EDGAR_BASE = "https://www.sec.gov/cgi-bin/browse-edgar"
+_SEC_ROOT   = "https://www.sec.gov"
 _HEADERS = {
     "User-Agent": "MarketMind-AI/0.1 (research; contact@marketmind.ai)",
     "Accept-Encoding": "gzip, deflate",
 }
-# EDGAR rate-limits aggressive scrapers — 0.4s between requests keeps us safe
-_REQUEST_DELAY = 0.4
+# EDGAR rate-limits aggressive scrapers — 0.5s between requests keeps us safe.
+# We now make up to 3 requests per filing (feed → index → document), so this
+# matters more than before.
+_REQUEST_DELAY = 0.5
+
+# How much filing text to keep. Larger than worker's MAX_EMBED_CHARS (4000)
+# so the keyword gate has enough text to find matches — especially for 10-Qs
+# where the cover page / TOC precedes the substantive business content.
+_MAX_FILING_CHARS = 8_000
 
 
 class TargetedSECConnector(BaseConnector):
     """
-    Fetch SEC filings for a specific list of tickers.
+    Fetch SEC filings for a specific list of tickers and extract actual text.
 
     Each ticker gets its own EDGAR company feed request, so results are
     company-specific rather than whatever the daily EDGAR fire hose returns.
+
+    For each filing, we follow the EDGAR index link and fetch the primary
+    .htm document so the keyword-threshold gate has real content to evaluate.
     """
 
     source_type: SourceType = "rss"
@@ -74,16 +92,27 @@ class TargetedSECConnector(BaseConnector):
                         resp = await client.get(url)
                         resp.raise_for_status()
                         feed = feedparser.parse(resp.text)
+                        await asyncio.sleep(_REQUEST_DELAY)
+
                         for entry in feed.entries:
-                            doc = self._entry_to_document(entry, filing_type, ticker)
+                            # Follow the index link to get actual filing text.
+                            # Falls back to feed summary if the fetch fails.
+                            index_url = entry.get("link", "")
+                            primary_text = await self._fetch_primary_text(
+                                client, index_url
+                            )
+
+                            doc = self._entry_to_document(
+                                entry, filing_type, ticker, primary_text
+                            )
                             if doc.id not in seen_ids:
                                 seen_ids.add(doc.id)
                                 all_docs.append(doc)
+
                     except Exception as exc:
                         logger.warning(
                             "TargetedSEC: failed %s %s — %s", ticker, filing_type, exc
                         )
-                    # Respect EDGAR rate limits
                     await asyncio.sleep(_REQUEST_DELAY)
 
         logger.info(
@@ -93,20 +122,78 @@ class TargetedSECConnector(BaseConnector):
         )
         return all_docs
 
+    async def _fetch_primary_text(
+        self, client: httpx.AsyncClient, index_url: str
+    ) -> str:
+        """
+        Fetch the actual SEC filing text from an EDGAR index URL.
+
+        The Atom feed entry link points to the filing INDEX page, not the
+        document itself. We:
+          1. Fetch the index HTML and find .htm document links
+          2. Fetch the first (primary) document
+          3. Strip HTML tags + entities and collapse whitespace
+
+        Returns empty string on any failure (caller falls back to feed summary).
+        """
+        if not index_url:
+            return ""
+        try:
+            # Step 1: fetch the filing index
+            idx_resp = await client.get(index_url)
+            await asyncio.sleep(_REQUEST_DELAY)
+
+            # Extract all .htm file paths listed in the index
+            # Pattern: href="/Archives/edgar/data/.../filename.htm"
+            hrefs = re.findall(
+                r'href="(/Archives/edgar/data/[^"]+\.htm)"',
+                idx_resp.text,
+            )
+            if not hrefs:
+                logger.debug("TargetedSEC: no .htm documents in index %s", index_url)
+                return ""
+
+            # Step 2: fetch the primary filing document
+            # The first href is typically the primary document (the 8-K, 10-Q, etc.)
+            doc_url = f"{_SEC_ROOT}{hrefs[0]}"
+            doc_resp = await client.get(doc_url)
+            await asyncio.sleep(_REQUEST_DELAY)
+
+            # Step 3: strip HTML — SEC filings use XBRL inline tags, standard
+            # HTML, and HTML entities. Strip all of them for clean plain text.
+            text = re.sub(r"<[^>]+>", " ", doc_resp.text)       # remove tags
+            text = re.sub(r"&#?\w+;", " ", text)                 # remove entities
+            text = re.sub(r"\s+", " ", text).strip()             # normalise whitespace
+
+            return text[:_MAX_FILING_CHARS]
+
+        except Exception as exc:
+            logger.debug(
+                "TargetedSEC: could not fetch filing text from %s: %s", index_url, exc
+            )
+            return ""
+
     def _entry_to_document(
         self,
         entry: feedparser.FeedParserDict,
         filing_type: str,
         ticker: str,
+        primary_text: str = "",
     ) -> Document:
         import calendar
         from datetime import datetime, timezone
 
         seed = entry.get("link") or entry.get("id") or entry.get("title", "")
-        content = ""
+
+        # Fall back to feed summary when we couldn't fetch the actual filing.
+        # This preserves UUID dedup — the same filing always gets the same ID
+        # regardless of whether text extraction succeeded.
+        fallback = ""
         if entry.get("content"):
-            content = entry["content"][0].get("value", "")
-        content = content or entry.get("summary", "") or entry.get("title", "")
+            fallback = entry["content"][0].get("value", "")
+        fallback = fallback or entry.get("summary", "") or entry.get("title", "")
+
+        content = primary_text if primary_text else fallback
 
         created_at = datetime.now(timezone.utc)
         for key in ("published_parsed", "updated_parsed"):

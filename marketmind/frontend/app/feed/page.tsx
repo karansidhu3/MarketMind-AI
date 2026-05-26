@@ -104,60 +104,6 @@ function RadarRowSkeleton() {
   )
 }
 
-// ── Feed hero helpers ─────────────────────────────────────────────────────────
-
-// Short thesis name for the pulse cards
-function shortName(name: string): string {
-  const map: Record<string, string> = {
-    'AI Infrastructure Bottlenecks':        'AI Infra',
-    'Semiconductor Supply Chain Stress':    'Semi Chain',
-    'Energy Grid Modernisation':            'Grid',
-    'Defense Production Ramp':              'Defense',
-    'Data Center Physical Infrastructure':  'Data Center',
-  }
-  return map[name] ?? name.split(' ').slice(0, 2).join(' ')
-}
-
-function ThesisPulseCard({ signal }: { signal: ThesisSignal }) {
-  const rising  = signal.momentum === 'rising'
-  const falling = signal.momentum === 'falling'
-  const Icon    = rising ? TrendingUp : falling ? TrendingDown : Minus
-  const pct     = Math.round(signal.confidence * 100)
-
-  return (
-    <Link
-      href={`/thesis/${signal.thesis_id}`}
-      className={cn(
-        'flex-1 min-w-[88px] sm:min-w-[110px] max-w-[160px] rounded-xl border p-3 transition-all duration-150 hover:scale-[1.02] hover:shadow-sm',
-        rising  ? 'border-green/30 bg-green/5 hover:bg-green/8' :
-        falling ? 'border-red/30 bg-red/5 hover:bg-red/8' :
-                  'border-border bg-elevated hover:bg-surface'
-      )}
-    >
-      <div className="flex items-center gap-1 mb-1.5">
-        <Icon
-          size={11}
-          className={rising ? 'text-green' : falling ? 'text-red' : 'text-text-tertiary'}
-        />
-        <p className="text-text-primary text-[11px] font-semibold truncate leading-tight">
-          {shortName(signal.thesis_name)}
-        </p>
-      </div>
-      <p className="text-text-tertiary text-[11px] tabular-nums mb-2">
-        {signal.new_evidence_count} signal{signal.new_evidence_count !== 1 ? 's' : ''}
-      </p>
-      {/* Confidence bar */}
-      <div className="h-[3px] bg-border/60 rounded-full overflow-hidden">
-        <div
-          className={cn('h-full rounded-full transition-all', rising ? 'bg-green' : falling ? 'bg-red' : 'bg-text-tertiary/60')}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <p className="text-text-tertiary text-[10px] mt-1 tabular-nums">{pct}% support</p>
-    </Link>
-  )
-}
-
 // ── Feed hero ─────────────────────────────────────────────────────────────────
 
 function FeedHero({
@@ -249,19 +195,8 @@ function FeedHero({
           )}
         </div>
 
-        {/* ── Row 2: thesis pulse cards — Data mode only ─────────────── */}
-        {!explainMode && feed.thesis_signals.length > 0 && (
-          <div className="flex gap-2 mb-4 flex-wrap">
-            {feed.thesis_signals.map(s => (
-              <ThesisPulseCard key={s.thesis_id} signal={s} />
-            ))}
-          </div>
-        )}
-
-        {/* ── Row 3: briefing content ────────────────────────────────── */}
-        <div className={cn(
-          !explainMode && feed.thesis_signals.length > 0 ? 'pt-4 border-t border-border/40' : ''
-        )}>
+        {/* ── Row 2: briefing content ────────────────────────────────── */}
+        <div>
           {!explainMode ? (
             feed.summary ? (
               <p className="text-text-secondary text-sm leading-relaxed">{feed.summary}</p>
