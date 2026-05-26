@@ -153,15 +153,27 @@ RSS connectors. Embeddings via nomic-embed-text. Qdrant storage. UUID5 deduplica
 ### Sprint 10 plan
 
 See docs/roadmap.md for full detail. Summary:
-- **Verdict language** — company verdict in deep-dive panel, radar badges
-  (ACCELERATING/EMERGING/ESTABLISHED/STALLING), gap one-liners on portfolio,
-  theme health labels (STRENGTHENING/STALLING/WEAKENING)
-- **Feed clarity** — reduce density, "what to watch today" callout
+
+Completed ✅:
+- Radar verdict badges (ACCELERATING/RISING/EMERGING/STALLING) — `CompanyRadar.tsx`
+  `getVerdictBadge()` from weekly_counts, replaces separate surge/NEW badges
+- Theme health labels (Strengthening/Steady/Weakening) — `ThesisGridCard.tsx`
+  badge under thesis name, prominent before numbers
+- Portfolio narrative + FeaturedGap — `portfolio/page.tsx`
+  `buildNarrative()` deterministic sentence, featured top gap card
+- Feed defaults to Explain mode — `useState(true)` for explainMode
+- Timeline scrubber demoted behind History button — shown only when `showHistory`
+- Supply chain tab removed from thesis detail — `thesis/[id]/page.tsx`
+- Company panel verdict card ✅ — `CompanyPanel.tsx` VerdictCard component,
+  STRONG/MODERATE/THIN/NOISE strength label + ACCELERATING/WIDENING/EMERGING/STEADY
+  consensus, one-sentence interpretation at top of overview tab
+- "What to watch today" callout ✅ — `feed/page.tsx` WatchCallout component,
+  derives most actionable sentence from feed signals + radar + gap data
+
+Remaining:
 - **Watchlist** — lighter than portfolio; watch a company, alert on doc spike
 - **Light/editorial mode** — cream theme that feels like a research note
-- **Remove dead supply chain tab** from thesis detail page
-- **Conviction score** (stretch) — Bear Case + Quality Gate + Catalyst Test,
-  corpus-grounded, rendered as verdict card in deep-dive panel
+- **Conviction score** (stretch) — Bear Case + Quality Gate + Catalyst Test
 
 ### Sprint 11 plan (Design Identity)
 

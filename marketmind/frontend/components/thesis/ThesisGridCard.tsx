@@ -98,11 +98,6 @@ export default function ThesisGridCard({ thesis }: { thesis: ThesisOut }) {
   const trend       = calcTrend(history)
   const points      = history.map(h => h.confidence)
 
-  // 7-day signal count from history
-  const recentSignals = history.length >= 2
-    ? (history[history.length - 1]?.evidence_count ?? 0) - (history[history.length - 7]?.evidence_count ?? history[0]?.evidence_count ?? 0)
-    : null
-
   const supportPct  = hasEvidence ? Math.round(thesis.confidence * 100) : null
   const opposePct   = hasEvidence ? Math.round((thesis.opposing_count / thesis.evidence_count) * 100) : null
 
@@ -136,17 +131,10 @@ export default function ThesisGridCard({ thesis }: { thesis: ThesisOut }) {
         </div>
       </div>
 
-      {/* ── Description ── */}
-      {thesis.description && (
-        <p className="text-text-tertiary text-xs leading-relaxed mb-4 line-clamp-2 flex-1">
-          {thesis.description}
-        </p>
-      )}
-
       {hasEvidence ? (
         <>
-          {/* ── Sparkline ── */}
-          <div className="mb-4">
+          {/* ── Sparkline — fills available space ── */}
+          <div className="flex-1 flex items-end mb-4">
             {points.length >= 2
               ? <MiniSparkline points={points} trend={trend} />
               : <div className="w-20 h-7 flex items-center">
@@ -155,35 +143,24 @@ export default function ThesisGridCard({ thesis }: { thesis: ThesisOut }) {
             }
           </div>
 
-          {/* ── Key numbers ── */}
-          <div className="flex items-end justify-between mb-3">
-            <div>
-              <div className={cn(
-                'text-2xl font-bold tabular-nums leading-none',
-                (supportPct ?? 0) >= 60 ? 'text-green' :
-                (supportPct ?? 0) >= 40 ? 'text-text-primary' :
-                'text-red'
-              )}>
-                {supportPct ?? '—'}%
-              </div>
-              <div className="text-text-tertiary text-[10px] mt-0.5 uppercase tracking-wide">support rate</div>
+          {/* ── Numbers — same visual weight as thesis name ── */}
+          <div className="flex items-baseline justify-between mb-2.5">
+            <div className={cn(
+              'text-lg font-bold tabular-nums leading-none',
+              (supportPct ?? 0) >= 60 ? 'text-green' :
+              (supportPct ?? 0) >= 40 ? 'text-text-primary' :
+              'text-red'
+            )}>
+              {supportPct ?? '—'}%
+              <span className="text-text-tertiary text-[10px] font-normal ml-1">support</span>
             </div>
-            <div className="text-right">
-              <div className="text-text-primary text-sm font-semibold tabular-nums">
-                {thesis.evidence_count.toLocaleString()}
-              </div>
-              <div className="text-text-tertiary text-[10px] uppercase tracking-wide">signals</div>
+            <div className="text-text-tertiary text-xs tabular-nums">
+              {thesis.evidence_count.toLocaleString()} signals
             </div>
-            {recentSignals !== null && recentSignals > 0 && (
-              <div className="text-right">
-                <div className="text-green text-sm font-semibold tabular-nums">+{recentSignals}</div>
-                <div className="text-text-tertiary text-[10px] uppercase tracking-wide">7-day</div>
-              </div>
-            )}
           </div>
 
           {/* ── Dual-color bar ── */}
-          <div className="h-1.5 bg-border/50 rounded-full overflow-hidden">
+          <div className="h-1 bg-border/50 rounded-full overflow-hidden">
             <div className="h-full flex">
               <div
                 className="h-full bg-green/60 rounded-l-full transition-all duration-500"

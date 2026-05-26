@@ -1,12 +1,101 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { X, ExternalLink, TrendingUp, TrendingDown, Minus, Calendar, FileText, Building2, ArrowUpRight } from 'lucide-react'
+import { X, ExternalLink, Building2, ArrowUpRight } from 'lucide-react'
 import Link from 'next/link'
 import { useCompany } from '@/contexts/CompanyContext'
 import { getCompany } from '@/lib/api'
 import { cn, formatDateShort } from '@/lib/utils'
 import type { CompanyDetail, CompanyEvidenceItem, CompanyThesisBreakdown } from '@/lib/types'
+
+// ── Verdict ───────────────────────────────────────────────────────────────────
+
+type SignalStrength = 'STRONG' | 'MODERATE' | 'THIN' | 'NOISE'
+type ConsensusState = 'ACCELERATING' | 'WIDENING' | 'EMERGING' | 'STEADY'
+
+interface VerdictResult {
+  signal_strength: SignalStrength
+  consensus: ConsensusState
+  sentence: string
+}
+
+function deriveVerdict(data: CompanyDetail): VerdictResult {
+  const { doc_count, weekly_counts, thesis_breakdown, evidence } = data
+  const latest  = weekly_counts[weekly_counts.length - 1] ?? 0
+  const prev    = weekly_counts[weekly_counts.length - 2] ?? 0
+  const thesisCount = thesis_breakdown.length
+  const supporting  = evidence.filter(e => e.sentiment === 'supporting').length
+  const supportRate = evidence.length > 0 ? supporting / evidence.length : 0
+
+  let signal_strength: SignalStrength
+  if (doc_count >= 20 && latest > 0)         signal_strength = 'STRONG'
+  else if (doc_count >= 8 || thesisCount >= 2) signal_strength = 'MODERATE'
+  else if (doc_count >= 3)                   signal_strength = 'THIN'
+  else                                       signal_strength = 'NOISE'
+
+  let consensus: ConsensusState
+  if (latest >= 2 && prev > 0 && latest >= prev * 2) consensus = 'ACCELERATING'
+  else if (thesisCount >= 3)                         consensus = 'WIDENING'
+  else if (doc_count <= 8 && latest > 0)             consensus = 'EMERGING'
+  else                                               consensus = 'STEADY'
+
+  const name = data.display_name
+  const tp   = thesisCount === 1 ? 'theme' : 'themes'
+  const sp   = Math.round(supportRate * 100)
+  let sentence: string
+
+  if (signal_strength === 'STRONG' && consensus === 'ACCELERATING') {
+    sentence = `${name} is accelerating — ${latest} docs this week with ${sp}% support rate across ${thesisCount} investment ${tp}.`
+  } else if (signal_strength === 'STRONG' && consensus === 'WIDENING') {
+    sentence = `${name} has broad coverage across ${thesisCount} investment ${tp} with a ${doc_count}-doc corpus and ${sp}% support rate.`
+  } else if (signal_strength === 'STRONG') {
+    sentence = `${name} has built a strong ${doc_count}-doc corpus signal with ${sp}% of evidence supporting the thesis.`
+  } else if (signal_strength === 'MODERATE' && consensus === 'ACCELERATING') {
+    sentence = `${name} is an emerging signal — activity up ${prev > 0 ? `${Math.round(latest / prev)}×` : 'sharply'} this week across ${thesisCount} investment ${tp}.`
+  } else if (signal_strength === 'MODERATE' && consensus === 'WIDENING') {
+    sentence = `Signal for ${name} is widening — appearing across ${thesisCount} investment ${tp} with ${doc_count} source documents.`
+  } else if (signal_strength === 'MODERATE') {
+    sentence = `${name} has a moderate corpus signal with ${doc_count} docs across ${thesisCount} investment ${tp}.`
+  } else if (signal_strength === 'THIN') {
+    sentence = `${name} is on the radar with a thin signal — ${doc_count} docs. Watch for follow-through.`
+  } else {
+    sentence = `${name} has ${doc_count} corpus ${doc_count === 1 ? 'mention' : 'mentions'} — too early to assess signal strength.`
+  }
+
+  return { signal_strength, consensus, sentence }
+}
+
+const STRENGTH_CONFIG: Record<SignalStrength, { label: string; containerClass: string; dotClass: string; labelClass: string }> = {
+  STRONG:   { label: 'Strong signal',   containerClass: 'border-green/20 bg-green/[0.06]',   dotClass: 'bg-green',         labelClass: 'text-green' },
+  MODERATE: { label: 'Moderate signal', containerClass: 'border-accent/20 bg-accent/[0.06]', dotClass: 'bg-accent',        labelClass: 'text-accent' },
+  THIN:     { label: 'Thin signal',     containerClass: 'border-amber/20 bg-amber/[0.06]',   dotClass: 'bg-amber',         labelClass: 'text-amber' },
+  NOISE:    { label: 'Low signal',      containerClass: 'border-border/60 bg-elevated',      dotClass: 'bg-text-tertiary', labelClass: 'text-text-tertiary' },
+}
+const CONSENSUS_LABEL: Record<ConsensusState, string> = {
+  ACCELERATING: 'Accelerating',
+  WIDENING:     'Widening',
+  EMERGING:     'Emerging',
+  STEADY:       'Steady',
+}
+
+function VerdictCard({ data }: { data: CompanyDetail }) {
+  const { signal_strength, consensus, sentence } = deriveVerdict(data)
+  const { label, containerClass, dotClass, labelClass } = STRENGTH_CONFIG[signal_strength]
+
+  return (
+    <div className={cn('rounded-xl border p-4', containerClass)}>
+      <div className="flex items-center gap-2 mb-2.5">
+        <span className={cn('w-2 h-2 rounded-full shrink-0', dotClass)} />
+        <span className={cn('text-[11px] font-bold uppercase tracking-wider', labelClass)}>{label}</span>
+        <span className="text-text-tertiary/50 text-[10px]">·</span>
+        <span className="text-[11px] text-text-tertiary font-semibold">{CONSENSUS_LABEL[consensus]}</span>
+      </div>
+      <p className="text-text-primary text-sm leading-relaxed font-medium">
+        {sentence}
+      </p>
+    </div>
+  )
+}
 
 // ── 4-week bar chart ──────────────────────────────────────────────────────────
 
@@ -59,34 +148,19 @@ function ThesisCard({ td }: { td: CompanyThesisBreakdown }) {
   const confPct = total > 0 ? Math.round((td.supporting / total) * 100) : null
 
   return (
-    <div className="bg-elevated rounded-xl p-3 border border-border/60">
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <p className="text-text-primary text-xs font-medium leading-snug flex-1">{td.thesis_name}</p>
+    <div className="flex items-center justify-between gap-3 py-2.5 border-b border-border/50 last:border-0">
+      <p className="text-text-secondary text-xs leading-snug flex-1">{td.thesis_name}</p>
+      <div className="flex items-center gap-3 shrink-0">
+        <span className="text-text-tertiary text-[11px] tabular-nums">{td.doc_count} docs</span>
         {confPct !== null && (
           <span className={cn(
-            'text-[11px] font-semibold tabular-nums shrink-0',
+            'text-[11px] font-semibold tabular-nums w-9 text-right',
             confPct >= 60 ? 'text-green' : confPct >= 40 ? 'text-amber' : 'text-red'
           )}>
             {confPct}%
           </span>
         )}
       </div>
-      <div className="flex items-center gap-2 text-[11px] text-text-tertiary">
-        <span className="tabular-nums">{td.doc_count}d</span>
-        {total > 0 && (
-          <>
-            <span className="text-green font-medium">{td.supporting}↑</span>
-            <span className="text-red font-medium">{td.opposing}↓</span>
-          </>
-        )}
-      </div>
-      {/* Mini sentiment bar */}
-      {total > 0 && (
-        <div className="mt-2 h-[2px] bg-border/40 rounded-full overflow-hidden flex">
-          <div className="h-full bg-green/50" style={{ width: `${(td.supporting / total) * 100}%` }} />
-          <div className="h-full bg-red/50" style={{ width: `${(td.opposing / total) * 100}%` }} />
-        </div>
-      )}
     </div>
   )
 }
@@ -286,51 +360,19 @@ export default function CompanyPanel({ demoMode = false }: { demoMode?: boolean 
 
           {!loading && !error && data && activeTab === 'overview' && (
             <div className="p-5 space-y-5">
-              {/* 4-week trajectory */}
-              <div>
-                <h3 className="text-text-tertiary text-[10px] uppercase tracking-wider font-semibold mb-3">
-                  4-week activity
-                </h3>
-                <TrajectoryChart counts={data.weekly_counts} />
-              </div>
+              {/* ── Verdict — system speaks first ── */}
+              <VerdictCard data={data} />
 
-              {/* Stats row */}
-              <div className="grid grid-cols-3 gap-2">
-                <div className="bg-elevated rounded-xl p-3 text-center">
-                  <div className="text-text-primary font-bold text-lg tabular-nums">{data.doc_count}</div>
-                  <div className="text-text-tertiary text-[10px] uppercase tracking-wide">docs</div>
-                </div>
-                <div className="bg-elevated rounded-xl p-3 text-center">
-                  <div className="text-text-primary font-bold text-lg tabular-nums">{data.mention_count}</div>
-                  <div className="text-text-tertiary text-[10px] uppercase tracking-wide">mentions</div>
-                </div>
-                <div className="bg-elevated rounded-xl p-3 text-center">
-                  <div className="text-text-primary font-bold text-lg tabular-nums">
-                    {data.thesis_breakdown.length}
-                  </div>
-                  <div className="text-text-tertiary text-[10px] uppercase tracking-wide">theses</div>
-                </div>
-              </div>
+              {/* 4-week trajectory — visual proof of verdict */}
+              <TrajectoryChart counts={data.weekly_counts} />
 
-              {/* Dates */}
-              <div className="flex items-center gap-4 text-xs text-text-tertiary">
-                <div className="flex items-center gap-1.5">
-                  <Calendar size={11} />
-                  <span>First: {formatDateShort(data.first_seen)}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Calendar size={11} />
-                  <span>Last: {formatDateShort(data.last_seen)}</span>
-                </div>
-              </div>
-
-              {/* Thesis breakdown */}
+              {/* Thesis exposure */}
               {data.thesis_breakdown.length > 0 && (
                 <div>
-                  <h3 className="text-text-tertiary text-[10px] uppercase tracking-wider font-semibold mb-3">
-                    Thesis exposure ({data.thesis_breakdown.length})
-                  </h3>
-                  <div className="space-y-2">
+                  <p className="text-text-tertiary text-[10px] uppercase tracking-wider font-semibold mb-1">
+                    Thesis exposure
+                  </p>
+                  <div>
                     {data.thesis_breakdown.map(td => (
                       <ThesisCard key={td.thesis_id} td={td} />
                     ))}

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
-import { RefreshCw, AlertCircle, Sparkles, Zap, TrendingUp, TrendingDown, Minus, BookOpen, BarChart2, Bell, ChevronLeft, ChevronRight, Calendar, Quote, Layers, BriefcaseBusiness } from 'lucide-react'
+import { RefreshCw, AlertCircle, Sparkles, Zap, TrendingUp, TrendingDown, Minus, BookOpen, BarChart2, Bell, ChevronLeft, ChevronRight, Calendar, Layers, BriefcaseBusiness, Eye } from 'lucide-react'
 import { Tooltip } from '@/components/ui/Tooltip'
 import Link from 'next/link'
 import AppShell from '@/components/layout/AppShell'
@@ -106,16 +106,6 @@ function RadarRowSkeleton() {
 
 // ── Feed hero helpers ─────────────────────────────────────────────────────────
 
-function activityLevel(signals: ThesisSignal[]) {
-  const total   = signals.reduce((s, t) => s + t.new_evidence_count, 0)
-  const rising  = signals.filter(s => s.momentum === 'rising').length
-  const falling = signals.filter(s => s.momentum === 'falling').length
-  if (total === 0)            return { label: 'Quiet',     color: 'text-text-tertiary', bg: 'bg-elevated border-border', dot: 'bg-text-tertiary' }
-  if (rising >= 2 || total >= 12) return { label: 'Active',    color: 'text-green',          bg: 'bg-green/10 border-green/25', dot: 'bg-green' }
-  if (falling >= 2)           return { label: 'Declining', color: 'text-red',            bg: 'bg-red/10 border-red/25',   dot: 'bg-red' }
-  return                             { label: 'Steady',    color: 'text-amber',          bg: 'bg-amber/10 border-amber/25', dot: 'bg-amber' }
-}
-
 // Short thesis name for the pulse cards
 function shortName(name: string): string {
   const map: Record<string, string> = {
@@ -202,12 +192,6 @@ function FeedHero({
     })()
   }, [explainMode])
 
-  const totalSignals  = feed.thesis_signals.reduce((s, t) => s + t.new_evidence_count, 0)
-  const risingCount   = feed.thesis_signals.filter(s => s.momentum === 'rising').length
-  const activity      = activityLevel(feed.thesis_signals)
-  // Top signal = highest evidence-count thesis with a non-trivial highlight
-  const topSignal     = feed.thesis_signals.find(s => s.highlight && s.highlight.length > 40)
-
   return (
     <div className="relative bg-surface border border-border rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 overflow-hidden">
       {/* Decorative glow */}
@@ -265,39 +249,8 @@ function FeedHero({
           )}
         </div>
 
-        {/* ── Row 2: activity status bar ─────────────────────────────── */}
-        <div className={cn(
-          'flex items-center gap-3 px-3 py-2 rounded-lg border mb-4 flex-wrap gap-y-1',
-          activity.bg
-        )}>
-          <div className="flex items-center gap-2">
-            <span className={cn('w-2 h-2 rounded-full', activity.dot)} />
-            <span className={cn('text-xs font-semibold', activity.color)}>{activity.label}</span>
-          </div>
-          <span className="text-border/60 text-xs">·</span>
-          <span className="text-text-secondary text-xs tabular-nums">
-            <span className="font-medium text-text-primary">{totalSignals}</span> new signals
-          </span>
-          {risingCount > 0 && (
-            <>
-              <span className="text-border/60 text-xs">·</span>
-              <span className="text-green text-xs">
-                <span className="font-medium">{risingCount}</span> theme{risingCount !== 1 ? 's' : ''} gaining ↑
-              </span>
-            </>
-          )}
-          {feed.new_companies.length > 0 && (
-            <>
-              <span className="text-border/60 text-xs">·</span>
-              <span className="text-text-secondary text-xs">
-                <span className="font-medium text-text-primary">{feed.new_companies.length}</span> new {feed.new_companies.length === 1 ? 'company' : 'companies'}
-              </span>
-            </>
-          )}
-        </div>
-
-        {/* ── Row 3: thesis pulse cards ──────────────────────────────── */}
-        {feed.thesis_signals.length > 0 && (
+        {/* ── Row 2: thesis pulse cards — Data mode only ─────────────── */}
+        {!explainMode && feed.thesis_signals.length > 0 && (
           <div className="flex gap-2 mb-4 flex-wrap">
             {feed.thesis_signals.map(s => (
               <ThesisPulseCard key={s.thesis_id} signal={s} />
@@ -305,31 +258,9 @@ function FeedHero({
           </div>
         )}
 
-        {/* ── Row 4: top signal quote ────────────────────────────────── */}
-        {topSignal && !explainMode && (
-          <div className="mb-4 rounded-xl bg-elevated border border-border/60 px-4 py-3">
-            <div className="flex items-start gap-2">
-              <Quote size={12} className="text-accent shrink-0 mt-0.5 opacity-60" />
-              <p className="text-text-secondary text-sm leading-relaxed italic line-clamp-2">
-                {topSignal.highlight.slice(0, 220)}
-                {topSignal.highlight.length > 220 ? '…' : ''}
-              </p>
-            </div>
-            <div className="mt-2 flex items-center gap-1.5">
-              <span className="text-text-tertiary text-[11px]">→</span>
-              <Link
-                href={`/thesis/${topSignal.thesis_id}`}
-                className="text-accent text-[11px] hover:underline"
-              >
-                {topSignal.thesis_name}
-              </Link>
-            </div>
-          </div>
-        )}
-
-        {/* ── Row 5: summary text (Data) or explain narrative (Explain) ── */}
+        {/* ── Row 3: briefing content ────────────────────────────────── */}
         <div className={cn(
-          feed.thesis_signals.length > 0 ? 'pt-4 border-t border-border/40' : ''
+          !explainMode && feed.thesis_signals.length > 0 ? 'pt-4 border-t border-border/40' : ''
         )}>
           {!explainMode ? (
             feed.summary ? (
@@ -612,6 +543,74 @@ function GapSignalRow({ gap }: { gap: FeedGapSignal }) {
         <p className="text-text-tertiary text-[10px] mt-1 tabular-nums">{gap.doc_count} total docs</p>
       </div>
     </button>
+  )
+}
+
+// ── "What to watch today" callout ────────────────────────────────────────────
+
+function buildWatchSentence(
+  signals: ThesisSignal[],
+  gaps: FeedGapSignal[],
+  radarItems: CompanyRadarItem[],
+): string | null {
+  if (signals.length === 0) return null
+
+  // Accelerating gap company (in gap list with signals today)
+  const accelGap = [...gaps].sort((a, b) => b.new_signals_today - a.new_signals_today)[0]
+
+  // Accelerating radar company (2× week-over-week growth)
+  const accelRadar = radarItems
+    .map(c => {
+      const latest = c.weekly_counts[c.weekly_counts.length - 1] ?? 0
+      const prev   = c.weekly_counts[c.weekly_counts.length - 2] ?? 0
+      return { c, latest, prev, ratio: prev > 0 ? latest / prev : latest > 0 ? 999 : 0 }
+    })
+    .filter(({ latest, prev, ratio }) => ratio >= 2 && latest >= 2 && prev > 0)
+    .sort((a, b) => b.ratio - a.ratio)[0]
+
+  // Most-rising thesis
+  const risingTop = [...signals]
+    .filter(s => s.momentum === 'rising')
+    .sort((a, b) => b.new_evidence_count - a.new_evidence_count)[0]
+
+  // Most-active thesis
+  const topSignal = [...signals].sort((a, b) => b.new_evidence_count - a.new_evidence_count)[0]
+
+  if (accelGap && accelGap.new_signals_today >= 2) {
+    return `${accelGap.company_name} has ${accelGap.new_signals_today} new signals today — not in your portfolio.`
+  }
+  if (accelRadar) {
+    const { c, latest, prev } = accelRadar
+    const label = prev > 0 ? `${Math.round(latest / prev)}×` : 'sharply'
+    const tp = c.thesis_names.length === 1 ? 'theme' : 'themes'
+    return `${c.company_name} is accelerating — activity up ${label} this week across ${c.thesis_names.length} ${tp}.`
+  }
+  if (risingTop && risingTop.new_evidence_count >= 3) {
+    const pct = Math.round(risingTop.confidence * 100)
+    return `${risingTop.thesis_name} is gaining strength — ${risingTop.new_evidence_count} new signals today, ${pct}% support rate.`
+  }
+  if (topSignal.new_evidence_count >= 2) {
+    return `${topSignal.thesis_name} is most active today — ${topSignal.new_evidence_count} new signals.`
+  }
+  return null
+}
+
+function WatchCallout({
+  feed,
+  gaps,
+  radarItems,
+}: {
+  feed: FeedResponse
+  gaps: FeedGapSignal[]
+  radarItems: CompanyRadarItem[]
+}) {
+  const sentence = buildWatchSentence(feed.thesis_signals, gaps, radarItems)
+  if (!sentence) return null
+  return (
+    <div className="flex items-center gap-3 px-4 py-3 mb-5 rounded-xl border border-accent/25 bg-accent/[0.06]">
+      <Eye size={13} className="text-accent shrink-0" />
+      <p className="text-text-primary text-sm font-medium flex-1">{sentence}</p>
+    </div>
   )
 }
 
@@ -923,20 +922,16 @@ export default function FeedPage() {
             {/* Hero — switches between analyst tone and plain-English based on mode */}
             <FeedHero feed={feed} explainMode={explainMode} onToggleMode={setExplainMode} isHistorical={isHistorical} />
 
+            {/* "What to watch today" — one actionable sentence, derived from data */}
+            {!isHistorical && (
+              <WatchCallout feed={feed} gaps={portfolioGaps} radarItems={radar} />
+            )}
+
             <div className="flex flex-col lg:flex-row gap-6 items-start">
 
               {/* ── Left: signals ─────────────────────────────────── */}
               <div className="flex-[7] min-w-0 w-full">
 
-                {/* Section header */}
-                <div className="flex items-center justify-between mb-3 px-1">
-                  <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest">
-                    {explainMode ? 'Unified Briefing' : 'Theme Signals'}
-                  </h2>
-                  <span className="text-text-tertiary text-xs tabular-nums">
-                    {feed.thesis_signals.length} active
-                  </span>
-                </div>
 
                 {/* Alert triggers — shown when a company crosses its threshold */}
                 {feed.alert_triggers.length > 0 && (
@@ -981,7 +976,7 @@ export default function FeedPage() {
                 </div>
 
                 {/* Portfolio gaps with activity today */}
-                {portfolioGaps.length > 0 && !explainMode && (
+                {portfolioGaps.length > 0 && (
                   <section className="pt-6">
                     <div className="flex items-center gap-1.5 mb-3 px-1">
                       <BriefcaseBusiness size={11} className="text-text-tertiary" />
@@ -1048,7 +1043,7 @@ export default function FeedPage() {
                     <Tooltip content="Sorted by week-over-week acceleration. A company going 0→5 this week ranks higher than one steady at 20. Surge badge = 2× or more growth." />
                   </div>
                   <div className="bg-surface border border-border rounded-xl">
-                    <CompanyRadar companies={radar.slice(0, 20)} initialAlerts={alerts} />
+                    <CompanyRadar companies={radar.slice(0, 10)} initialAlerts={alerts} />
                   </div>
                 </div>
               </div>
