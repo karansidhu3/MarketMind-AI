@@ -409,13 +409,21 @@ export default function DemoPage() {
             Real signals from SEC filings and news, scored against your custom investment theses using
             a local LLM. All data stays on your machine — zero API costs.
           </p>
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent/90 transition-colors"
-          >
-            Sign in for live data
-            <ArrowUpRight size={13} />
-          </Link>
+          <div className="flex items-center justify-center gap-3">
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent/90 transition-colors"
+            >
+              Sign in for live data
+              <ArrowUpRight size={13} />
+            </Link>
+            <Link
+              href="/about"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border text-text-secondary text-sm font-medium hover:bg-elevated hover:text-text-primary transition-colors"
+            >
+              How it works
+            </Link>
+          </div>
         </div>
 
       </div>

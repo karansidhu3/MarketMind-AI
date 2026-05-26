@@ -8,15 +8,21 @@ import { CompanyProvider } from '@/contexts/CompanyContext'
 import CompanyPanel from '@/components/company/CompanyPanel'
 
 /**
- * Minimal shell for the public /demo route — no auth check.
- * Renders the MarketMind header with a "Demo" badge and a "Sign in" CTA
- * in place of the sign-out button.
+ * Minimal shell for public routes (/demo, /about) — no auth check.
+ * showBadge=true (default) shows the amber DEMO badge.
+ * showBadge=false renders a clean header for informational pages.
  */
-export default function DemoShell({ children }: { children: React.ReactNode }) {
+export default function DemoShell({
+  children,
+  showBadge = true,
+}: {
+  children: React.ReactNode
+  showBadge?: boolean
+}) {
   return (
     <CompanyProvider>
       <div className="min-h-screen bg-background">
-        <DemoHeader />
+        <DemoHeader showBadge={showBadge} />
         <main className="pt-14 min-h-screen">
           {children}
         </main>
@@ -26,7 +32,7 @@ export default function DemoShell({ children }: { children: React.ReactNode }) {
   )
 }
 
-function DemoHeader() {
+function DemoHeader({ showBadge }: { showBadge: boolean }) {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
@@ -51,17 +57,31 @@ function DemoHeader() {
           </span>
         </div>
 
-        {/* Demo badge */}
-        <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber/15 text-amber border border-amber/30">
-          <Zap size={9} />
-          DEMO
-        </span>
+        {/* Demo badge (optional) */}
+        {showBadge && (
+          <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber/15 text-amber border border-amber/30">
+            <Zap size={9} />
+            DEMO
+          </span>
+        )}
+
+        {/* Nav links */}
+        <div className="flex items-center gap-1 ml-1">
+          <Link href="/demo" className="text-xs text-text-tertiary hover:text-text-secondary px-2.5 py-1.5 rounded-lg hover:bg-elevated/70 transition-colors">
+            Demo
+          </Link>
+          <Link href="/about" className="text-xs text-text-tertiary hover:text-text-secondary px-2.5 py-1.5 rounded-lg hover:bg-elevated/70 transition-colors">
+            About
+          </Link>
+        </div>
 
         <div className="flex-1" />
 
         {/* Right actions */}
         <div className="flex items-center gap-2">
-          <p className="text-text-tertiary text-xs hidden sm:block">Sample data — no account needed</p>
+          <p className="text-text-tertiary text-xs hidden sm:block">
+            {showBadge ? 'Sample data — no account needed' : 'Local investment intelligence'}
+          </p>
 
           <div className="w-px h-4 bg-border hidden sm:block" />
 
