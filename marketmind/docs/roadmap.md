@@ -279,7 +279,138 @@ data, not a one-shot LLM prompt against training knowledge.
 
 ---
 
-## Sprint 11 — Track Record + Prediction
+## Sprint 11 — Design Identity + Information Hierarchy
+
+**Theme:** MarketMind looks like every other 2024 SaaS dashboard — glassmorphism,
+violet accent, equal-weight cards, colored percentage bars. The visual language
+doesn't match the product's identity as an intelligence tool. This sprint gives it
+a real personality and fixes the hierarchy problem: right now numbers dominate,
+claims are buried. The system should speak first; data is evidence, not headline.
+
+### Cuts (remove, don't replace)
+
+- **`/research` route** — stateless synthesis, no temporal layer, contradicts the
+  product story. A user who finds it thinks MarketMind is just a ChatGPT wrapper.
+  Delete the page, the route, and the nav entry entirely.
+
+- **ThesisPulseCards** — horizontal scroll row above signal cards. Redundant with
+  the signal cards directly below. Adds visual noise before the user reaches the
+  actual content. Cut. The intelligence brief + signal cards carry the weight.
+
+- **Supply chain tab on thesis detail** — already disabled in backend. The empty
+  tab still renders. Remove it.
+
+- **Insider clusters section in feed** — deprioritised per ADR-025. Commodity
+  signal that weakens the "early signal" story when it appears alongside real
+  intelligence. Remove from feed template.
+
+- **Timeline scrubber from main header** — historical feed is a useful feature
+  but 95% of visits are for today's data. The prev/next arrows and date picker
+  sitting in the feed header add complexity to the primary use case. Move behind
+  a small collapsed "History" button.
+
+### Information hierarchy pass
+
+The core problem: numbers dominate, claims are buried. Confidence percentages are
+large and colored. The insight sentence — the thing that actually matters — is
+`text-xs` in light grey. This is backwards.
+
+Rule: **claim → explanation → evidence → numbers**. Each level smaller and lighter
+than the one above it.
+
+- **SignalCard** — the highlight sentence becomes the visual hero of the card.
+  `text-sm` leading-relaxed, dark/primary text, 3 lines visible. Confidence number
+  steps down: smaller, beneath the explanation, not above it.
+
+- **Feed hero brief** — narrative text `text-base`, always expanded by default.
+  Explain mode becomes the default. Data mode is the secondary toggle option.
+  The brief is the first thing you read, not something you unlock.
+
+- **Theme grid cards** — thesis name `text-base font-semibold`. Health label
+  (STRENGTHENING / STALLING) one line below in `text-sm`. Sparkline and numbers
+  tertiary. Name and verdict read at a glance, numbers on inspection.
+
+- **Portfolio summary** — a generated one-sentence narrative at the very top in
+  `text-lg`: *"Strong in AI Infrastructure. Energy Grid is accelerating and you
+  have no exposure."* The entire page's job in one line. Coverage percentage
+  and table are detail beneath it.
+
+- **Company deep-dive panel** — company name `text-2xl`. Verdict sentence
+  `text-base` immediately below. Evidence as proper block quotes, not `text-xs`
+  list items. The panel reads like a short report, not a data table.
+
+- **Radar rows** — company name `text-sm font-semibold`. Velocity badge
+  prominent. Doc count de-emphasised to `text-xs text-text-tertiary`.
+
+### Aesthetic direction: Intelligence Room
+
+Current aesthetic (violet glassmorphism on black) reads as "2024 SaaS startup."
+Target aesthetic: a senior analyst's workspace. Confident, warm, heavy.
+
+- **Background** — warm charcoal `#141210` instead of pure black `#0A0A0A`.
+  Less cold. More like a room with good lighting.
+
+- **Accent colour** — amber/gold `#D4A843` replacing violet for signal/alert
+  moments. Gold means *something was found*. Violet is generic tech. Keep violet
+  as an option or secondary — gold becomes the primary signal colour. Every
+  ACCELERATING badge, every new company ping, every "signal detected" moment
+  is amber. The rest of the UI stays neutral.
+
+- **Display serif for headline moments** — load DM Serif Display or Playfair
+  Display for: the feed's opening sentence, company names in the deep-dive panel,
+  portfolio narrative line, thesis names on the themes list. Not everywhere —
+  just at the moments the system is making a claim. Monospace for all data.
+  The contrast communicates *this is the important part*.
+
+- **Corpus pulse** — a small ambient indicator on every page showing the system
+  is alive: "847 docs · updated 6h ago". One line, `text-xs`, bottom of page
+  or corner of header. Not a stats card. Just a heartbeat. Makes the temporal
+  value prop visible at all times.
+
+### Motion and transitions (Framer Motion)
+
+Currently navigation is instant and cards appear without animation. The app
+feels static. Adding motion makes it feel alive and reinforces the information
+hierarchy — important things animate more prominently.
+
+- **Page transitions** — 180ms ease-out fade + 8px upward translate between
+  all routes. One `AnimatePresence` wrapper in layout.tsx.
+
+- **Card stagger** — signal cards, radar rows, and theme grid cards stagger in
+  with 40ms delay between each. Fade + 6px upward translate on mount.
+
+- **Sparkline draw** — SVG path `stroke-dashoffset` animation, draws left-to-right
+  when the row enters the viewport. The curve IS the insight — animate it in.
+
+- **Bar fills** — confidence bars and coverage bars animate their width from 0
+  on mount. 500ms ease-out. Currently static.
+
+- **Number count-up** — doc counts and coverage percentages count up to their
+  value on first render. Reinforces that these are live numbers, not placeholders.
+
+- **Company panel spring** — panel slides in from right with a spring ease
+  (stiffness 400, damping 35), not a CSS transition. Feels physical.
+
+- **Signal emergence pulse** — when a company appears in the feed's "new on radar"
+  section, its row gets a brief radial pulse animation (like a sonar ping).
+  This is the most important moment in the product — make it visible.
+
+- **Hover lift** — cards lift 2px with shadow change on hover. Company names get
+  a faint amber glow on hover in the radar and gap list.
+
+### Portfolio restructure
+
+See the design direction: stop showing it as a holdings table. Restructure as:
+1. Generated narrative sentence (large, top) — what your coverage looks like today
+2. Theme coverage zones — visual field showing which themes you're in/out of,
+   holdings as chips inside each zone, gaps as visually empty zones
+3. One primary gap recommendation — the top gap company as a featured card,
+   not item 1 in a list of 15
+4. Holdings detail — collapsed behind "Your positions (N)", administrative
+
+---
+
+## Sprint 12 — Track Record + Prediction
 
 - **Theme vs reality tracking** — add "predicted outcome" and "target date" to
   each theme. At target date, mark: did it play out? After 12 months: 7 themes

@@ -163,6 +163,22 @@ See docs/roadmap.md for full detail. Summary:
 - **Conviction score** (stretch) — Bear Case + Quality Gate + Catalyst Test,
   corpus-grounded, rendered as verdict card in deep-dive panel
 
+### Sprint 11 plan (Design Identity)
+
+See docs/roadmap.md for full detail. Summary:
+- **Cuts** — /research route, ThesisPulseCards, supply chain tab, insider
+  clusters in feed, timeline scrubber moved behind History button
+- **Information hierarchy pass** — claims large/dark, numbers small/muted.
+  SignalCard highlight as hero text. Feed brief default-expanded. Portfolio
+  narrative sentence at top. Company panel reads like a report.
+- **Aesthetic: Intelligence Room** — warm charcoal background, amber/gold
+  accent replacing violet for signal moments, DM Serif Display for headlines,
+  corpus pulse indicator showing system is alive
+- **Framer Motion** — page transitions, card stagger, sparkline draw animation,
+  bar fill animation, number count-up, company panel spring, signal emergence pulse
+- **Portfolio restructure** — theme coverage zones replacing table, single
+  featured gap recommendation, holdings collapsed to administrative detail
+
 ### Ingestion sources (scripts/ingest.py)
 Generic feeds:
 - SEC EDGAR: 8-K (40), 10-Q (20), 10-K (10), Form 4 (40)
