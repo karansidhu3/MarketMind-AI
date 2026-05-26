@@ -7,6 +7,17 @@ function getToken(): string | null {
   return localStorage.getItem('mm_token')
 }
 
+/**
+ * Returns today's date in the user's local timezone as YYYY-MM-DD.
+ * Using en-CA locale reliably gives ISO format without any library.
+ * This prevents the UTC midnight mismatch: Docker/backend runs in UTC,
+ * so past 5 PM PDT the server's date.today() rolls to the next UTC day —
+ * an empty feed. Always passing the local date keeps "today" correct.
+ */
+function getLocalDate(): string {
+  return new Date().toLocaleDateString('en-CA')
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken()
   const res = await fetch(`${API_BASE}${path}`, {
@@ -45,16 +56,20 @@ export async function login(email: string, password: string): Promise<string> {
 // ── Feed ──────────────────────────────────────────────────────────────────────
 
 export async function getFeed(date?: string): Promise<FeedResponse> {
-  const path = date ? `/feed/${date}` : '/feed'
-  return request<FeedResponse>(path)
+  // Always pass an explicit date — if none given, use the user's local date.
+  // This avoids the UTC midnight problem: without this, past 5 PM PDT the
+  // server's date.today() would return tomorrow UTC (empty feed).
+  const d = date ?? getLocalDate()
+  return request<FeedResponse>(`/feed/${d}`)
 }
 
 export async function getFeedDates(): Promise<string[]> {
   return request<string[]>('/feed/dates')
 }
 
-export async function regenerateFeed(): Promise<void> {
-  await request('/feed/regenerate', { method: 'POST' })
+export async function regenerateFeed(date?: string): Promise<void> {
+  const d = date ?? getLocalDate()
+  await request(`/feed/regenerate?date=${d}`, { method: 'POST' })
 }
 
 export async function getFeedExplainSummary(): Promise<{ summary: string; from_cache: boolean }> {
@@ -200,11 +215,13 @@ async function* parseSSEStream(body: ReadableStream<Uint8Array>): AsyncGenerator
 
 /**
  * Stream the plain-English feed explain summary token by token.
- * Yields string tokens as they arrive. If cached, yields the full text at once.
+ * feedDate should be the feed_date returned by getFeed() — keeps the narrative
+ * in sync with the displayed feed content even across timezone boundaries.
  */
-export async function* streamFeedExplainSummary(): AsyncGenerator<string> {
+export async function* streamFeedExplainSummary(feedDate?: string): AsyncGenerator<string> {
   const token = getToken()
-  const res = await fetch(`${API_BASE}/feed/explain-summary/stream`, {
+  const d = feedDate ?? getLocalDate()
+  const res = await fetch(`${API_BASE}/feed/explain-summary/stream?date=${d}`, {
     headers: { Authorization: token ? `Bearer ${token}` : '' },
   })
   if (res.status === 401) { localStorage.removeItem('mm_token'); window.location.href = '/login'; return }
@@ -216,12 +233,13 @@ export async function* streamFeedExplainSummary(): AsyncGenerator<string> {
 
 /**
  * Stream the unified cross-theme plain-English narrative.
- * Yields string tokens as they arrive. If cached, yields the full text at once.
- * Replaces the five separate per-thesis ExplainCards in the feed's Explain mode.
+ * feedDate should be the feed_date returned by getFeed() — keeps the narrative
+ * in sync with the displayed feed content even across timezone boundaries.
  */
-export async function* streamUnifiedExplain(): AsyncGenerator<string> {
+export async function* streamUnifiedExplain(feedDate?: string): AsyncGenerator<string> {
   const token = getToken()
-  const res = await fetch(`${API_BASE}/feed/unified-explain/stream`, {
+  const d = feedDate ?? getLocalDate()
+  const res = await fetch(`${API_BASE}/feed/unified-explain/stream?date=${d}`, {
     headers: { Authorization: token ? `Bearer ${token}` : '' },
   })
   if (res.status === 401) { localStorage.removeItem('mm_token'); window.location.href = '/login'; return }

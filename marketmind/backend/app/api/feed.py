@@ -3,8 +3,9 @@ from __future__ import annotations
 import json
 import logging
 from datetime import date
+from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -30,11 +31,12 @@ router = APIRouter(prefix="/feed", tags=["feed"])
 
 @router.get("", response_model=FeedResponse)
 async def get_today_feed(
+    feed_date: Optional[date] = Query(None, alias="date", description="Date in user's local timezone (YYYY-MM-DD). Defaults to server UTC date if omitted."),
     _user: CurrentUser = Depends(get_current_user),
     svc: FeedService = Depends(get_feed_service),
 ) -> FeedResponse:
     """Today's bottleneck intelligence feed. Cached for 25h."""
-    return await svc.get_feed(date.today())
+    return await svc.get_feed(feed_date or date.today())
 
 
 @router.get("/dates")
@@ -54,6 +56,7 @@ async def get_feed_dates(
 
 @router.get("/explain-summary")
 async def get_explain_summary(
+    feed_date: Optional[date] = Query(None, alias="date"),
     _user: CurrentUser = Depends(get_current_user),
     svc: FeedService = Depends(get_feed_service),
 ) -> dict:
@@ -63,11 +66,12 @@ async def get_explain_summary(
     Cached separately from the main feed (6h TTL).
     Must be defined BEFORE /{feed_date} to avoid FastAPI matching it as a date param.
     """
-    return await svc.get_explain_summary(date.today())
+    return await svc.get_explain_summary(feed_date or date.today())
 
 
 @router.get("/unified-explain/stream")
 async def stream_unified_explain(
+    feed_date: Optional[date] = Query(None, alias="date"),
     _user: CurrentUser = Depends(get_current_user),
     svc: FeedService = Depends(get_feed_service),
 ):
@@ -81,9 +85,11 @@ async def stream_unified_explain(
 
     If cached, the full narrative is sent as a single chunk immediately.
     """
+    target_date = feed_date or date.today()
+
     async def event_stream():
         try:
-            async for chunk in svc.stream_unified_explain(date.today()):
+            async for chunk in svc.stream_unified_explain(target_date):
                 yield f"data: {json.dumps({'chunk': chunk})}\n\n"
         except Exception:
             logger.warning("Unified explain stream error")
@@ -98,6 +104,7 @@ async def stream_unified_explain(
 
 @router.get("/explain-summary/stream")
 async def stream_explain_summary(
+    feed_date: Optional[date] = Query(None, alias="date"),
     _user: CurrentUser = Depends(get_current_user),
     svc: FeedService = Depends(get_feed_service),
 ):
@@ -109,9 +116,11 @@ async def stream_explain_summary(
     If cached, the full text is sent as a single chunk immediately.
     If not cached, tokens stream as the LLM generates them.
     """
+    target_date = feed_date or date.today()
+
     async def event_stream():
         try:
-            async for chunk in svc.stream_explain_summary(date.today()):
+            async for chunk in svc.stream_explain_summary(target_date):
                 yield f"data: {json.dumps({'chunk': chunk})}\n\n"
         except Exception:
             logger.warning("Feed explain-summary stream error")
@@ -137,6 +146,7 @@ async def get_feed_by_date(
 @router.post("/regenerate", status_code=status.HTTP_202_ACCEPTED)
 async def regenerate_feed(
     background_tasks: BackgroundTasks,
+    feed_date: Optional[date] = Query(None, alias="date"),
     _user: CurrentUser = Depends(get_current_user),
     svc: FeedService = Depends(get_feed_service),
     factory: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
@@ -147,14 +157,17 @@ async def regenerate_feed(
     Invalidate today's cache and trigger regeneration.
     Also fires a background task to pre-warm all explain caches so Explain
     mode loads instantly when the user opens the app.
+    Accepts ?date=YYYY-MM-DD so the frontend can pass the user's local date
+    instead of relying on the server's UTC clock.
     """
-    await svc.invalidate(date.today())
-    feed = await svc.get_feed(date.today())
+    target_date = feed_date or date.today()
+    await svc.invalidate(target_date)
+    feed = await svc.get_feed(target_date)
 
     # Pre-warm explain caches in background — by the time the user opens the
     # app after the morning ingestion run, all Explain content is ready.
     explain_svc = ThesisExplainService(factory=factory, llm=llm, cache=cache)
-    background_tasks.add_task(_warm_explain_caches, svc, explain_svc, date.today(), factory)
+    background_tasks.add_task(_warm_explain_caches, svc, explain_svc, target_date, factory)
 
     return {"status": "regenerated", "generated_at": feed.generated_at.isoformat()}
 

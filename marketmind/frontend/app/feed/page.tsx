@@ -181,7 +181,7 @@ function FeedHero({
     setExplainStreaming(true)
     ;(async () => {
       try {
-        for await (const chunk of streamFeedExplainSummary()) {
+        for await (const chunk of streamFeedExplainSummary(feed.feed_date)) {
           setExplainText(prev => prev + chunk)
         }
       } catch {
@@ -405,7 +405,7 @@ function ExplainCard({ signal }: { signal: ThesisSignal }) {
 
 // ── Unified cross-theme Explain narrative ─────────────────────────────────────
 
-function UnifiedExplainBlock({ signals }: { signals: ThesisSignal[] }) {
+function UnifiedExplainBlock({ feedDate, signals }: { feedDate: string; signals: ThesisSignal[] }) {
   const [narrative,  setNarrative]  = useState('')
   const [streaming,  setStreaming]  = useState(true)
   const [error,      setError]      = useState('')
@@ -417,7 +417,7 @@ function UnifiedExplainBlock({ signals }: { signals: ThesisSignal[] }) {
     setStreaming(true)
     ;(async () => {
       try {
-        for await (const chunk of streamUnifiedExplain()) {
+        for await (const chunk of streamUnifiedExplain(feedDate)) {
           setNarrative(prev => prev + chunk)
         }
       } catch {
@@ -1046,7 +1046,7 @@ export default function FeedPage() {
                   ) : explainMode ? (
                     /* Explain mode: single unified cross-theme narrative (ADR-022) */
                     /* key on generated_at so the narrative re-streams after regeneration */
-                    <UnifiedExplainBlock key={feed.generated_at} signals={feed.thesis_signals} />
+                    <UnifiedExplainBlock key={feed.generated_at} feedDate={feed.feed_date} signals={feed.thesis_signals} />
                   ) : (
                     /* Data mode: lead story (featured) + secondary signal cards */
                     feed.thesis_signals.map((signal, i) => (
