@@ -6,6 +6,7 @@ import {
   Brain, Clock, Layers, AlertCircle, CheckCircle, XCircle,
 } from 'lucide-react'
 import DemoShell from '@/components/layout/DemoShell'
+import Logo from '@/components/ui/Logo'
 
 // ── Small section helpers ─────────────────────────────────────────────────────
 
@@ -30,11 +31,8 @@ export default function AboutPage() {
 
         {/* ── Hero ── */}
         <div className="mb-14">
-          <div className="flex items-center gap-2 mb-6">
-            <div className="relative flex items-center justify-center w-8 h-8">
-              <div className="w-2.5 h-2.5 rounded-full bg-accent" />
-              <div className="absolute inset-0 rounded-full border border-accent/30 animate-pulse-subtle" />
-            </div>
+          <div className="flex items-center gap-3 mb-6">
+            <Logo size={32} />
             <span className="text-text-primary font-semibold text-lg tracking-tight">
               Market<span className="text-accent">Mind</span>
             </span>

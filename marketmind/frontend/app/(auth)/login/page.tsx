@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { AlertCircle, Zap } from 'lucide-react'
 import Link from 'next/link'
 import { login } from '@/lib/api'
+import Logo from '@/components/ui/Logo'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -35,11 +36,7 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="relative mb-4 flex items-center justify-center w-10 h-10">
-            <div className="w-3 h-3 rounded-full bg-accent" />
-            <div className="absolute inset-0 rounded-full border-2 border-accent/20 animate-pulse-subtle" />
-            <div className="absolute inset-[-6px] rounded-full border border-accent/10" />
-          </div>
+          <Logo size={44} className="mb-4" />
           <h1 className="text-text-primary font-semibold text-base tracking-tight">
             Market<span className="text-accent">Mind</span>
           </h1>

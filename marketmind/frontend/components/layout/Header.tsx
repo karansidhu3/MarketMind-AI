@@ -6,6 +6,7 @@ import { Zap, BookOpen, LogOut, Sun, Moon, BriefcaseBusiness } from 'lucide-reac
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
+import Logo from '@/components/ui/Logo'
 
 const NAV = [
   { href: '/feed',      icon: Zap,                label: 'Feed'      },
@@ -35,14 +36,9 @@ export default function Header() {
       <div className="relative max-w-[1400px] mx-auto h-full px-4 sm:px-6 flex items-center gap-4 sm:gap-6">
 
         {/* ── Logo ── */}
-        <Link href="/feed" className="flex items-center gap-2 shrink-0">
-          <div className="relative flex items-center justify-center w-6 h-6">
-            <div className="w-2 h-2 rounded-full bg-accent" />
-            <div className="absolute inset-0 rounded-full border border-accent/30 animate-pulse-subtle" />
-          </div>
-          <span className="text-text-primary font-semibold text-sm tracking-tight hidden xs:block sm:block">
-            Market<span className="text-accent">Mind</span>
-          </span>
+        <Link href="/feed" className="flex items-center shrink-0">
+          <Logo size={22} showWordmark className="hidden sm:inline-flex" />
+          <Logo size={22} className="sm:hidden" />
         </Link>
 
         {/* ── Divider (hidden on xs) ── */}

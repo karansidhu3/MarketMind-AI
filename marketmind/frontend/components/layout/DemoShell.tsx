@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { Sun, Moon, Zap, ExternalLink } from 'lucide-react'
 import { CompanyProvider } from '@/contexts/CompanyContext'
 import CompanyPanel from '@/components/company/CompanyPanel'
+import Logo from '@/components/ui/Logo'
 
 /**
  * Minimal shell for public routes (/demo, /about) — no auth check.
@@ -47,15 +48,7 @@ function DemoHeader({ showBadge }: { showBadge: boolean }) {
       <div className="relative max-w-[1400px] mx-auto h-full px-4 sm:px-6 flex items-center gap-4">
 
         {/* Logo */}
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="relative flex items-center justify-center w-6 h-6">
-            <div className="w-2 h-2 rounded-full bg-accent" />
-            <div className="absolute inset-0 rounded-full border border-accent/30 animate-pulse-subtle" />
-          </div>
-          <span className="text-text-primary font-semibold text-sm tracking-tight">
-            Market<span className="text-accent">Mind</span>
-          </span>
-        </div>
+        <Logo size={22} showWordmark />
 
         {/* Demo badge (optional) */}
         {showBadge && (
