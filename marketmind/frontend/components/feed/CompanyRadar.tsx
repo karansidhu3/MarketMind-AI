@@ -25,6 +25,38 @@ function weekGrowth(counts: number[]): number {
   return thisWeek / lastWeek
 }
 
+// ── Verdict badge — plain-English signal state ────────────────────────────────
+
+type VerdictBadge = { label: string; className: string } | null
+
+function getVerdictBadge(
+  counts: number[],
+  docCount: number,
+  firstSeen: string,
+): VerdictBadge {
+  const growth   = weekGrowth(counts)
+  const thisWeek = counts[counts.length - 1] ?? 0
+  const isSurge  = growth >= 2 && thisWeek > 0
+  const freshly  = isNew(firstSeen)
+
+  if (isSurge) {
+    const label = growth >= 999
+      ? `↑${thisWeek} new · Accelerating`
+      : `↑${Math.round(growth)}× · Accelerating`
+    return { label, className: 'text-accent bg-accent/10 border-accent/20' }
+  }
+  if (freshly && docCount <= 8) {
+    return { label: 'Emerging', className: 'text-green bg-green/10 border-green/20' }
+  }
+  if (growth > 1.05 && thisWeek > 0) {
+    return { label: 'Rising', className: 'text-green bg-green/10 border-green/20' }
+  }
+  if (growth < 0.8 && thisWeek >= 0 && counts.some(v => v > 0)) {
+    return { label: 'Stalling', className: 'text-amber bg-amber/10 border-amber/20' }
+  }
+  return null
+}
+
 // ── Bigger 4-week sparkline ───────────────────────────────────────────────────
 
 function RadarSparkline({ counts }: { counts: number[] }) {
@@ -225,23 +257,14 @@ export default function CompanyRadar({ companies, initialAlerts = [] }: CompanyR
         const norm      = c.company_name.toLowerCase().replace(/\s+/g, '')
         const isOpen    = openPopover === norm
         const triggered = alert && c.doc_count >= alert.threshold
-        const growth    = weekGrowth(c.weekly_counts)
-        const isSurge   = growth >= 2 && (c.weekly_counts[c.weekly_counts.length - 1] ?? 0) > 0
-
-        // Velocity label: "↑2× this week"
-        const velocityLabel = (() => {
-          const thisWeek = c.weekly_counts[c.weekly_counts.length - 1] ?? 0
-          if (!isSurge || thisWeek === 0) return null
-          if (growth >= 999) return `↑${thisWeek} new this week`
-          return `↑${Math.round(growth)}× this week`
-        })()
+        const verdict = getVerdictBadge(c.weekly_counts, c.doc_count, c.first_seen)
 
         return (
           <div
             key={i}
             className={cn(
               'relative group flex items-center gap-2.5 px-3 py-2.5 border-b border-border/60 last:border-0 hover:bg-elevated/50 transition-colors',
-              isSurge && 'bg-accent/[0.02]'
+              verdict?.label.includes('Accelerating') && 'bg-accent/[0.02]'
             )}
           >
             {/* Relative-strength bar */}
@@ -257,34 +280,39 @@ export default function CompanyRadar({ companies, initialAlerts = [] }: CompanyR
 
             {/* Name + thesis */}
             <div className="relative flex-1 min-w-0">
-              <div className="flex items-baseline gap-1.5 flex-wrap">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <button
                   onClick={() => c.normalised_name && openCompany(c.normalised_name)}
-                  className="text-text-primary text-xs font-medium truncate leading-snug hover:text-accent transition-colors text-left"
+                  className="text-text-primary text-sm font-semibold truncate leading-snug hover:text-accent transition-colors text-left"
                   title="View company deep-dive"
                 >
                   {c.company_name}
                 </button>
                 {c.ticker && (
-                  <span className="text-accent text-[11px] font-mono shrink-0 font-medium">{c.ticker}</span>
-                )}
-                {freshly && !isSurge && (
-                  <span className="text-green text-[9px] font-bold bg-green/10 px-1.5 py-0.5 rounded-full shrink-0 leading-none uppercase tracking-wide">
-                    NEW
-                  </span>
-                )}
-                {isSurge && (
-                  <span className="text-accent text-[9px] font-bold bg-accent/10 px-1.5 py-0.5 rounded-full shrink-0 leading-none uppercase tracking-wide">
-                    {velocityLabel}
-                  </span>
+                  <span className="text-text-tertiary text-[11px] font-mono shrink-0">{c.ticker}</span>
                 )}
               </div>
-              <p className="text-text-tertiary text-[11px] truncate leading-snug mt-0.5">
-                {c.thesis_names[0]}
-                {c.thesis_names.length > 1 && (
-                  <span className="ml-1 opacity-60">+{c.thesis_names.length - 1}</span>
+              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                {verdict && (
+                  <span className={cn(
+                    'text-[10px] font-semibold px-1.5 py-0.5 rounded-full border leading-none',
+                    verdict.className
+                  )}>
+                    {verdict.label}
+                  </span>
                 )}
-              </p>
+                {freshly && !verdict?.label.includes('Accelerating') && !verdict?.label.includes('Emerging') && (
+                  <span className="text-green text-[10px] font-semibold bg-green/10 border border-green/20 px-1.5 py-0.5 rounded-full leading-none">
+                    New
+                  </span>
+                )}
+                <p className="text-text-tertiary text-[11px] truncate leading-snug">
+                  {c.thesis_names[0]}
+                  {c.thesis_names.length > 1 && (
+                    <span className="ml-1 opacity-60">+{c.thesis_names.length - 1}</span>
+                  )}
+                </p>
+              </div>
             </div>
 
             {/* Sparkline (bigger) + stats + bell */}
@@ -352,8 +380,9 @@ export default function CompanyRadar({ companies, initialAlerts = [] }: CompanyR
       {/* Footer — pinned outside the scroll area */}
       <p className="text-text-tertiary text-[10px] px-3 pt-2 pb-2 border-t border-border/60 leading-relaxed">
         Sorted by acceleration ·{' '}
-        <span className="text-accent font-medium">↑N×</span> = week-over-week surge ·{' '}
-        <span className="text-green font-medium">NEW</span> = first seen within {NEW_WITHIN_DAYS}d
+        <span className="text-accent font-medium">Accelerating</span> ·{' '}
+        <span className="text-green font-medium">Rising / Emerging</span> ·{' '}
+        <span className="text-amber font-medium">Stalling</span>
       </p>
     </div>
   )

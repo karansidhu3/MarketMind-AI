@@ -774,8 +774,8 @@ export default function FeedPage() {
   const [loading,      setLoading]      = useState(true)
   const [error,        setError]        = useState('')
   const [regenerating, setRegenerating] = useState(false)
-  // Data = technical cards, Explain = plain-English narrative per thesis (ADR-022)
-  const [explainMode,  setExplainMode]  = useState(false)
+  // Explain = plain-English narrative (default), Data = technical cards (ADR-022)
+  const [explainMode,  setExplainMode]  = useState(true)
   const [showHistory,  setShowHistory]  = useState(false)
   const [portfolioGaps, setPortfolioGaps] = useState<FeedGapSignal[]>([])
   const { toast } = useToast()
@@ -815,7 +815,7 @@ export default function FeedPage() {
 
   function handleSelectDate(date: string | null) {
     setViewDate(date)
-    setExplainMode(false)  // reset to data mode when navigating
+    setExplainMode(true)  // keep explain as default when navigating history
   }
 
   async function handleRegenerate() {

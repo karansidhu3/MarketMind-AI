@@ -69,18 +69,18 @@ function calcTrend(history: ConfidenceSnapshot[]): 'up' | 'down' | 'flat' {
 
 function TrendBadge({ trend }: { trend: 'up' | 'down' | 'flat' }) {
   if (trend === 'up') return (
-    <span className="inline-flex items-center gap-0.5 text-[10px] text-green bg-green/10 px-1.5 py-0.5 rounded-full font-medium">
-      <TrendingUp size={9} /> Rising
+    <span className="inline-flex items-center gap-1 text-xs text-green bg-green/10 border border-green/20 px-2 py-0.5 rounded-full font-semibold">
+      <TrendingUp size={10} /> Strengthening
     </span>
   )
   if (trend === 'down') return (
-    <span className="inline-flex items-center gap-0.5 text-[10px] text-red bg-red/10 px-1.5 py-0.5 rounded-full font-medium">
-      <TrendingDown size={9} /> Weakening
+    <span className="inline-flex items-center gap-1 text-xs text-red bg-red/10 border border-red/20 px-2 py-0.5 rounded-full font-semibold">
+      <TrendingDown size={10} /> Weakening
     </span>
   )
   return (
-    <span className="inline-flex items-center gap-0.5 text-[10px] text-text-tertiary bg-elevated px-1.5 py-0.5 rounded-full font-medium">
-      <Minus size={9} /> Stable
+    <span className="inline-flex items-center gap-1 text-xs text-text-tertiary bg-elevated border border-border px-2 py-0.5 rounded-full font-medium">
+      <Minus size={10} /> Steady
     </span>
   )
 }
@@ -116,44 +116,43 @@ export default function ThesisGridCard({ thesis }: { thesis: ThesisOut }) {
       )}
     >
       {/* ── Header ── */}
-      <div className="flex items-start justify-between gap-2 mb-3">
-        <h3 className="text-text-primary font-semibold text-sm leading-snug flex-1">
-          {thesis.name}
-        </h3>
-        <div className="flex items-center gap-1 shrink-0">
+      <div className="mb-1">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="text-text-primary font-semibold text-base leading-snug flex-1">
+            {thesis.name}
+          </h3>
           {thesis.is_system && (
-            <span className="text-[10px] text-text-tertiary bg-elevated px-2 py-0.5 rounded-full">
+            <span className="text-[10px] text-text-tertiary bg-elevated px-2 py-0.5 rounded-full shrink-0 mt-0.5">
               System
             </span>
           )}
-          {!hasEvidence && (
-            <span className="text-[10px] text-amber bg-amber/10 px-2 py-0.5 rounded-full">
-              No data
-            </span>
-          )}
+        </div>
+        {/* Health label — prominent, right under the name */}
+        <div className="mt-1.5 mb-3">
+          {hasEvidence
+            ? <TrendBadge trend={trend} />
+            : <span className="inline-flex items-center text-xs text-amber bg-amber/10 border border-amber/20 px-2 py-0.5 rounded-full font-medium">No data yet</span>
+          }
         </div>
       </div>
 
       {/* ── Description ── */}
       {thesis.description && (
-        <p className="text-text-tertiary text-[11px] leading-relaxed mb-4 line-clamp-2 flex-1">
+        <p className="text-text-tertiary text-xs leading-relaxed mb-4 line-clamp-2 flex-1">
           {thesis.description}
         </p>
       )}
 
       {hasEvidence ? (
         <>
-          {/* ── Sparkline + trend ── */}
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              {points.length >= 2
-                ? <MiniSparkline points={points} trend={trend} />
-                : <div className="w-20 h-7 flex items-center">
-                    <div className="h-px w-full bg-border" />
-                  </div>
-              }
-            </div>
-            <TrendBadge trend={trend} />
+          {/* ── Sparkline ── */}
+          <div className="mb-4">
+            {points.length >= 2
+              ? <MiniSparkline points={points} trend={trend} />
+              : <div className="w-20 h-7 flex items-center">
+                  <div className="h-px w-full bg-border" />
+                </div>
+            }
           </div>
 
           {/* ── Key numbers ── */}
