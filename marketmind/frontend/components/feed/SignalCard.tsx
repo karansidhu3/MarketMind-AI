@@ -215,7 +215,7 @@ export default function SignalCard({ signal, compact = false, featured = false, 
         <div className="shrink-0 text-right space-y-1 min-w-[72px]">
           <div className={cn(
             'font-bold tabular-nums leading-none tracking-tight',
-            featured ? 'text-4xl' : 'text-3xl',
+            featured ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl',
             m.textColor
           )}>
             {formatConfidence(signal.confidence)}

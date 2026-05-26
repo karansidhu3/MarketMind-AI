@@ -138,7 +138,7 @@ function ThesisPulseCard({ signal }: { signal: ThesisSignal }) {
     <Link
       href={`/thesis/${signal.thesis_id}`}
       className={cn(
-        'flex-1 min-w-[110px] max-w-[160px] rounded-xl border p-3 transition-all duration-150 hover:scale-[1.02] hover:shadow-sm',
+        'flex-1 min-w-[88px] sm:min-w-[110px] max-w-[160px] rounded-xl border p-3 transition-all duration-150 hover:scale-[1.02] hover:shadow-sm',
         rising  ? 'border-green/30 bg-green/5 hover:bg-green/8' :
         falling ? 'border-red/30 bg-red/5 hover:bg-red/8' :
                   'border-border bg-elevated hover:bg-surface'
@@ -209,7 +209,7 @@ function FeedHero({
   const topSignal     = feed.thesis_signals.find(s => s.highlight && s.highlight.length > 40)
 
   return (
-    <div className="relative bg-surface border border-border rounded-2xl p-6 mb-8 overflow-hidden">
+    <div className="relative bg-surface border border-border rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 overflow-hidden">
       {/* Decorative glow */}
       <div
         aria-hidden
@@ -799,7 +799,7 @@ export default function FeedPage() {
 
   return (
     <AppShell>
-      <div className="max-w-[1400px] mx-auto px-8 py-8">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 py-6 sm:py-8">
 
         {/* ── Page header row ───────────────────────────────────── */}
         <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
@@ -840,11 +840,11 @@ export default function FeedPage() {
         {loading && (
           <>
             <HeroSkeleton />
-            <div className="flex gap-6 items-start">
-              <div className="flex-[7] min-w-0 space-y-3">
+            <div className="flex flex-col lg:flex-row gap-6 items-start">
+              <div className="flex-[7] min-w-0 w-full space-y-3">
                 {[...Array(4)].map((_, i) => <SignalCardSkeleton key={i} />)}
               </div>
-              <div className="flex-[3] min-w-0">
+              <div className="flex-[3] min-w-0 w-full">
                 <Skeleton className="h-3 w-28 mb-2 ml-1" />
                 <div className="bg-surface border border-border rounded-xl overflow-hidden">
                   {[...Array(8)].map((_, i) => <RadarRowSkeleton key={i} />)}
@@ -868,10 +868,10 @@ export default function FeedPage() {
             {/* Hero — switches between analyst tone and plain-English based on mode */}
             <FeedHero feed={feed} explainMode={explainMode} onToggleMode={setExplainMode} isHistorical={isHistorical} />
 
-            <div className="flex gap-6 items-start">
+            <div className="flex flex-col lg:flex-row gap-6 items-start">
 
               {/* ── Left: signals ─────────────────────────────────── */}
-              <div className="flex-[7] min-w-0">
+              <div className="flex-[7] min-w-0 w-full">
 
                 {/* Section header */}
                 <div className="flex items-center justify-between mb-3 px-1">
@@ -993,8 +993,8 @@ export default function FeedPage() {
               </div>
 
               {/* ── Right: company radar ─────────────────────────── */}
-              <div className="flex-[3] min-w-0">
-                <div className="sticky top-[76px]">
+              <div className="flex-[3] min-w-0 w-full">
+                <div className="lg:sticky lg:top-[76px]">
                   <div className="flex items-center gap-1.5 mb-2 px-1">
                     <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest">
                       Company Radar
