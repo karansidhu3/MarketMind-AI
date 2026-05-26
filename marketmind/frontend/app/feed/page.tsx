@@ -841,19 +841,34 @@ export default function FeedPage() {
     return map
   }, [radar])
 
-  // Load sidebar data once (always current, not historical)
-  useEffect(() => {
-    Promise.all([getCompanyRadar(), getAlerts(), getFeedDates(), getPortfolioFeedSignals(), getWatchlist()])
-      .then(([r, a, d, g, wl]) => { setRadar(r); setAlerts(a); setFeedDates(d); setPortfolioGaps(g); setWatchlist(wl) })
-      .catch(() => {})
-  }, [])
-
-  const loadFeed = useCallback(async (date: string | null) => {
+  // ── Unified data loader ────────────────────────────────────────────────────
+  // fullLoad = true  → fetch feed + ALL sidebar data (initial load, regeneration)
+  // fullLoad = false → fetch feed content only (date navigation — radar is always live)
+  const loadPage = useCallback(async (date: string | null, fullLoad: boolean) => {
     setLoading(true)
     setError('')
     try {
-      const f = await getFeed(date ?? undefined)
-      setFeed(f)
+      if (fullLoad) {
+        // All requests fire simultaneously; state is set atomically when all resolve
+        const [f, r, a, d, g, wl] = await Promise.all([
+          getFeed(date ?? undefined),
+          getCompanyRadar(),
+          getAlerts(),
+          getFeedDates(),
+          getPortfolioFeedSignals(),
+          getWatchlist(),
+        ])
+        setFeed(f)
+        setRadar(r)
+        setAlerts(a)
+        setFeedDates(d)
+        setPortfolioGaps(g)
+        setWatchlist(wl)
+      } else {
+        // Date navigation only — sidebar stays current (ADR-028: radar is always live)
+        const f = await getFeed(date ?? undefined)
+        setFeed(f)
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load feed.')
     } finally {
@@ -861,7 +876,13 @@ export default function FeedPage() {
     }
   }, [])
 
-  useEffect(() => { loadFeed(viewDate) }, [loadFeed, viewDate])
+  // Initial full load, then feed-only on date changes
+  const didInitialLoad = React.useRef(false)
+  useEffect(() => {
+    const isFirst = !didInitialLoad.current
+    didInitialLoad.current = true
+    loadPage(viewDate, isFirst)
+  }, [viewDate, loadPage])
 
   function handleSelectDate(date: string | null) {
     setViewDate(date)
@@ -872,9 +893,21 @@ export default function FeedPage() {
     setRegenerating(true)
     try {
       await regenerateFeed()
-      const [f, d] = await Promise.all([getFeed(), getFeedDates()])
+      // Refresh every data source atomically — feed, radar, gaps, watchlist all update together
+      const [f, r, a, d, g, wl] = await Promise.all([
+        getFeed(),
+        getCompanyRadar(),
+        getAlerts(),
+        getFeedDates(),
+        getPortfolioFeedSignals(),
+        getWatchlist(),
+      ])
       setFeed(f)
+      setRadar(r)
+      setAlerts(a)
       setFeedDates(d)
+      setPortfolioGaps(g)
+      setWatchlist(wl)
       toast('Feed regenerated successfully', 'success')
     } catch (e: unknown) {
       toast(e instanceof Error ? e.message : 'Regeneration failed', 'error')
@@ -970,8 +1003,8 @@ export default function FeedPage() {
         {/* ── Main content ─────────────────────────────────────── */}
         {!loading && !error && feed && (
           <>
-            {/* Hero — switches between analyst tone and plain-English based on mode */}
-            <FeedHero feed={feed} explainMode={explainMode} onToggleMode={setExplainMode} isHistorical={isHistorical} />
+            {/* Hero — key on generated_at so streaming resets after regeneration */}
+            <FeedHero key={feed.generated_at} feed={feed} explainMode={explainMode} onToggleMode={setExplainMode} isHistorical={isHistorical} />
 
             {/* "What to watch today" — one actionable sentence, derived from data */}
             {!isHistorical && (
@@ -1012,7 +1045,8 @@ export default function FeedPage() {
                     <EmptySignals />
                   ) : explainMode ? (
                     /* Explain mode: single unified cross-theme narrative (ADR-022) */
-                    <UnifiedExplainBlock signals={feed.thesis_signals} />
+                    /* key on generated_at so the narrative re-streams after regeneration */
+                    <UnifiedExplainBlock key={feed.generated_at} signals={feed.thesis_signals} />
                   ) : (
                     /* Data mode: lead story (featured) + secondary signal cards */
                     feed.thesis_signals.map((signal, i) => (
