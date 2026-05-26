@@ -12,6 +12,82 @@ import { formatConfidence, cn } from '@/lib/utils'
 import { useCompany } from '@/contexts/CompanyContext'
 import type { HoldingOut, PortfolioAlignment, ThesisExposure, GapCompany } from '@/lib/types'
 
+// ── Narrative sentence ────────────────────────────────────────────────────────
+
+function buildNarrative(alignment: PortfolioAlignment): string {
+  const { theses, gaps, total_holdings } = alignment
+  if (total_holdings === 0 || theses.length === 0) return ''
+
+  const covered     = theses.filter(t => t.held_companies.length > 0)
+  const risingGaps  = theses.filter(t => t.momentum === 'rising' && t.held_companies.length === 0)
+  const topGap      = gaps[0]
+  const parts: string[] = []
+
+  if (covered.length > 0) {
+    const names = [...covered]
+      .sort((a, b) => b.coverage_pct - a.coverage_pct)
+      .slice(0, 2)
+      .map(t => t.thesis_name.split(' ').slice(0, 2).join(' '))
+    parts.push(`Positioned in ${names.join(' and ')}`)
+  }
+
+  if (risingGaps.length > 0) {
+    const shortName = risingGaps[0].thesis_name.split(' ').slice(0, 3).join(' ')
+    parts.push(`${shortName} is strengthening — you have no exposure there`)
+  } else if (topGap) {
+    const shortTheme = topGap.thesis_names[0]?.split(' ').slice(0, 2).join(' ') ?? ''
+    parts.push(`Top gap: ${topGap.company_name}${shortTheme ? ` in ${shortTheme}` : ''} — ${topGap.doc_count} corpus docs, not held`)
+  }
+
+  return parts.join('. ') + (parts.length ? '.' : '')
+}
+
+// ── Featured gap card ─────────────────────────────────────────────────────────
+
+function FeaturedGap({ gap }: { gap: GapCompany }) {
+  const { openCompany } = useCompany()
+  return (
+    <div
+      onClick={() => gap.normalised_name && openCompany(gap.normalised_name)}
+      className="cursor-pointer bg-surface border border-accent/20 rounded-2xl p-5 hover:border-accent/40 hover:bg-elevated/40 transition-all group"
+    >
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <p className="text-text-tertiary text-[10px] font-semibold uppercase tracking-widest mb-1">Top Gap Signal</p>
+          <div className="flex items-baseline gap-2">
+            <span className="text-text-primary text-lg font-bold group-hover:text-accent transition-colors">
+              {gap.company_name}
+            </span>
+            {gap.ticker && (
+              <span className="text-text-tertiary text-sm font-mono">{gap.ticker}</span>
+            )}
+          </div>
+        </div>
+        <ChevronRight size={16} className="text-text-tertiary group-hover:text-accent transition-colors shrink-0 mt-1" />
+      </div>
+
+      <p className="text-text-secondary text-sm leading-relaxed mb-3">
+        {gap.doc_count} independent corpus documents across{' '}
+        {gap.thesis_names.length} theme{gap.thesis_names.length !== 1 ? 's' : ''}.{' '}
+        {gap.thesis_confidence >= 0.6
+          ? 'High-confidence signal. Not yet in your portfolio.'
+          : 'Emerging signal. Not yet in your portfolio.'}
+      </p>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        {gap.thesis_names.slice(0, 3).map(t => (
+          <span key={t} className="text-[11px] text-text-tertiary bg-elevated border border-border/60 px-2 py-0.5 rounded-md">
+            {t}
+          </span>
+        ))}
+        <span className="ml-auto text-accent text-xs font-semibold">
+          {gap.doc_count} docs · {Math.round(gap.thesis_confidence * 100)}% conf
+        </span>
+      </div>
+    </div>
+  )
+}
+
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 
 function Skeleton({ className }: { className?: string }) {
@@ -306,8 +382,9 @@ export default function PortfolioPage() {
   const [error,      setError]      = useState('')
   const [showAdd,    setShowAdd]    = useState(false)
   const [editingId,  setEditingId]  = useState<string | null>(null)
-  const [deleting,   setDeleting]   = useState<string | null>(null)
-  const [refreshing, setRefreshing] = useState(false)
+  const [deleting,     setDeleting]     = useState<string | null>(null)
+  const [refreshing,   setRefreshing]   = useState(false)
+  const [showAllGaps,  setShowAllGaps]  = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -361,6 +438,7 @@ export default function PortfolioPage() {
   }
 
   const coveragePct = alignment ? Math.round(alignment.overall_coverage * 100) : 0
+  const narrative   = alignment ? buildNarrative(alignment) : ''
 
   // ticker → theses that list it as a held company
   const tickerTheses = useMemo(() => {
@@ -554,47 +632,37 @@ export default function PortfolioPage() {
 
               {alignment && (
                 <>
-                  {/* Overall coverage banner */}
+                  {/* Narrative + coverage */}
                   <div className="relative bg-surface border border-border rounded-2xl p-5 overflow-hidden">
                     <div
                       aria-hidden
                       className="absolute -top-16 -right-16 w-48 h-48 rounded-full pointer-events-none"
                       style={{ background: 'radial-gradient(circle, rgb(var(--accent) / 0.06), transparent 70%)' }}
                     />
-                    <div className="relative flex items-center gap-5">
-                      {/* Big coverage number */}
-                      <div className="shrink-0 text-center">
-                        <div className={cn(
-                          'text-4xl font-bold tabular-nums leading-none',
+                    <div className="relative">
+                      {/* Narrative — system speaks first */}
+                      {narrative ? (
+                        <p className="text-text-primary text-base font-semibold leading-snug mb-3">
+                          {narrative}
+                        </p>
+                      ) : (
+                        <p className="text-text-primary text-base font-semibold leading-snug mb-3">
+                          Add holdings to see how your portfolio aligns with your tracked themes.
+                        </p>
+                      )}
+                      {/* Coverage as supporting evidence */}
+                      <div className="flex items-center gap-3">
+                        <span className={cn(
+                          'text-2xl font-bold tabular-nums leading-none',
                           coveragePct >= 30 ? 'text-green' :
                           coveragePct >= 10 ? 'text-amber' :
                           'text-text-tertiary'
                         )}>
                           {coveragePct}%
-                        </div>
-                        <div className="text-text-tertiary text-[10px] uppercase tracking-wide mt-1 font-medium">
-                          thesis coverage
-                        </div>
-                      </div>
-
-                      <div className="w-px h-12 bg-border shrink-0" />
-
-                      <div className="flex-1 min-w-0">
-                        <p className="text-text-primary text-sm font-semibold mb-1">Portfolio Alignment</p>
-                        <p className="text-text-secondary text-xs leading-relaxed">
-                          {coveragePct === 0
-                            ? 'Add holdings to see how your portfolio aligns with your tracked theses.'
-                            : coveragePct < 15
-                            ? 'Low overlap. Most thesis companies aren\'t in your portfolio yet — review the gaps below.'
-                            : coveragePct < 40
-                            ? 'Moderate overlap. You\'re exposed to some thesis companies; significant gaps remain.'
-                            : 'Strong overlap. Your portfolio tracks well with your active investment theses.'}
-                        </p>
-                      </div>
-
-                      <div className="shrink-0 text-right">
-                        <div className="text-text-primary text-sm font-semibold tabular-nums">{alignment.total_holdings}</div>
-                        <div className="text-text-tertiary text-xs">positions</div>
+                        </span>
+                        <span className="text-text-tertiary text-xs">
+                          theme coverage · {alignment.total_holdings} position{alignment.total_holdings !== 1 ? 's' : ''}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -613,22 +681,29 @@ export default function PortfolioPage() {
                     </div>
                   )}
 
-                  {/* Gaps */}
+                  {/* Featured gap + rest */}
                   {alignment.gaps.length > 0 && (
-                    <div>
-                      <div className="flex items-center justify-between mb-3 px-1">
-                        <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest">
-                          Exposure Gaps
-                        </h2>
-                        <span className="text-text-tertiary text-xs">
-                          Companies on radar you don&apos;t hold · ranked by signal strength
-                        </span>
-                      </div>
-                      <div className="bg-surface border border-border rounded-xl">
-                        {alignment.gaps.map((gap, i) => (
-                          <GapRow key={`${gap.company_name}-${i}`} gap={gap} rank={i + 1} />
-                        ))}
-                      </div>
+                    <div className="space-y-3">
+                      <FeaturedGap gap={alignment.gaps[0]} />
+
+                      {alignment.gaps.length > 1 && (
+                        <div>
+                          <button
+                            onClick={() => setShowAllGaps(g => !g)}
+                            className="flex items-center gap-1.5 text-xs text-text-tertiary hover:text-text-secondary px-1 mb-2 transition-colors"
+                          >
+                            <ChevronRight size={12} className={cn('transition-transform', showAllGaps && 'rotate-90')} />
+                            {showAllGaps ? 'Hide' : `${alignment.gaps.length - 1} more gap signal${alignment.gaps.length - 1 !== 1 ? 's' : ''}`}
+                          </button>
+                          {showAllGaps && (
+                            <div className="bg-surface border border-border rounded-xl">
+                              {alignment.gaps.slice(1).map((gap, i) => (
+                                <GapRow key={`${gap.company_name}-${i}`} gap={gap} rank={i + 2} />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
 
