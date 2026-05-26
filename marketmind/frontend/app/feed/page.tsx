@@ -1,13 +1,13 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
-import { RefreshCw, AlertCircle, Sparkles, Zap, TrendingUp, TrendingDown, Minus, BookOpen, BarChart2, Bell, ChevronLeft, ChevronRight, Calendar, Quote } from 'lucide-react'
+import { RefreshCw, AlertCircle, Sparkles, Zap, TrendingUp, TrendingDown, Minus, BookOpen, BarChart2, Bell, ChevronLeft, ChevronRight, Calendar, Quote, Layers } from 'lucide-react'
 import { Tooltip } from '@/components/ui/Tooltip'
 import Link from 'next/link'
 import AppShell from '@/components/layout/AppShell'
 import SignalCard from '@/components/feed/SignalCard'
 import CompanyRadar from '@/components/feed/CompanyRadar'
-import { getFeed, getFeedDates, getCompanyRadar, regenerateFeed, getAlerts, streamFeedExplainSummary, streamThesisExplain } from '@/lib/api'
+import { getFeed, getFeedDates, getCompanyRadar, regenerateFeed, getAlerts, streamFeedExplainSummary, streamThesisExplain, streamUnifiedExplain } from '@/lib/api'
 import { formatDate, greet, cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 import { useCompany } from '@/contexts/CompanyContext'
@@ -472,6 +472,115 @@ function ExplainCard({ signal }: { signal: ThesisSignal }) {
   )
 }
 
+// ── Unified cross-theme Explain narrative ─────────────────────────────────────
+
+function UnifiedExplainBlock({ signals }: { signals: ThesisSignal[] }) {
+  const [narrative,  setNarrative]  = useState('')
+  const [streaming,  setStreaming]  = useState(true)
+  const [error,      setError]      = useState('')
+  const started = React.useRef(false)
+
+  useEffect(() => {
+    if (started.current) return
+    started.current = true
+    setStreaming(true)
+    ;(async () => {
+      try {
+        for await (const chunk of streamUnifiedExplain()) {
+          setNarrative(prev => prev + chunk)
+        }
+      } catch {
+        setError('Could not generate cross-theme analysis.')
+      } finally {
+        setStreaming(false)
+      }
+    })()
+  }, [])
+
+  const risingThemes  = signals.filter(s => s.momentum === 'rising').map(s => s.thesis_name)
+  const fallingThemes = signals.filter(s => s.momentum === 'falling').map(s => s.thesis_name)
+
+  if (streaming && !narrative) {
+    return (
+      <div className="bg-surface border border-border rounded-xl p-6">
+        <div className="flex items-center gap-2.5 mb-4">
+          <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center">
+            <Layers size={13} className="text-accent" />
+          </div>
+          <div className="space-y-1.5 flex-1">
+            <Skeleton className="h-3.5 w-40" />
+            <Skeleton className="h-3 w-24" />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-3.5 w-full" />
+          <Skeleton className="h-3.5 w-[95%]" />
+          <Skeleton className="h-3.5 w-[88%]" />
+          <Skeleton className="h-3.5 w-full" />
+          <Skeleton className="h-3.5 w-4/5" />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-surface border border-border rounded-xl p-6">
+      {/* Header */}
+      <div className="flex items-start gap-2.5 mb-4">
+        <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center shrink-0 mt-0.5">
+          <Layers size={13} className="text-accent" />
+        </div>
+        <div>
+          <p className="text-text-primary text-sm font-semibold leading-tight">Cross-theme analysis</p>
+          <p className="text-text-tertiary text-xs mt-0.5">
+            {signals.length} theme{signals.length !== 1 ? 's' : ''}
+            {risingThemes.length > 0 && (
+              <> · <span className="text-green">{risingThemes.length} rising</span></>
+            )}
+            {fallingThemes.length > 0 && (
+              <> · <span className="text-red">{fallingThemes.length} fading</span></>
+            )}
+          </p>
+        </div>
+      </div>
+
+      {/* Narrative */}
+      {error ? (
+        <p className="text-text-tertiary text-sm italic">{error}</p>
+      ) : (
+        <div className="space-y-3">
+          {narrative.split('\n\n').filter(p => p.trim()).map((para, i) => (
+            <p key={i} className="text-text-secondary text-sm leading-relaxed">
+              {para.trim()}
+              {streaming && i === narrative.split('\n\n').filter(p => p.trim()).length - 1 && (
+                <span className="inline-block w-[2px] h-[0.9em] bg-text-secondary ml-[2px] align-middle animate-pulse" />
+              )}
+            </p>
+          ))}
+        </div>
+      )}
+
+      {/* Footer */}
+      <div className="mt-4 pt-3 border-t border-border/40 flex items-center gap-3 flex-wrap">
+        {signals.map(s => (
+          <Link
+            key={s.thesis_id}
+            href={`/thesis/${s.thesis_id}`}
+            className={cn(
+              'text-[11px] px-2 py-0.5 rounded-full border transition-colors hover:opacity-80',
+              s.momentum === 'rising'  ? 'text-green border-green/30 bg-green/5' :
+              s.momentum === 'falling' ? 'text-red border-red/30 bg-red/5' :
+                                        'text-text-tertiary border-border bg-elevated'
+            )}
+          >
+            {s.thesis_name.split(' ').slice(0, 2).join(' ')}
+          </Link>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── Empty state ───────────────────────────────────────────────────────────────
 
 function EmptySignals() {
@@ -767,7 +876,7 @@ export default function FeedPage() {
                 {/* Section header */}
                 <div className="flex items-center justify-between mb-3 px-1">
                   <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest">
-                    Theme Signals
+                    {explainMode ? 'Unified Briefing' : 'Theme Signals'}
                   </h2>
                   <span className="text-text-tertiary text-xs tabular-nums">
                     {feed.thesis_signals.length} active
@@ -801,10 +910,8 @@ export default function FeedPage() {
                   {feed.thesis_signals.length === 0 ? (
                     <EmptySignals />
                   ) : explainMode ? (
-                    /* Explain mode: plain-English cards, lazy-loaded per thesis */
-                    feed.thesis_signals.map(signal => (
-                      <ExplainCard key={signal.thesis_id} signal={signal} />
-                    ))
+                    /* Explain mode: single unified cross-theme narrative (ADR-022) */
+                    <UnifiedExplainBlock signals={feed.thesis_signals} />
                   ) : (
                     /* Data mode: lead story (featured) + secondary signal cards */
                     feed.thesis_signals.map((signal, i) => (

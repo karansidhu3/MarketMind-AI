@@ -66,6 +66,36 @@ async def get_explain_summary(
     return await svc.get_explain_summary(date.today())
 
 
+@router.get("/unified-explain/stream")
+async def stream_unified_explain(
+    _user: CurrentUser = Depends(get_current_user),
+    svc: FeedService = Depends(get_feed_service),
+):
+    """
+    SSE stream of a unified cross-theme plain-English narrative.
+    One LLM call synthesises all active thesis signals into a single flowing
+    briefing — replaces the five separate per-thesis ExplainCards in the feed UI.
+
+    Tokens arrive as: data: {"chunk": "text"}\\n\\n
+    Stream ends with:  data: [DONE]\\n\\n
+
+    If cached, the full narrative is sent as a single chunk immediately.
+    """
+    async def event_stream():
+        try:
+            async for chunk in svc.stream_unified_explain(date.today()):
+                yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+        except Exception:
+            logger.warning("Unified explain stream error")
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 @router.get("/explain-summary/stream")
 async def stream_explain_summary(
     _user: CurrentUser = Depends(get_current_user),
@@ -141,14 +171,23 @@ async def _warm_explain_caches(
     Pre-generate and cache all explain content after feed regeneration.
     Runs as a background task — does not block the regenerate response.
     """
-    # 1. Feed-level plain-English summary
+    # 1. Feed-level plain-English summary (hero)
     try:
         await feed_svc.get_explain_summary(feed_date)
         logger.info("Pre-warmed feed explain summary for %s", feed_date)
     except Exception:
         logger.warning("Failed to pre-warm feed explain summary for %s", feed_date)
 
-    # 2. Per-thesis narratives (one LLM call each)
+    # 2. Unified cross-theme narrative (consumes the explain-summary stream fully)
+    try:
+        full = ""
+        async for chunk in feed_svc.stream_unified_explain(feed_date):
+            full += chunk
+        logger.info("Pre-warmed unified explain (%d chars) for %s", len(full), feed_date)
+    except Exception:
+        logger.warning("Failed to pre-warm unified explain for %s", feed_date)
+
+    # 3. Per-thesis narratives (one LLM call each — used on thesis detail page)
     try:
         async with factory() as session:
             theses = (

@@ -59,7 +59,30 @@ Rules:
 
 Rewritten:"""
 
-EXPLAIN_SUMMARY_TTL = 6 * 3600  # 6 hours — separate from the 25h feed cache
+EXPLAIN_SUMMARY_TTL = 6 * 3600   # 6 hours — separate from the 25h feed cache
+UNIFIED_EXPLAIN_TTL = 6 * 3600   # same TTL — changes only after ingestion
+
+_UNIFIED_EXPLAIN_PROMPT = """\
+/no_think
+You are writing a cross-theme morning intelligence briefing for an investor who tracks these themes. \
+Be specific — use actual company names from the data below. \
+Sound like a sharp friend texting, not a financial report.
+
+Today's theme activity:
+{themes_block}
+
+Write 3-4 short paragraphs (no bullets, no headers):
+1. Lead with the single most significant development — name the specific company and what happened.
+2. Cross-theme pattern — what do the strongest signals have in common today? Are any themes moving together or in tension?
+3. What is quiet or retreating today, and does that change the overall picture?
+4. One sentence: what signal in the coming days would confirm or contradict what you're seeing?
+
+Rules:
+- Name actual companies from the excerpts above — don't be vague
+- No jargon: never say "thesis", "corpus", "signals", "sentiment", "confidence", "momentum indicator", "bottleneck"
+- No bullets or headers in your output — just flowing paragraphs
+- Keep it under 200 words total
+- Sound like a person, not a press release"""
 
 
 class FeedService:
@@ -89,6 +112,8 @@ class FeedService:
 
     async def invalidate(self, feed_date: date) -> None:
         await self._cache.delete(f"feed:generated:{feed_date.isoformat()}")
+        await self._cache.delete(f"feed:explain-summary:{feed_date.isoformat()}")
+        await self._cache.delete(f"feed:unified-explain:{feed_date.isoformat()}")
 
     async def stream_explain_summary(self, feed_date: date):
         """
@@ -125,6 +150,72 @@ class FeedService:
 
         result = {"summary": full_text.strip(), "from_cache": False}
         await self._cache.set(cache_key, json.dumps(result), ttl_seconds=EXPLAIN_SUMMARY_TTL)
+
+    async def stream_unified_explain(self, feed_date: date):
+        """
+        Async generator — streams a single cross-theme plain-English narrative.
+        Synthesises all active thesis signals into one flowing briefing instead
+        of five separate per-thesis paragraphs.
+
+        Yields string tokens. Caller wraps in SSE frames.
+        If cached, yields the full text as one chunk.
+        """
+        cache_key = f"feed:unified-explain:{feed_date.isoformat()}"
+        cached = await self._cache.get(cache_key)
+        if cached:
+            data = json.loads(cached)
+            yield data["narrative"]
+            return
+
+        feed = await self.get_feed(feed_date)
+
+        if not feed.thesis_signals:
+            yield (
+                "Nothing new came in today — all tracked themes are quiet. "
+                "Check back after the next ingestion run."
+            )
+            return
+
+        # Build a concise block per theme for the prompt
+        theme_parts: list[str] = []
+        for s in feed.thesis_signals:
+            momentum_str = (s.momentum or "stable").upper()
+            support_pct = round(s.confidence * 100)
+            delta_str = ""
+            if s.confidence_delta is not None and abs(s.confidence_delta) >= 0.005:
+                pts = round(abs(s.confidence_delta) * 100)
+                delta_str = f" ({'up' if s.confidence_delta > 0 else 'down'} {pts}pts vs. 7d ago)"
+
+            part = (
+                f"{s.thesis_name} — {support_pct}% support{delta_str}, "
+                f"{momentum_str}, {s.new_evidence_count} new "
+                f"document{'s' if s.new_evidence_count != 1 else ''} today"
+            )
+            if s.highlight:
+                excerpt = s.highlight[:220].replace("\n", " ")
+                part += f'\n  Top excerpt: "{excerpt}"'
+            if s.language_shift:
+                part += f"\n  Language shift: {s.language_shift[:100]}"
+            theme_parts.append(part)
+
+        themes_block = "\n\n".join(theme_parts)
+        prompt = _UNIFIED_EXPLAIN_PROMPT.format(themes_block=themes_block)
+
+        full_text = ""
+        try:
+            async for token in self._llm.generate_stream(prompt):
+                if "<think>" in token or "</think>" in token:
+                    continue
+                full_text += token
+                yield token
+        except Exception:
+            logger.warning("Unified explain stream failed for %s", feed_date)
+            fallback = feed.summary or "Could not generate cross-theme narrative."
+            yield fallback
+            full_text = fallback
+
+        result = {"narrative": full_text.strip()}
+        await self._cache.set(cache_key, json.dumps(result), ttl_seconds=UNIFIED_EXPLAIN_TTL)
 
     async def get_explain_summary(self, feed_date: date) -> dict:
         """

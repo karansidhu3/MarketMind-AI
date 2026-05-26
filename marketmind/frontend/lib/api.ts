@@ -196,6 +196,23 @@ export async function* streamFeedExplainSummary(): AsyncGenerator<string> {
   }
 }
 
+/**
+ * Stream the unified cross-theme plain-English narrative.
+ * Yields string tokens as they arrive. If cached, yields the full text at once.
+ * Replaces the five separate per-thesis ExplainCards in the feed's Explain mode.
+ */
+export async function* streamUnifiedExplain(): AsyncGenerator<string> {
+  const token = getToken()
+  const res = await fetch(`${API_BASE}/feed/unified-explain/stream`, {
+    headers: { Authorization: token ? `Bearer ${token}` : '' },
+  })
+  if (res.status === 401) { localStorage.removeItem('mm_token'); window.location.href = '/login'; return }
+  if (!res.ok || !res.body) return
+  for await (const event of parseSSEStream(res.body)) {
+    if (typeof event.chunk === 'string') yield event.chunk
+  }
+}
+
 export type ThesisExplainStreamEvent =
   | { type: 'meta'; trend: string; from_cache: boolean }
   | { type: 'chunk'; text: string }
