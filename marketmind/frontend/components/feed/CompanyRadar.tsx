@@ -15,13 +15,27 @@ function isNew(firstSeen: string): boolean {
   return new Date(firstSeen) >= cutoff
 }
 
-// ── Mini 4-week sparkline ─────────────────────────────────────────────────────
+// ── Week-over-week growth rate ────────────────────────────────────────────────
 
-function MiniSparkline({ counts }: { counts: number[] }) {
-  if (!counts || counts.length < 2 || counts.every(v => v === 0)) return null
+function weekGrowth(counts: number[]): number {
+  if (!counts || counts.length < 2) return 0
+  const thisWeek  = counts[counts.length - 1]
+  const lastWeek  = counts[counts.length - 2] || 0
+  if (lastWeek === 0) return thisWeek > 0 ? 999 : 0
+  return thisWeek / lastWeek
+}
+
+// ── Bigger 4-week sparkline ───────────────────────────────────────────────────
+
+function RadarSparkline({ counts }: { counts: number[] }) {
+  if (!counts || counts.length < 2 || counts.every(v => v === 0)) return (
+    <div className="w-16 h-7 flex items-center justify-center">
+      <div className="w-full h-px bg-border/50" />
+    </div>
+  )
 
   const max  = Math.max(...counts, 1)
-  const W = 40, H = 16, PAD = 1.5
+  const W = 64, H = 28, PAD = 2
 
   const pts = counts.map((v, i) => {
     const x = PAD + (i / (counts.length - 1)) * (W - 2 * PAD)
@@ -31,26 +45,28 @@ function MiniSparkline({ counts }: { counts: number[] }) {
 
   const latest = counts[counts.length - 1]
   const prev   = counts[counts.length - 2]
+  const growth = weekGrowth(counts)
   const rising = latest > prev
   const flat   = latest === prev
-  const color  = rising ? 'text-green' : flat ? 'text-text-tertiary' : 'text-red'
+  const surge  = growth >= 2 && latest > 0
+  const color  = surge ? 'text-accent' : rising ? 'text-green' : flat ? 'text-text-tertiary' : 'text-red'
 
   const lastPt   = pts.split(' ').pop()!
   const [lx, ly] = lastPt.split(',').map(parseFloat)
 
   return (
     <svg width={W} height={H} className={color} style={{ overflow: 'visible' }}>
-      <title>{`4-week activity: ${counts.join(', ')}`}</title>
+      <title>{`4-week: ${counts.join(', ')} docs/week`}</title>
       <polyline
         points={pts}
         fill="none"
         stroke="currentColor"
-        strokeWidth={1.5}
+        strokeWidth={surge ? 2 : 1.5}
         strokeLinecap="round"
         strokeLinejoin="round"
-        opacity={0.8}
+        opacity={0.85}
       />
-      <circle cx={lx} cy={ly} r={2.5} fill="currentColor" />
+      <circle cx={lx} cy={ly} r={surge ? 3 : 2.5} fill="currentColor" />
     </svg>
   )
 }
@@ -183,6 +199,14 @@ export default function CompanyRadar({ companies, initialAlerts = [] }: CompanyR
     )
   }
 
+  // Sort acceleration-first: week-over-week growth rate descending, tie-break by doc_count
+  const sorted = [...companies].sort((a, b) => {
+    const ga = weekGrowth(a.weekly_counts)
+    const gb = weekGrowth(b.weekly_counts)
+    if (gb !== ga) return gb - ga
+    return b.doc_count - a.doc_count
+  })
+
   const maxDocs = Math.max(...companies.map(c => c.doc_count), 1)
 
   function getAlert(company: CompanyRadarItem): CompanyAlert | undefined {
@@ -194,18 +218,31 @@ export default function CompanyRadar({ companies, initialAlerts = [] }: CompanyR
     <div>
       {/* Scrollable row list — capped so the panel never overflows the viewport */}
       <div className="max-h-[calc(100vh-140px)] overflow-y-auto">
-      {companies.map((c, i) => {
+      {sorted.map((c, i) => {
         const pct       = (c.doc_count / maxDocs) * 100
         const freshly   = isNew(c.first_seen)
         const alert     = getAlert(c)
         const norm      = c.company_name.toLowerCase().replace(/\s+/g, '')
         const isOpen    = openPopover === norm
         const triggered = alert && c.doc_count >= alert.threshold
+        const growth    = weekGrowth(c.weekly_counts)
+        const isSurge   = growth >= 2 && (c.weekly_counts[c.weekly_counts.length - 1] ?? 0) > 0
+
+        // Velocity label: "↑2× this week"
+        const velocityLabel = (() => {
+          const thisWeek = c.weekly_counts[c.weekly_counts.length - 1] ?? 0
+          if (!isSurge || thisWeek === 0) return null
+          if (growth >= 999) return `↑${thisWeek} new this week`
+          return `↑${Math.round(growth)}× this week`
+        })()
 
         return (
           <div
             key={i}
-            className="relative group flex items-center gap-2.5 px-3 py-2.5 border-b border-border/60 last:border-0 hover:bg-elevated/50 transition-colors"
+            className={cn(
+              'relative group flex items-center gap-2.5 px-3 py-2.5 border-b border-border/60 last:border-0 hover:bg-elevated/50 transition-colors',
+              isSurge && 'bg-accent/[0.02]'
+            )}
           >
             {/* Relative-strength bar */}
             <div
@@ -220,7 +257,7 @@ export default function CompanyRadar({ companies, initialAlerts = [] }: CompanyR
 
             {/* Name + thesis */}
             <div className="relative flex-1 min-w-0">
-              <div className="flex items-baseline gap-1.5">
+              <div className="flex items-baseline gap-1.5 flex-wrap">
                 <button
                   onClick={() => c.normalised_name && openCompany(c.normalised_name)}
                   className="text-text-primary text-xs font-medium truncate leading-snug hover:text-accent transition-colors text-left"
@@ -231,9 +268,14 @@ export default function CompanyRadar({ companies, initialAlerts = [] }: CompanyR
                 {c.ticker && (
                   <span className="text-accent text-[11px] font-mono shrink-0 font-medium">{c.ticker}</span>
                 )}
-                {freshly && (
+                {freshly && !isSurge && (
                   <span className="text-green text-[9px] font-bold bg-green/10 px-1.5 py-0.5 rounded-full shrink-0 leading-none uppercase tracking-wide">
                     NEW
+                  </span>
+                )}
+                {isSurge && (
+                  <span className="text-accent text-[9px] font-bold bg-accent/10 px-1.5 py-0.5 rounded-full shrink-0 leading-none uppercase tracking-wide">
+                    {velocityLabel}
                   </span>
                 )}
               </div>
@@ -245,9 +287,9 @@ export default function CompanyRadar({ companies, initialAlerts = [] }: CompanyR
               </p>
             </div>
 
-            {/* Sparkline + stats + bell */}
+            {/* Sparkline (bigger) + stats + bell */}
             <div className="relative shrink-0 flex items-center gap-2">
-              <MiniSparkline counts={c.weekly_counts} />
+              <RadarSparkline counts={c.weekly_counts} />
 
               <div className="text-right">
                 <div className="text-text-primary text-xs font-semibold tabular-nums">
@@ -309,7 +351,9 @@ export default function CompanyRadar({ companies, initialAlerts = [] }: CompanyR
 
       {/* Footer — pinned outside the scroll area */}
       <p className="text-text-tertiary text-[10px] px-3 pt-2 pb-2 border-t border-border/60 leading-relaxed">
-        Ranked by unique source docs · <span className="text-green font-medium">NEW</span> = first seen within {NEW_WITHIN_DAYS}d · sparkline = 4-week trend
+        Sorted by acceleration ·{' '}
+        <span className="text-accent font-medium">↑N×</span> = week-over-week surge ·{' '}
+        <span className="text-green font-medium">NEW</span> = first seen within {NEW_WITHIN_DAYS}d
       </p>
     </div>
   )

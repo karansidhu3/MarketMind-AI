@@ -6,6 +6,7 @@ import {
   TrendingUp, Minus, ChevronRight, X, Check, Pencil,
 } from 'lucide-react'
 import AppShell from '@/components/layout/AppShell'
+import TickerSearch from '@/components/portfolio/TickerSearch'
 import { getHoldings, addHolding, updateHolding, deleteHolding, getPortfolioAlignment } from '@/lib/api'
 import { formatConfidence, cn } from '@/lib/utils'
 import { useCompany } from '@/contexts/CompanyContext'
@@ -33,8 +34,13 @@ function HoldingForm({ initial, onSave, onCancel }: HoldingFormProps) {
   const [saving,      setSaving]      = useState(false)
   const [error,       setError]       = useState('')
 
+  // Whether the user has already picked a ticker (hides the fallback manual inputs)
+  const tickerPicked = !!ticker
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!ticker.trim()) { setError('Select or type a ticker.'); return }
+    if (!companyName.trim()) { setError('Company name is required.'); return }
     const sharesNum = parseFloat(shares)
     if (isNaN(sharesNum) || sharesNum <= 0) {
       setError('Shares must be a positive number.')
@@ -58,18 +64,69 @@ function HoldingForm({ initial, onSave, onCancel }: HoldingFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="bg-elevated border border-border rounded-xl p-4 space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+
+      {/* ── Ticker / company search ── */}
+      {initial ? (
+        /* Edit mode: ticker is locked, only shares + cost basis change */
+        <TickerSearch lockedTicker={initial.ticker} onSelect={() => {}} />
+      ) : tickerPicked ? (
+        /* Selection made: show chip + clear button */
         <div>
           <label className="text-text-tertiary text-xs mb-1 block">Ticker *</label>
-          <input
-            value={ticker}
-            onChange={e => setTicker(e.target.value.toUpperCase())}
-            placeholder="NVDA"
-            required
-            disabled={!!initial}
-            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent disabled:opacity-60 font-mono uppercase"
-          />
+          <div className="flex items-center gap-2 px-3 py-2 bg-surface border border-accent/40 rounded-lg">
+            <span className="text-accent text-sm font-mono font-semibold">{ticker}</span>
+            <span className="text-text-secondary text-xs flex-1 truncate">{companyName}</span>
+            <button
+              type="button"
+              onClick={() => { setTicker(''); setCompanyName('') }}
+              className="text-text-tertiary hover:text-text-secondary transition-colors ml-auto"
+              title="Change selection"
+            >
+              <X size={13} />
+            </button>
+          </div>
         </div>
+      ) : (
+        /* No selection yet: show search */
+        <div className="space-y-2">
+          <TickerSearch
+            onSelect={entry => {
+              setTicker(entry.ticker)
+              setCompanyName(entry.name)
+            }}
+          />
+          {/* Fallback: manual entry if ticker not in the bundled list */}
+          <details className="group">
+            <summary className="text-text-tertiary text-[11px] cursor-pointer hover:text-text-secondary transition-colors list-none flex items-center gap-1">
+              <span className="group-open:rotate-90 inline-block transition-transform">›</span>
+              Not in the list? Enter manually
+            </summary>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-text-tertiary text-xs mb-1 block">Ticker</label>
+                <input
+                  value={ticker}
+                  onChange={e => setTicker(e.target.value.toUpperCase())}
+                  placeholder="ACME"
+                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent font-mono uppercase"
+                />
+              </div>
+              <div>
+                <label className="text-text-tertiary text-xs mb-1 block">Company name</label>
+                <input
+                  value={companyName}
+                  onChange={e => setCompanyName(e.target.value)}
+                  placeholder="Acme Corporation"
+                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent"
+                />
+              </div>
+            </div>
+          </details>
+        </div>
+      )}
+
+      {/* ── Shares + cost basis ── */}
+      <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-text-tertiary text-xs mb-1 block">Shares *</label>
           <input
@@ -83,34 +140,26 @@ function HoldingForm({ initial, onSave, onCancel }: HoldingFormProps) {
             className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent"
           />
         </div>
+        <div>
+          <label className="text-text-tertiary text-xs mb-1 block">Cost basis / share (optional)</label>
+          <input
+            type="number"
+            value={costBasis}
+            onChange={e => setCostBasis(e.target.value)}
+            placeholder="e.g. 480.00"
+            min="0"
+            step="any"
+            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent"
+          />
+        </div>
       </div>
-      <div>
-        <label className="text-text-tertiary text-xs mb-1 block">Company name *</label>
-        <input
-          value={companyName}
-          onChange={e => setCompanyName(e.target.value)}
-          placeholder="NVIDIA Corporation"
-          required
-          className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent"
-        />
-      </div>
-      <div>
-        <label className="text-text-tertiary text-xs mb-1 block">Cost basis per share (optional)</label>
-        <input
-          type="number"
-          value={costBasis}
-          onChange={e => setCostBasis(e.target.value)}
-          placeholder="e.g. 480.00"
-          min="0"
-          step="any"
-          className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent"
-        />
-      </div>
+
       {error && (
         <p className="text-red text-xs flex items-center gap-1.5">
           <AlertCircle size={11} /> {error}
         </p>
       )}
+
       <div className="flex gap-2 pt-1">
         <button
           type="submit"

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Plus, RefreshCw, AlertCircle, X } from 'lucide-react'
 import AppShell from '@/components/layout/AppShell'
-import ThesisCard from '@/components/thesis/ThesisCard'
+import ThesisGridCard from '@/components/thesis/ThesisGridCard'
 import { getTheses, createThesis } from '@/lib/api'
 import type { ThesisOut } from '@/lib/types'
 
@@ -56,7 +56,7 @@ export default function ThesisPage() {
 
   return (
     <AppShell>
-      <div className="max-w-[900px] mx-auto px-8 py-8">
+      <div className="max-w-[1100px] mx-auto px-8 py-8">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -145,26 +145,26 @@ export default function ThesisPage() {
           </div>
         )}
 
-        {/* System theses */}
+        {/* System theses — 2-column grid */}
         {!loading && !error && system.length > 0 && (
           <section className="mb-8">
-            <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest mb-3 px-1">
-              System
+            <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest mb-4 px-1">
+              System Themes
             </h2>
-            <div className="space-y-2">
-              {system.map(t => <ThesisCard key={t.id} thesis={t} />)}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {system.map(t => <ThesisGridCard key={t.id} thesis={t} />)}
             </div>
           </section>
         )}
 
-        {/* Custom theses */}
+        {/* Custom theses — 2-column grid */}
         {!loading && !error && custom.length > 0 && (
           <section>
-            <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest mb-3 px-1">
-              Custom
+            <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest mb-4 px-1">
+              Custom Themes
             </h2>
-            <div className="space-y-2">
-              {custom.map(t => <ThesisCard key={t.id} thesis={t} />)}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {custom.map(t => <ThesisGridCard key={t.id} thesis={t} />)}
             </div>
           </section>
         )}

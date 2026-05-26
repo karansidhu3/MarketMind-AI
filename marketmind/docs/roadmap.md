@@ -152,37 +152,114 @@ Items completed so far:
 Goal: make the product demonstrable to people who haven't built it, and make the
 daily experience polished enough to use as a live portfolio tool.
 
+### Completed ✅
+- UI overhaul — glassmorphism nav, login redesign, dual-color confidence bars
+- Corpus targeting — TargetedSECConnector, 60 curated tickers across 5 sectors
+- Company deep-dive panel — slide-out drawer, ADR-027
+- Feed timeline scrubber — prev/next + date picker, ADR-028
+- Intelligence Briefing redesign — activity badge, ThesisPulseCards, top-signal
+  quote, SSE streaming Explain mode, pre-warm caches after regeneration
+- Per-connector Redis checkpointing — restarts skip completed connectors
+- Public demo mode — /demo route, static sample data, no login, Vercel deployed
+- /about page — plain English purpose, scope, how-it-works, tech stack
+- UX terminology pass — "Theses" → "Themes", "confidence" → "support rate"
+- Contextual tooltips — momentum, support rate, language shift, radar ranking
+
 ### Remaining
-
-- **Public demo mode** — read-only `/demo` route with static sample data, no login
-  required. Send to recruiters as a live link. Changes the resume story from "I
-  built this" to "you can use it right now." Static JSON, no live LLM needed.
-
-- **Mobile-responsive feed** — at minimum, the feed page is readable on mobile
-  for the morning check. Current layout is desktop-only.
-
-- **Thesis export** — one-click export of a thesis summary (PDF or plain text):
-  hypothesis, confidence trend, top companies, key evidence excerpts.
+- **Mobile-responsive feed** — minimum viable mobile layout for morning check
+- **Theme export** — one-click PDF/text summary: hypothesis, trend, top companies,
+  key evidence excerpts
 
 ---
 
-## Sprint 9 — Track Record + Prediction
+## Sprint 9 — Intelligence UX Overhaul + Portfolio Depth
+
+**Theme:** Close the gap between what the system knows and what the user sees.
+The corpus is strong after weeks of ingestion. The UI doesn't yet communicate
+the intelligence it contains. This sprint fixes the disconnected feeling.
+
+### Feed redesign
+
+- **Top story hierarchy** — replace equal-weight signal cards with a dominant
+  "lead story" card (full width, larger type, expanded highlight) with smaller
+  secondary cards below. The system already picks the top signal — surface it
+  visually. Every good briefing has a lede.
+
+- **Support rate delta** — show the 7-day change next to every support rate
+  number: "67% ↑+9pts". Point-in-time % tells nothing. Direction tells a story.
+  One extra field per ThesisSignal, computed from ConfidenceSnapshot history.
+
+- **Unified Explain narrative** — in Explain mode, replace 5 separate per-theme
+  paragraphs with a single LLM-generated narrative connecting all themes for the
+  day. "Here's the thread running through everything today." More like a real
+  analyst note, less like 5 separate reports.
+
+- **Portfolio signals on feed** — add a small "Your portfolio" section to the
+  feed: gap companies that had new signals today, themes aligned with your
+  holdings. Connects corpus to holdings without requiring a page visit.
+
+### Company Radar redesign
+
+- **Acceleration-first ranking** — sort by week-over-week growth rate, not total
+  count. A company going 0→5 this week is more interesting than one at 23 that's
+  been flat. Show "↑4× this week" as the primary metric alongside total.
+
+- **Bigger sparkline** — the current 40px sparkline is unreadable. Make it the
+  visual centrepiece of each row, not a decoration. The curve IS the insight.
+
+- **Velocity callout** — companies with >2× week-over-week growth get a distinct
+  visual treatment (not just the NEW badge for first appearance).
+
+### Themes list redesign
+
+- **Inline health at a glance** — show mini confidence sparkline + 7-day signal
+  count directly on the list page. Should not require clicking into each theme
+  to know what's happening. Grid layout, not a flat list.
+
+### Navigation
+
+- **Remove Research from primary nav** — stateless synthesis; doesn't use the
+  temporal layer; weakens the product story. Move to a "Search corpus" input
+  inside the theme detail page where it's contextually useful.
+
+### Portfolio depth
+
+- **Ticker search/autocomplete** — replace manual ticker entry with a searchable
+  dropdown backed by a bundled list of S&P 500 + Russell 1000 + thesis-sector
+  companies (JSON, no external API). Type "Apple" or "AAPL", get the match.
+  Eliminates the biggest friction in adding holdings.
+
+- **Holdings value + P&L** — if cost basis is entered, show current value and
+  unrealised gain/loss using daily price data (Yahoo Finance, free). Turns the
+  portfolio page from a list into a real portfolio tracker.
+
+- **Theme-to-holding narrative** — for each held company, show which themes it
+  appears in and whether those themes are strengthening or weakening. "You hold
+  ETN. Energy Grid theme is accelerating (+12 signals this week). ETN appears in
+  14 independent filings." Closes the loop between intelligence and portfolio.
+
+### Visual identity
+
+- **Accent colour change** — current blue is generic (every SaaS uses it).
+  Replace with deep violet (#7C3AED) or teal (#0D9488). Violet reads as
+  sophisticated/analytical; teal reads as data/intelligence. Either is more
+  distinctive than blue for a financial tool. Requires updating CSS vars only —
+  no component changes needed.
 
 ---
 
-## Sprint 9 — Track Record + Prediction
+## Sprint 10 — Track Record + Prediction
 
-- **Thesis vs reality tracking** — add "predicted outcome" and "target date" to
-  each thesis. At the target date, mark: did it play out? After 12 months you have
-  a table: 7 theses tracked, 4 correct calls, 2 wrong, 1 pending. Turns MarketMind
-  from a monitoring tool into a track record builder. Very strong interview story.
+- **Theme vs reality tracking** — add "predicted outcome" and "target date" to
+  each theme. At target date, mark: did it play out? After 12 months: 7 themes
+  tracked, 4 correct calls, 2 wrong, 1 pending. Turns MarketMind from a
+  monitoring tool into a track record builder. Very strong interview story.
 
 - **Comparable period detection** — "this pattern resembles what we saw in AI
   Infrastructure 3 months before it accelerated." Requires multi-month corpus.
 
-- **Earnings calendar overlay** — when companies appear on the radar, flag when
-  they next report earnings. "Powell Industries, 12 docs on radar, reports Q2 in
-  8 days." That's actionable. Earnings dates are public data, easy to fetch.
+- **Earnings calendar overlay** — flag when radar companies report next earnings.
+  "Powell Industries, 12 docs on radar, reports Q2 in 8 days." Actionable.
 
 ---
 

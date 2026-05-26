@@ -134,7 +134,33 @@ RSS connectors. Embeddings via nomic-embed-text. Qdrant storage. UUID5 deduplica
 ### Sprint 8 remaining
 
 - **Mobile-responsive feed** — minimum viable mobile layout for morning check
-- **Thesis export** — one-click PDF/text summary per thesis
+- **Theme export** — one-click PDF/text summary per thesis
+
+### Sprint 9 — Intelligence UX Overhaul + Portfolio Depth (in progress)
+
+Completed ✅:
+- Accent colour blue → violet (#7C3AED) — globals.css `--accent: 124 58 237`
+- Ticker autocomplete — `lib/tickers.ts` (~280 entries), `TickerSearch` component,
+  wired into `HoldingForm` with fallback manual entry; replaces separate ticker+name inputs
+- Themes list → 2-column grid — `ThesisGridCard` with auto-fetched mini sparklines
+  (14-day confidence history, trend badge), replaces flat `ThesisCard` list
+- Nav: Research removed from primary nav (3 items: Feed, Themes, Portfolio)
+- Corpus search added to theme detail page as 3rd tab ("Search Corpus"); replaces
+  the Research page for contextual use; pre-seeded starter queries from thesis keywords
+- Feed: lead-story hierarchy — first signal card gets `featured` prop (larger type,
+  3-line highlight, Lead Story badge, thicker bar)
+- Feed: support rate delta — `confidence_delta` field in backend `ThesisSignal` schema,
+  computed from ConfidenceSnapshot 7-day history; displayed as "↑+Xpts 7d" in SignalCard
+- Radar: acceleration-first sort — week-over-week growth rate, tie-break by doc_count
+- Radar: bigger sparklines — 64×28px (was 40×16px), colour-coded by growth
+- Radar: velocity callout — `isSurge` = growth ≥ 2×; shown as "↑N× this week" badge
+  in accent colour; surge rows get faint accent tint
+
+Remaining Sprint 9:
+- Feed: unified Explain narrative (single cross-theme LLM narrative, new SSE endpoint)
+- Feed: portfolio signals inline on feed (gap companies with new signals today)
+- Portfolio: theme-to-holding narrative
+- Portfolio: holdings P&L (Yahoo Finance prices, optional)
 
 ### Ingestion sources (scripts/ingest.py)
 Generic feeds:

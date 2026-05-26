@@ -13,6 +13,7 @@ class ThesisSignal(BaseModel):
     opposing_count: int
     momentum: str  # "rising" | "flat" | "falling"
     confidence: float
+    confidence_delta: float | None = None  # 7-day change in confidence (e.g. +0.09 = +9pts)
     top_companies: list[str]
     highlight: str                      # most relevant excerpt from today
     evidence_ids: list[str] = []       # IDs of today's evidence records (C-011 provenance)

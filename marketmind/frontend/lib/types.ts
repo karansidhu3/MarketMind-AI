@@ -6,6 +6,7 @@ export interface ThesisSignal {
   opposing_count: number
   momentum: 'rising' | 'flat' | 'falling'
   confidence: number
+  confidence_delta?: number | null  // 7-day change in support rate (e.g. 0.09 = +9pts)
   top_companies: string[]
   highlight: string
   evidence_ids: string[]

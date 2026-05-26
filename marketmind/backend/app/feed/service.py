@@ -279,6 +279,27 @@ class FeedService:
             except Exception:
                 pass
 
+            # 7-day confidence delta from ConfidenceSnapshot history
+            confidence_delta: float | None = None
+            try:
+                today_date = day_start.date()
+                week_ago_date = today_date - timedelta(days=7)
+                snap_7d = (
+                    await session.execute(
+                        select(ConfidenceSnapshot.confidence)
+                        .where(
+                            ConfidenceSnapshot.thesis_id == thesis.id,
+                            ConfidenceSnapshot.snapshot_date <= week_ago_date,
+                        )
+                        .order_by(ConfidenceSnapshot.snapshot_date.desc())
+                        .limit(1)
+                    )
+                ).scalar_one_or_none()
+                if snap_7d is not None:
+                    confidence_delta = round(confidence - snap_7d, 4)
+            except Exception:
+                pass
+
             signals.append(
                 ThesisSignal(
                     thesis_id=str(thesis.id),
@@ -288,6 +309,7 @@ class FeedService:
                     opposing_count=opposing,
                     momentum=momentum,
                     confidence=confidence,
+                    confidence_delta=confidence_delta,
                     top_companies=list(company_rows),
                     highlight=highlight,
                     evidence_ids=evidence_ids,

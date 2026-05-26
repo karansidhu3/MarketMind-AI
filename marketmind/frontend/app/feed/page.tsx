@@ -806,11 +806,12 @@ export default function FeedPage() {
                       <ExplainCard key={signal.thesis_id} signal={signal} />
                     ))
                   ) : (
-                    /* Data mode: full technical signal cards */
-                    feed.thesis_signals.map(signal => (
+                    /* Data mode: lead story (featured) + secondary signal cards */
+                    feed.thesis_signals.map((signal, i) => (
                       <SignalCard
                         key={signal.thesis_id}
                         signal={signal}
+                        featured={i === 0}
                         companyNameMap={companyNameMap}
                       />
                     ))
@@ -891,7 +892,7 @@ export default function FeedPage() {
                     <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest">
                       Company Radar
                     </h2>
-                    <Tooltip content="Companies ranked by unique source documents — not total mentions. Acceleration over time matters more than absolute count." />
+                    <Tooltip content="Sorted by week-over-week acceleration. A company going 0→5 this week ranks higher than one steady at 20. Surge badge = 2× or more growth." />
                   </div>
                   <div className="bg-surface border border-border rounded-xl">
                     <CompanyRadar companies={radar.slice(0, 20)} initialAlerts={alerts} />

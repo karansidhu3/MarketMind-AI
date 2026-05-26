@@ -9,10 +9,10 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import AppShell from '@/components/layout/AppShell'
-import { getThesis, getThesisEvidence, getSupplyChain, getConfidenceHistory, getLanguageDelta, evaluateThesis } from '@/lib/api'
+import { getThesis, getThesisEvidence, getSupplyChain, getConfidenceHistory, getLanguageDelta, evaluateThesis, research } from '@/lib/api'
 import { formatConfidence, formatDate, cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
-import type { ThesisOut, EvidenceOut, SupplyChainLink, ConfidenceSnapshot, LanguageDelta } from '@/lib/types'
+import type { ThesisOut, EvidenceOut, SupplyChainLink, ConfidenceSnapshot, LanguageDelta, ResearchResponse } from '@/lib/types'
 
 // ── Sentiment config ──────────────────────────────────────────────────────────
 
@@ -104,7 +104,7 @@ export default function ThesisDetailPage({ params }: { params: Promise<{ id: str
   const [filter,    setFilter]    = useState<'all' | 'supporting' | 'opposing' | 'neutral'>('all')
 
   // Main tab
-  const [mainTab,   setMainTab]   = useState<'evidence' | 'supply-chain'>('evidence')
+  const [mainTab,   setMainTab]   = useState<'evidence' | 'supply-chain' | 'search'>('evidence')
 
   // Supply chain state
   const [scQuery,   setScQuery]   = useState('')
@@ -121,6 +121,14 @@ export default function ThesisDetailPage({ params }: { params: Promise<{ id: str
   // Re-evaluate state
   const [evalRunning, setEvalRunning] = useState(false)
   const { toast } = useToast()
+
+  // Corpus search state
+  const [srQuery,   setSrQuery]   = useState('')
+  const [srInput,   setSrInput]   = useState('')
+  const [srResult,  setSrResult]  = useState<ResearchResponse | null>(null)
+  const [srLoading, setSrLoading] = useState(false)
+  const [srError,   setSrError]   = useState('')
+  const [srElapsed, setSrElapsed] = useState(0)
 
   useEffect(() => {
     setLoading(true)
@@ -183,6 +191,30 @@ export default function ThesisDetailPage({ params }: { params: Promise<{ id: str
       setDeltaError(e instanceof Error ? e.message : 'Analysis failed.')
     } finally {
       setDeltaLoading(false)
+    }
+  }
+
+  // Elapsed timer for corpus search
+  useEffect(() => {
+    if (!srLoading) { setSrElapsed(0); return }
+    const t = setInterval(() => setSrElapsed(e => e + 1), 1000)
+    return () => clearInterval(t)
+  }, [srLoading])
+
+  async function runSearch(q?: string) {
+    const query = (q ?? srInput).trim()
+    if (!query || srLoading) return
+    if (q) setSrInput(q)
+    setSrQuery(query)
+    setSrError('')
+    setSrLoading(true)
+    setSrResult(null)
+    try {
+      setSrResult(await research(query, undefined))
+    } catch (e: unknown) {
+      setSrError(e instanceof Error ? e.message : 'Search failed.')
+    } finally {
+      setSrLoading(false)
     }
   }
 
@@ -488,19 +520,23 @@ export default function ThesisDetailPage({ params }: { params: Promise<{ id: str
 
             {/* ── Main tab switcher ──────────────────────────────────────── */}
             <div className="flex items-center gap-1 border-b border-border mb-5">
-              {(['evidence', 'supply-chain'] as const).map(tab => (
+              {([
+                { key: 'evidence',     label: 'Evidence'      },
+                { key: 'supply-chain', label: 'Supply Chain'  },
+                { key: 'search',       label: 'Search Corpus' },
+              ] as const).map(({ key, label }) => (
                 <button
-                  key={tab}
-                  onClick={() => setMainTab(tab)}
+                  key={key}
+                  onClick={() => setMainTab(key)}
                   className={cn(
-                    'px-4 py-2.5 text-sm font-medium capitalize transition-colors relative',
-                    mainTab === tab
+                    'px-4 py-2.5 text-sm font-medium transition-colors relative',
+                    mainTab === key
                       ? 'text-text-primary'
                       : 'text-text-tertiary hover:text-text-secondary'
                   )}
                 >
-                  {tab === 'evidence' ? 'Evidence' : 'Supply Chain'}
-                  {mainTab === tab && (
+                  {label}
+                  {mainTab === key && (
                     <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent rounded-t-full" />
                   )}
                 </button>
@@ -760,6 +796,138 @@ export default function ThesisDetailPage({ params }: { params: Promise<{ id: str
                     <p className="text-xs mt-2">
                       Data is extracted from SEC 10-K and 10-Q filings — only available after ingestion has run.
                     </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Search Corpus tab ──────────────────────────────────────── */}
+            {mainTab === 'search' && (
+              <div>
+                <p className="text-text-tertiary text-sm mb-4 leading-relaxed">
+                  Ask a question against the full corpus. The LLM synthesises an answer from the most
+                  relevant ingested documents — not just this theme&apos;s evidence.
+                </p>
+
+                {/* Starter queries from this thesis's keywords */}
+                {!srQuery && thesis && (
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {[
+                      `What are the latest signals for ${thesis.name.split(' ').slice(0, 3).join(' ')}?`,
+                      `Which companies are most active in ${thesis.keywords[0] ?? 'this sector'}?`,
+                      `What risks are mentioned most in recent filings?`,
+                    ].map(q => (
+                      <button
+                        key={q}
+                        onClick={() => { setSrInput(q); runSearch(q) }}
+                        className="text-xs px-3 py-1.5 rounded-lg bg-elevated border border-border text-text-secondary hover:text-text-primary hover:border-accent/30 transition-colors text-left"
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Input */}
+                <div className="flex items-end gap-2 mb-5">
+                  <div className="flex-1 relative">
+                    <Search size={13} className="absolute left-3 top-3.5 text-text-tertiary pointer-events-none" />
+                    <textarea
+                      value={srInput}
+                      onChange={e => setSrInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); runSearch() } }}
+                      placeholder="Ask anything about the corpus…"
+                      rows={2}
+                      className="w-full bg-surface border border-border rounded-xl pl-8 pr-3 py-3 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent resize-none"
+                    />
+                  </div>
+                  <button
+                    onClick={() => runSearch()}
+                    disabled={!srInput.trim() || srLoading}
+                    className={cn(
+                      'flex items-center gap-1.5 px-4 py-3 rounded-xl text-sm font-medium transition-colors shrink-0',
+                      srInput.trim() && !srLoading
+                        ? 'bg-accent text-white hover:opacity-90'
+                        : 'bg-elevated text-text-tertiary cursor-not-allowed'
+                    )}
+                  >
+                    {srLoading
+                      ? <RefreshCw size={13} className="animate-spin" />
+                      : <ArrowRight size={13} />}
+                    {srLoading ? `${srElapsed}s…` : 'Search'}
+                  </button>
+                </div>
+
+                {/* Loading */}
+                {srLoading && (
+                  <div className="flex items-center gap-2 text-text-tertiary text-sm py-8 justify-center">
+                    <RefreshCw size={14} className="animate-spin" />
+                    Searching corpus… {srElapsed}s — LLM synthesis takes 10–30 seconds.
+                  </div>
+                )}
+
+                {/* Error */}
+                {srError && !srLoading && (
+                  <div className="text-red text-sm bg-red/5 border border-red/20 rounded-xl px-4 py-3 mb-4">
+                    {srError}
+                  </div>
+                )}
+
+                {/* Results */}
+                {srResult && !srLoading && (
+                  <div className="space-y-4">
+                    {/* Query */}
+                    <p className="text-text-tertiary text-xs">
+                      Results for: <span className="text-text-secondary italic">&ldquo;{srQuery}&rdquo;</span>
+                    </p>
+
+                    {/* Answer */}
+                    <div className="bg-surface border border-border rounded-xl p-5">
+                      <p className="text-text-secondary text-sm leading-relaxed whitespace-pre-wrap">
+                        {srResult.answer}
+                      </p>
+                    </div>
+
+                    {/* Sources */}
+                    {srResult.sources && srResult.sources.length > 0 && (
+                      <div>
+                        <p className="text-text-tertiary text-xs mb-2 uppercase tracking-widest font-medium">
+                          Sources ({srResult.sources.length})
+                        </p>
+                        <div className="space-y-2">
+                          {srResult.sources.map((src, i) => (
+                            <div key={i} className="flex items-start gap-3 bg-surface border border-border rounded-lg px-3 py-2.5">
+                              <span className="text-text-tertiary text-[11px] tabular-nums shrink-0 mt-0.5 w-4 text-right">
+                                {i + 1}.
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <span className="text-text-secondary text-xs font-medium truncate block">{src.source_name}</span>
+                                {src.title && src.title !== src.source_name && (
+                                  <p className="text-text-tertiary text-[11px] leading-relaxed line-clamp-2">{src.title}</p>
+                                )}
+                              </div>
+                              {src.url && (
+                                <a
+                                  href={src.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-text-tertiary hover:text-accent transition-colors shrink-0 mt-0.5"
+                                >
+                                  <ExternalLink size={11} />
+                                </a>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Empty state */}
+                {!srLoading && !srResult && !srError && (
+                  <div className="text-center py-10 text-text-tertiary text-sm">
+                    Enter a question above to search across all ingested documents.
                   </div>
                 )}
               </div>

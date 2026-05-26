@@ -40,11 +40,12 @@ const MOMENTUM = {
 interface SignalCardProps {
   signal: ThesisSignal
   compact?: boolean
+  featured?: boolean   // lead-story: larger type, expanded highlight
   /** Map from company_name → normalised_name for deep-dive panel */
   companyNameMap?: Record<string, string>
 }
 
-export default function SignalCard({ signal, compact = false, companyNameMap = {} }: SignalCardProps) {
+export default function SignalCard({ signal, compact = false, featured = false, companyNameMap = {} }: SignalCardProps) {
   // Renders inside AppShell → CompanyProvider, so hook resolves correctly
   const { openCompany } = useCompany()
   const m     = MOMENTUM[signal.momentum]
@@ -99,13 +100,24 @@ export default function SignalCard({ signal, compact = false, companyNameMap = {
     )
   }
 
+  // Confidence delta display helper
+  const deltaStr = (() => {
+    const d = signal.confidence_delta
+    if (d == null || Math.abs(d) < 0.005) return null
+    const pts = Math.round(Math.abs(d) * 100)
+    return d > 0 ? `↑+${pts}pts` : `↓−${pts}pts`
+  })()
+  const deltaColor = signal.confidence_delta != null && signal.confidence_delta > 0 ? 'text-green' : 'text-red'
+
   // ── Full layout ────────────────────────────────────────────────────────────
   return (
     <Link
       href={evidenceHref}
       className={cn(
-        'group block border border-border border-l-4 rounded-xl p-5',
-        'hover:border-border hover:shadow-sm transition-all duration-200 animate-slide-up',
+        'group block border border-l-4 rounded-xl transition-all duration-200 animate-slide-up',
+        featured
+          ? 'border-border p-6 hover:shadow-md bg-surface'
+          : 'border-border p-5 hover:border-border hover:shadow-sm',
         m.borderColor, m.cardTint
       )}
     >
@@ -129,16 +141,27 @@ export default function SignalCard({ signal, compact = false, companyNameMap = {
                 <ArrowUpRight size={9} className="opacity-60" />
               </span>
             )}
+            {featured && (
+              <span className="ml-1 text-[10px] text-accent/70 bg-accent/8 border border-accent/20 px-2 py-0.5 rounded-full font-medium uppercase tracking-wide">
+                Lead Story
+              </span>
+            )}
           </div>
 
           {/* Thesis name */}
-          <h3 className="text-text-primary font-semibold text-sm leading-snug mb-2 group-hover:text-accent transition-colors duration-150">
+          <h3 className={cn(
+            'text-text-primary font-semibold leading-snug mb-2 group-hover:text-accent transition-colors duration-150',
+            featured ? 'text-base' : 'text-sm'
+          )}>
             {signal.thesis_name}
           </h3>
 
-          {/* Highlight */}
+          {/* Highlight — more lines for featured */}
           {signal.highlight && (
-            <p className="text-text-secondary text-xs leading-relaxed mb-3 line-clamp-2">
+            <p className={cn(
+              'text-text-secondary leading-relaxed mb-3',
+              featured ? 'text-sm line-clamp-3' : 'text-xs line-clamp-2'
+            )}>
               {signal.highlight}
             </p>
           )}
@@ -160,7 +183,7 @@ export default function SignalCard({ signal, compact = false, companyNameMap = {
           {/* Companies */}
           {signal.top_companies.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-auto">
-              {signal.top_companies.slice(0, 5).map(c => {
+              {signal.top_companies.slice(0, featured ? 8 : 5).map(c => {
                 const normName = companyNameMap[c]
                 return normName ? (
                   <button
@@ -179,18 +202,22 @@ export default function SignalCard({ signal, compact = false, companyNameMap = {
                   </span>
                 )
               })}
-              {signal.top_companies.length > 5 && (
+              {signal.top_companies.length > (featured ? 8 : 5) && (
                 <span className="text-[11px] text-text-tertiary px-1 py-0.5">
-                  +{signal.top_companies.length - 5} more
+                  +{signal.top_companies.length - (featured ? 8 : 5)} more
                 </span>
               )}
             </div>
           )}
         </div>
 
-        {/* Right: confidence + ratio */}
-        <div className="shrink-0 text-right space-y-1 min-w-[64px]">
-          <div className={cn('text-3xl font-bold tabular-nums leading-none tracking-tight', m.textColor)}>
+        {/* Right: confidence + delta + ratio */}
+        <div className="shrink-0 text-right space-y-1 min-w-[72px]">
+          <div className={cn(
+            'font-bold tabular-nums leading-none tracking-tight',
+            featured ? 'text-4xl' : 'text-3xl',
+            m.textColor
+          )}>
             {formatConfidence(signal.confidence)}
           </div>
           <div className="flex items-center justify-end gap-1">
@@ -200,6 +227,12 @@ export default function SignalCard({ signal, compact = false, companyNameMap = {
               position="bottom"
             />
           </div>
+          {/* 7-day delta */}
+          {deltaStr && (
+            <div className={cn('text-[11px] font-semibold tabular-nums', deltaColor)}>
+              {deltaStr} 7d
+            </div>
+          )}
 
           {total > 0 && (
             <div className="flex items-center gap-1.5 justify-end pt-1">
@@ -216,7 +249,7 @@ export default function SignalCard({ signal, compact = false, companyNameMap = {
 
       {/* Supporting / opposing ratio bar — green:red split */}
       {total > 0 ? (
-        <div className="mt-4 h-[3px] bg-border/50 rounded-full overflow-hidden flex">
+        <div className={cn('bg-border/50 rounded-full overflow-hidden flex', featured ? 'mt-5 h-[4px]' : 'mt-4 h-[3px]')}>
           <div
             className="h-full bg-green/55 transition-all duration-500"
             style={{ width: `${(signal.supporting_count / total) * 100}%` }}
@@ -227,7 +260,7 @@ export default function SignalCard({ signal, compact = false, companyNameMap = {
           />
         </div>
       ) : (
-        <div className="mt-4 h-[3px] bg-border/40 rounded-full" />
+        <div className={cn('bg-border/40 rounded-full', featured ? 'mt-5 h-[4px]' : 'mt-4 h-[3px]')} />
       )}
     </Link>
   )
