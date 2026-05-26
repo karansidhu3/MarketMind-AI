@@ -34,7 +34,8 @@ from app.ingestion.worker import IngestionWorker
 from app.services.llm_service import OllamaLLMService
 from app.services.retrieval_service import QdrantRetrievalService
 from app.services.storage_service import LocalStorageService
-from app.supply_chain.extractor import SupplyChainExtractor
+# SupplyChainExtractor import retained for reference — not used (ADR-024)
+# from app.supply_chain.extractor import SupplyChainExtractor
 from app.thesis.service import ThesisService
 
 logging.basicConfig(
@@ -168,7 +169,11 @@ async def main() -> int:
     retrieval = QdrantRetrievalService(url=settings.qdrant_url)
 
     thesis_svc = ThesisService(session_factory=session_factory, llm=llm)
-    supply_chain = SupplyChainExtractor(session_factory=session_factory, llm=llm)
+    # Supply chain extraction is deprioritised (ADR-024) — the LLM call runs on
+    # every scored document and consistently returns 0 relationships, burning
+    # ~50 seconds per doc for no signal value. The extractor code is retained
+    # for reference but not invoked during ingestion.
+    # supply_chain = SupplyChainExtractor(session_factory=session_factory, llm=llm)
 
     seeded = await thesis_svc.seed_system_theses()
     if seeded:
@@ -196,7 +201,7 @@ async def main() -> int:
                 storage=storage,
                 retrieval=retrieval,
                 thesis_service=thesis_svc,
-                supply_chain_extractor=supply_chain,
+                supply_chain_extractor=None,  # ADR-024: disabled, see comment above
             )
             count = await worker.run()
             logger.info("── Finished: %s — %d document(s) ingested", label, count)
