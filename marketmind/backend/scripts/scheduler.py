@@ -6,8 +6,8 @@ Smart catch-up behaviour:
   If not, runs immediately rather than waiting for the next scheduled slot.
   This means the Mac just needs to be on once per day — not at a specific time.
 
-Schedule: once per day. Configurable via INGEST_HOUR_UTC (used as the
-preferred time when the machine is already on, not a hard requirement).
+Schedule: once per day. Configurable via INGEST_HOUR_PT (Pacific Time, default 6 AM).
+Handles DST automatically — no manual UTC offset needed.
 
 Logs: docker compose logs ingestor --tail=50
 """
@@ -18,6 +18,7 @@ import os
 import sys
 from datetime import datetime, date, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -30,7 +31,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger("scheduler")
 
-INGEST_HOUR_UTC = int(os.getenv("INGEST_HOUR_UTC", "6"))
+# Schedule in Pacific Time (America/Vancouver) — handles PST/PDT automatically.
+# Set INGEST_HOUR_PT in docker-compose.yml or .env; default is 6 AM PT.
+INGEST_HOUR_PT  = int(os.getenv("INGEST_HOUR_PT", "6"))
+PT              = ZoneInfo("America/Vancouver")
 REDIS_URL       = os.getenv("REDIS_URL", "redis://redis:6379")
 BACKEND_URL     = os.getenv("BACKEND_INTERNAL_URL", "http://localhost:8000")
 _DONE_KEY_PREFIX = "ingest:done:"  # ingest:done:2026-05-23
@@ -70,19 +74,19 @@ async def _regenerate_feed() -> None:
 
 
 def _next_scheduled() -> datetime:
-    """Next occurrence of INGEST_HOUR_UTC, always in the future."""
-    now = datetime.now(timezone.utc)
-    candidate = now.replace(hour=INGEST_HOUR_UTC, minute=0, second=0, microsecond=0)
-    if candidate <= now:
-        candidate += timedelta(days=1)
-    return candidate
+    """Next occurrence of INGEST_HOUR_PT (Pacific Time), returned as UTC datetime."""
+    now_pt = datetime.now(PT)
+    candidate_pt = now_pt.replace(hour=INGEST_HOUR_PT, minute=0, second=0, microsecond=0)
+    if candidate_pt <= now_pt:
+        candidate_pt += timedelta(days=1)
+    return candidate_pt.astimezone(timezone.utc)
 
 
 async def main() -> None:
     import redis.asyncio as aioredis
     redis = aioredis.from_url(REDIS_URL, decode_responses=True)
 
-    logger.info("Scheduler started (preferred run time: %02d:00 UTC)", INGEST_HOUR_UTC)
+    logger.info("Scheduler started (preferred run time: %02d:00 PT / America/Vancouver)", INGEST_HOUR_PT)
 
     try:
         while True:
@@ -113,10 +117,12 @@ async def main() -> None:
             # need to run again for the new day rather than waiting until
             # tomorrow's scheduled slot.
             next_run = _next_scheduled()
+            next_run_pt = next_run.astimezone(PT)
             wait_seconds = (next_run - datetime.now(timezone.utc)).total_seconds()
             logger.info(
-                "Next run: %s (in %.0f minutes)",
-                next_run.strftime("%Y-%m-%d %H:%M UTC"),
+                "Next run: %s PT (%s UTC, in %.0f minutes)",
+                next_run_pt.strftime("%Y-%m-%d %H:%M %Z"),
+                next_run.strftime("%H:%M"),
                 wait_seconds / 60,
             )
             await asyncio.sleep(wait_seconds)

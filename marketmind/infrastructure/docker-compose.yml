@@ -81,9 +81,10 @@ services:
       redis:
         condition: service_healthy
 
-  # Runs ingest.py once per day at INGEST_HOUR_UTC (default 06:00 UTC).
+  # Runs ingest.py once per day at INGEST_HOUR_PT Pacific Time (default 06:00 PT).
   # Restarts automatically if it crashes. No cron dependency needed.
-  # Change the hour: set INGEST_HOUR_UTC=8 in .env to run at 08:00 UTC instead.
+  # Change the hour: set INGEST_HOUR_PT=7 in .env to run at 07:00 PT instead.
+  # DST (PST/PDT) is handled automatically — no UTC math needed.
   # Logs: docker compose logs ingestor --tail=50
   ingestor:
     build:
@@ -97,7 +98,7 @@ services:
       REDIS_URL: redis://redis:6379
       QDRANT_URL: http://qdrant:6333
       OLLAMA_URL: http://ollama:11434
-      INGEST_HOUR_UTC: ${INGEST_HOUR_UTC:-6}
+      INGEST_HOUR_PT: ${INGEST_HOUR_PT:-6}
     command: ["python", "scripts/scheduler.py"]
     depends_on:
       postgres:
