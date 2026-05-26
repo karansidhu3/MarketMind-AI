@@ -339,8 +339,16 @@ export default function PortfolioPage() {
 
   async function handleDelete(id: string) {
     setDeleting(id)
+    // Optimistically remove immediately so the row disappears without waiting
+    setHoldings(prev => prev.filter(h => h.id !== id))
     try {
       await deleteHolding(id)
+      // Silently refresh alignment without triggering the loading skeleton
+      const a = await getPortfolioAlignment()
+      setAlignment(a)
+    } catch (e: unknown) {
+      // On failure restore the full state
+      setError(e instanceof Error ? e.message : 'Failed to remove holding.')
       await load()
     } finally {
       setDeleting(null)
