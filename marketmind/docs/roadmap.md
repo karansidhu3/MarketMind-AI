@@ -147,7 +147,7 @@ Items completed so far:
 
 ---
 
-## Current — Sprint 8 — Resume Ready + Demo Polish
+## Sprint 8 — Resume Ready + Demo Polish ✅
 
 Goal: make the product demonstrable to people who haven't built it, and make the
 daily experience polished enough to use as a live portfolio tool.
@@ -161,99 +161,130 @@ daily experience polished enough to use as a live portfolio tool.
   quote, SSE streaming Explain mode, pre-warm caches after regeneration
 - Per-connector Redis checkpointing — restarts skip completed connectors
 - Public demo mode — /demo route, static sample data, no login, Vercel deployed
-- /about page — plain English purpose, scope, how-it-works, tech stack
-- UX terminology pass — "Theses" → "Themes", "confidence" → "support rate"
-- Contextual tooltips — momentum, support rate, language shift, radar ranking
+- Mobile-responsive feed — stacked layout on small screens, sticky radar on desktop
 
-### Remaining
-- **Mobile-responsive feed** — minimum viable mobile layout for morning check
-- **Theme export** — one-click PDF/text summary: hypothesis, trend, top companies,
-  key evidence excerpts
+### Deferred
+- **Theme export** — one-click PDF/text summary per theme. Low priority; moved to
+  Sprint 10 backlog.
 
 ---
 
-## Sprint 9 — Intelligence UX Overhaul + Portfolio Depth
+## Sprint 9 — Intelligence UX Overhaul + Portfolio Depth ✅
 
 **Theme:** Close the gap between what the system knows and what the user sees.
-The corpus is strong after weeks of ingestion. The UI doesn't yet communicate
-the intelligence it contains. This sprint fixes the disconnected feeling.
 
-### Feed redesign
-
-- **Top story hierarchy** — replace equal-weight signal cards with a dominant
-  "lead story" card (full width, larger type, expanded highlight) with smaller
-  secondary cards below. The system already picks the top signal — surface it
-  visually. Every good briefing has a lede.
-
-- **Support rate delta** — show the 7-day change next to every support rate
-  number: "67% ↑+9pts". Point-in-time % tells nothing. Direction tells a story.
-  One extra field per ThesisSignal, computed from ConfidenceSnapshot history.
-
-- **Unified Explain narrative** — in Explain mode, replace 5 separate per-theme
-  paragraphs with a single LLM-generated narrative connecting all themes for the
-  day. "Here's the thread running through everything today." More like a real
-  analyst note, less like 5 separate reports.
-
-- **Portfolio signals on feed** — add a small "Your portfolio" section to the
-  feed: gap companies that had new signals today, themes aligned with your
-  holdings. Connects corpus to holdings without requiring a page visit.
-
-### Company Radar redesign
-
-- **Acceleration-first ranking** — sort by week-over-week growth rate, not total
-  count. A company going 0→5 this week is more interesting than one at 23 that's
-  been flat. Show "↑4× this week" as the primary metric alongside total.
-
-- **Bigger sparkline** — the current 40px sparkline is unreadable. Make it the
-  visual centrepiece of each row, not a decoration. The curve IS the insight.
-
-- **Velocity callout** — companies with >2× week-over-week growth get a distinct
-  visual treatment (not just the NEW badge for first appearance).
-
-### Themes list redesign
-
-- **Inline health at a glance** — show mini confidence sparkline + 7-day signal
-  count directly on the list page. Should not require clicking into each theme
-  to know what's happening. Grid layout, not a flat list.
-
-### Navigation
-
-- **Remove Research from primary nav** — stateless synthesis; doesn't use the
-  temporal layer; weakens the product story. Move to a "Search corpus" input
-  inside the theme detail page where it's contextually useful.
-
-### Portfolio depth
-
-- **Ticker search/autocomplete** — replace manual ticker entry with a searchable
-  dropdown backed by a bundled list of S&P 500 + Russell 1000 + thesis-sector
-  companies (JSON, no external API). Type "Apple" or "AAPL", get the match.
-  Eliminates the biggest friction in adding holdings.
-
-- **Holdings value + P&L** — if cost basis is entered, show current value and
-  unrealised gain/loss using daily price data (Yahoo Finance, free). Turns the
-  portfolio page from a list into a real portfolio tracker.
-
-- **Theme-to-holding narrative** — for each held company, show which themes it
-  appears in and whether those themes are strengthening or weakening. "You hold
-  ETN. Energy Grid theme is accelerating (+12 signals this week). ETN appears in
-  14 independent filings." Closes the loop between intelligence and portfolio.
-
-### Visual identity
-
-- **Accent colour change** — current blue is generic (every SaaS uses it).
-  Replace with deep violet (#7C3AED) or teal (#0D9488). Violet reads as
-  sophisticated/analytical; teal reads as data/intelligence. Either is more
-  distinctive than blue for a financial tool. Requires updating CSS vars only —
-  no component changes needed.
+### Completed ✅
+- **Accent colour** — blue → violet (#7C3AED), globals.css `--accent: 124 58 237`
+- **Ticker autocomplete** — `lib/tickers.ts` (~280 entries), `TickerSearch` component,
+  wired into `HoldingForm` with fallback manual entry
+- **Themes list → 2-column grid** — `ThesisGridCard` with auto-fetched mini sparklines
+  (14-day confidence history, trend badge), replaces flat list
+- **Nav** — Research removed from primary nav (Feed / Themes / Portfolio)
+- **Corpus search on theme detail** — 3rd tab replaces dead supply chain tab for
+  contextual corpus queries; pre-seeded starter queries from thesis keywords
+- **Feed: lead-story hierarchy** — first signal card gets `featured` prop (larger
+  type, 3-line highlight, Lead Story badge, thicker bar)
+- **Feed: support rate delta** — `confidence_delta` field, 7-day history from
+  ConfidenceSnapshot, shown as "↑+Xpts 7d" in SignalCard
+- **Feed: unified Explain narrative** — single cross-theme SSE narrative replacing
+  5 per-thesis ExplainCards; `GET /feed/unified-explain/stream`
+- **Feed: portfolio signals** — "Portfolio Gaps · Active Today" section below signal
+  cards; gap companies with new corpus activity since midnight UTC
+- **Radar: acceleration-first sort** — week-over-week growth rate, tie-break by doc_count
+- **Radar: bigger sparklines** — 64×28px, colour-coded by growth rate
+- **Radar: velocity callout** — `isSurge` badge (↑N× this week) in accent colour
+  for companies with ≥2× week-over-week growth
+- **Portfolio: theme-to-holding narrative** — each holding row shows primary theme,
+  momentum icon (rising/flat/falling from ConfidenceSnapshot), corpus doc count
+- **Portfolio: exposure card momentum** — ExposureCard shows momentum badge
+- **Portfolio: optimistic delete** — holding disappears immediately on click,
+  alignment refreshes silently in background
+- **Supply chain disabled** — `supply_chain_extractor=None` in ingest.py (ADR-024),
+  ~50s saved per scored document
 
 ---
 
-## Sprint 10 — Track Record + Prediction
+## Current — Sprint 10 — Verdict Language + Signal Clarity
+
+**Theme:** Make the system opinionated. Right now MarketMind reports data — confidence
+percentages, doc counts, coverage bars. A user can stare at "67% support rate, 14 docs,
+8% coverage" and still not know what to think. This sprint adds a verdict layer on top
+of the existing data: the system should *conclude*, not just *report*.
+
+Inspired by a structured stock analysis framework (Bear Case → Conviction Score →
+Catalyst Test) where every output ends in a hard verdict — AVOID, HYPE, PRICED IN.
+The key difference for MarketMind: verdicts are grounded in months of real corpus
+data, not a one-shot LLM prompt against training knowledge.
+
+### Verdict language (anchor feature)
+
+- **Company verdict in deep-dive panel** — when the panel opens, run a structured
+  prompt against the company's actual corpus evidence (doc count, recency, thesis
+  breadth, source diversity) and surface:
+  - Signal strength: STRONG / MODERATE / THIN / NOISE
+  - Consensus check: EMERGING (few sources, recent) / WIDENING / CONSENSUS (large cap, everywhere)
+  - One verdict sentence: *"12 filings across 3 themes, all since February. Early signal,
+    not yet consensus."* or *"8 mentions but from 2 sources only. Thin corpus."*
+  - Cached per company per day — not re-generated on every panel open
+
+- **Radar verdict badges** — replace or augment the raw doc count bar with a badge:
+  ACCELERATING / EMERGING / ESTABLISHED / STALLING. Derived from sparkline slope +
+  doc count, no LLM needed. Scannable at a glance.
+
+- **Gap company one-liner on portfolio page** — each exposure gap gets a corpus-grounded
+  sentence instead of just "14 docs, 0.72 conf". *"Powell Industries — 19 filings, 3
+  themes, all Q1 2025. Fast emergence, no position."*
+
+- **Theme health label** — surface STRENGTHENING / STALLING / WEAKENING / EARLY on
+  theme cards, derived from ConfidenceSnapshot slope. Already computed for momentum
+  field — just needs to be shown prominently.
+
+### Feed clarity
+
+- **Reduce information density** — the feed hero currently shows briefing text,
+  toggle, timeline scrubber, pulse cards, and signal cards all at once. Collapse
+  or hide the pulse cards by default; let the lead story dominate the first screen.
+
+- **"What to watch today" callout** — one highlighted sentence above the signal
+  cards: the single most actionable signal from today's feed. Not a summary of
+  everything — one thing.
+
+### UI / aesthetic
+
+- **Light/editorial mode** — add a cream/warm light theme alongside the existing
+  dark mode. Feels like a research note, not a trading terminal. Cream background,
+  serif or semi-serif headers for thesis names, dark red/charcoal text. Makes the
+  verdict language feel more like a real analyst report.
+
+- **Remove dead supply chain tab** — still shows on thesis detail in some builds.
+  Replace with a clean empty state or remove the tab entirely.
+
+### Watchlist (lighter than portfolio)
+
+- **Company watchlist** — a `watched_companies` table (normalised_name, added_at).
+  No shares or cost basis — just "I'm watching this". Alert when doc count crosses
+  a user-set threshold (infrastructure already exists via CompanyAlert).
+  Fills the gap between passive radar (everything) and committed portfolio (holdings).
+  Visible as a section on the portfolio page or as a filter on the radar.
+
+### Conviction score (stretch)
+
+- **Structured stock analysis** — Bear Case + Quality Gate + Catalyst Test against
+  a company's corpus, rendered as a verdict card in the deep-dive panel.
+  Bear Case: what do opposing-sentiment signals say? What risks appear repeatedly?
+  Quality Gate: pass/fail on corpus-derived signals (revenue trend, margin mentions).
+  Catalyst Test: what upcoming catalysts appear in recent filings?
+  Verdict: BUY WATCH / MONITOR / AVOID — explicitly framed as corpus opinion, not
+  financial advice (ADR-023).
+
+---
+
+## Sprint 11 — Track Record + Prediction
 
 - **Theme vs reality tracking** — add "predicted outcome" and "target date" to
   each theme. At target date, mark: did it play out? After 12 months: 7 themes
   tracked, 4 correct calls, 2 wrong, 1 pending. Turns MarketMind from a
-  monitoring tool into a track record builder. Very strong interview story.
+  monitoring tool into a track record builder. Strong interview story.
 
 - **Comparable period detection** — "this pattern resembles what we saw in AI
   Infrastructure 3 months before it accelerated." Requires multi-month corpus.

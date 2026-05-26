@@ -69,11 +69,11 @@ Everything runs locally. Zero API costs.
 
 ---
 
-## Current sprint: Sprint 8 — Resume Ready + Demo Polish
+## Current sprint: Sprint 10 — Verdict Language + Signal Clarity
 
-Sprints 1–7 complete. Sprint 8 in progress.
+Sprints 1–9 complete. Sprint 10 in progress.
 
-### What has been built (Sprints 1–8 partial)
+### What has been built (Sprints 1–9)
 
 **Sprint 1** — Infrastructure: FastAPI, Next.js, Docker, Qdrant, Redis, Ollama.
 
@@ -120,7 +120,7 @@ RSS connectors. Embeddings via nomic-embed-text. Qdrant storage. UUID5 deduplica
 - GET/POST /portfolio/holdings, PATCH/DELETE /portfolio/holdings/{id}, GET /portfolio/alignment
 - Portfolio page — holdings table, coverage banner, thesis exposure cards, gap list
 
-**Sprint 8** — Resume ready (in progress):
+**Sprint 8** — Resume ready (complete ✅):
 - UI overhaul — sidebar → glassmorphism top nav; login redesign; dual-color confidence bars
 - Corpus targeting — TargetedSECConnector + 60 curated tickers across 5 thesis sectors
 - Company deep-dive panel — slide-out drawer (ADR-027), GET /companies/{normalised_name}
@@ -128,39 +128,40 @@ RSS connectors. Embeddings via nomic-embed-text. Qdrant storage. UUID5 deduplica
 - Intelligence Briefing redesign — activity badge, ThesisPulseCards, top-signal quote,
   streaming Explain mode (SSE token-by-token), pre-warm caches after regeneration
 - Per-connector Redis checkpointing — restarts skip completed connectors (25h TTL)
-- Public demo mode ✅ — /demo route, static sample data, no login required;
+- Public demo mode — /demo route, static sample data, no login required;
   DemoShell + DemoHeader; "Try demo" link on login page (app/demo/page.tsx + data.ts)
+- Mobile-responsive feed — stacked layout, sticky radar sidebar on desktop
 
-### Sprint 8 remaining
-
-- **Mobile-responsive feed** — minimum viable mobile layout for morning check
-- **Theme export** — one-click PDF/text summary per thesis
-
-### Sprint 9 — Intelligence UX Overhaul + Portfolio Depth (in progress)
-
-Completed ✅:
+**Sprint 9** — Intelligence UX Overhaul + Portfolio Depth (complete ✅):
 - Accent colour blue → violet (#7C3AED) — globals.css `--accent: 124 58 237`
 - Ticker autocomplete — `lib/tickers.ts` (~280 entries), `TickerSearch` component,
-  wired into `HoldingForm` with fallback manual entry; replaces separate ticker+name inputs
+  wired into `HoldingForm` with fallback manual entry
 - Themes list → 2-column grid — `ThesisGridCard` with auto-fetched mini sparklines
-  (14-day confidence history, trend badge), replaces flat `ThesisCard` list
-- Nav: Research removed from primary nav (3 items: Feed, Themes, Portfolio)
-- Corpus search added to theme detail page as 3rd tab ("Search Corpus"); replaces
-  the Research page for contextual use; pre-seeded starter queries from thesis keywords
-- Feed: lead-story hierarchy — first signal card gets `featured` prop (larger type,
-  3-line highlight, Lead Story badge, thicker bar)
-- Feed: support rate delta — `confidence_delta` field in backend `ThesisSignal` schema,
-  computed from ConfidenceSnapshot 7-day history; displayed as "↑+Xpts 7d" in SignalCard
-- Radar: acceleration-first sort — week-over-week growth rate, tie-break by doc_count
-- Radar: bigger sparklines — 64×28px (was 40×16px), colour-coded by growth
-- Radar: velocity callout — `isSurge` = growth ≥ 2×; shown as "↑N× this week" badge
-  in accent colour; surge rows get faint accent tint
+  (14-day confidence history, trend badge)
+- Nav: Research removed from primary nav (Feed / Themes / Portfolio)
+- Corpus search on theme detail — 3rd tab with pre-seeded starter queries
+- Feed: lead-story hierarchy — first signal card featured (larger type, Lead Story badge)
+- Feed: support rate delta — `confidence_delta` 7-day history, "↑+Xpts 7d" in SignalCard
+- Feed: unified Explain narrative — single cross-theme SSE narrative, GET /feed/unified-explain/stream
+- Feed: portfolio signals — "Portfolio Gaps · Active Today" section, FeedGapSignal schema
+- Radar: acceleration-first sort, 64×28px sparklines, velocity callout (↑N× badge)
+- Portfolio: theme-to-holding narrative — momentum icon, thesis name, corpus doc count per row
+- Portfolio: exposure card momentum badges
+- Portfolio: optimistic delete — holding disappears instantly
+- Supply chain LLM disabled — `supply_chain_extractor=None` in ingest.py (ADR-024)
 
-Remaining Sprint 9:
-- Feed: unified Explain narrative (single cross-theme LLM narrative, new SSE endpoint)
-- Feed: portfolio signals inline on feed (gap companies with new signals today)
-- Portfolio: theme-to-holding narrative
-- Portfolio: holdings P&L (Yahoo Finance prices, optional)
+### Sprint 10 plan
+
+See docs/roadmap.md for full detail. Summary:
+- **Verdict language** — company verdict in deep-dive panel, radar badges
+  (ACCELERATING/EMERGING/ESTABLISHED/STALLING), gap one-liners on portfolio,
+  theme health labels (STRENGTHENING/STALLING/WEAKENING)
+- **Feed clarity** — reduce density, "what to watch today" callout
+- **Watchlist** — lighter than portfolio; watch a company, alert on doc spike
+- **Light/editorial mode** — cream theme that feels like a research note
+- **Remove dead supply chain tab** from thesis detail page
+- **Conviction score** (stretch) — Bear Case + Quality Gate + Catalyst Test,
+  corpus-grounded, rendered as verdict card in deep-dive panel
 
 ### Ingestion sources (scripts/ingest.py)
 Generic feeds:
