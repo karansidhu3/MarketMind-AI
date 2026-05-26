@@ -80,3 +80,4 @@ class PortfolioAlignment(BaseModel):
     overall_coverage: float             # weighted average coverage across all theses
     theses: list[ThesisExposure]
     gaps: list[GapCompany]             # top uncovered companies, ranked by doc_count × confidence
+    held_company_docs: dict[str, int] = {}  # ticker → corpus doc count (0 if not in corpus)

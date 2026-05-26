@@ -1,9 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Plus, Trash2, RefreshCw, AlertCircle, BriefcaseBusiness,
-  TrendingUp, Minus, ChevronRight, X, Check, Pencil,
+  TrendingUp, TrendingDown, Minus, ChevronRight, X, Check, Pencil,
 } from 'lucide-react'
 import AppShell from '@/components/layout/AppShell'
 import TickerSearch from '@/components/portfolio/TickerSearch'
@@ -186,6 +186,8 @@ function HoldingForm({ initial, onSave, onCancel }: HoldingFormProps) {
 function ExposureCard({ exposure }: { exposure: ThesisExposure }) {
   const pct = Math.round(exposure.coverage_pct * 100)
   const hasHoldings = exposure.held_companies.length > 0
+  const MomIcon = exposure.momentum === 'rising' ? TrendingUp : exposure.momentum === 'falling' ? TrendingDown : Minus
+  const momColor = exposure.momentum === 'rising' ? 'text-green' : exposure.momentum === 'falling' ? 'text-red' : 'text-text-tertiary'
 
   return (
     <div className="bg-surface border border-border rounded-xl p-4 hover:border-border/80 transition-colors">
@@ -194,11 +196,17 @@ function ExposureCard({ exposure }: { exposure: ThesisExposure }) {
           <p className="text-text-primary text-xs font-semibold leading-snug truncate">
             {exposure.thesis_name}
           </p>
-          <p className="text-text-tertiary text-[11px] mt-0.5">
-            Confidence: <span className="text-text-secondary font-medium">{formatConfidence(exposure.confidence)}</span>
-            {' · '}
-            {exposure.total_companies} companies tracked
-          </p>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <p className="text-text-tertiary text-[11px]">
+              Confidence: <span className="text-text-secondary font-medium">{formatConfidence(exposure.confidence)}</span>
+              {' · '}
+              {exposure.total_companies} companies
+            </p>
+            <span className={cn('flex items-center gap-0.5 text-[11px]', momColor)}>
+              <MomIcon size={9} />
+              <span>{exposure.momentum}</span>
+            </span>
+          </div>
         </div>
         <span className={cn(
           'text-xs font-bold tabular-nums shrink-0 px-2 py-0.5 rounded-full',
@@ -346,6 +354,19 @@ export default function PortfolioPage() {
 
   const coveragePct = alignment ? Math.round(alignment.overall_coverage * 100) : 0
 
+  // ticker → theses that list it as a held company
+  const tickerTheses = useMemo(() => {
+    if (!alignment) return {} as Record<string, import('@/lib/types').ThesisExposure[]>
+    const map: Record<string, import('@/lib/types').ThesisExposure[]> = {}
+    for (const thesis of alignment.theses) {
+      for (const ticker of thesis.held_companies) {
+        if (!map[ticker]) map[ticker] = []
+        map[ticker].push(thesis)
+      }
+    }
+    return map
+  }, [alignment])
+
   return (
     <AppShell>
       <div className="max-w-[1400px] mx-auto px-8 py-8">
@@ -455,6 +476,34 @@ export default function PortfolioPage() {
                                 <span className="tabular-nums">· ${h.cost_basis.toFixed(2)} cost</span>
                               )}
                             </div>
+                            {/* Corpus context line */}
+                            {(() => {
+                              const theses = tickerTheses[h.ticker] ?? []
+                              const docCount = alignment?.held_company_docs?.[h.ticker] ?? 0
+                              if (theses.length === 0 && docCount === 0) return null
+                              const primary = theses[0]
+                              const mom = primary?.momentum ?? 'flat'
+                              const MomIcon = mom === 'rising' ? TrendingUp : mom === 'falling' ? TrendingDown : Minus
+                              const momColor = mom === 'rising' ? 'text-green' : mom === 'falling' ? 'text-red' : 'text-text-tertiary'
+                              return (
+                                <div className="text-text-tertiary text-[11px] mt-1 flex items-center gap-1.5 flex-wrap">
+                                  {primary && (
+                                    <span className={cn('flex items-center gap-0.5', momColor)}>
+                                      <MomIcon size={9} />
+                                      <span className="text-text-tertiary">{primary.thesis_name.split(' ').slice(0, 3).join(' ')}</span>
+                                    </span>
+                                  )}
+                                  {theses.length > 1 && (
+                                    <span className="text-text-tertiary">+{theses.length - 1} more</span>
+                                  )}
+                                  {docCount > 0 && (
+                                    <span className="text-text-tertiary">
+                                      · <span className="tabular-nums">{docCount}</span> corpus doc{docCount !== 1 ? 's' : ''}
+                                    </span>
+                                  )}
+                                </div>
+                              )
+                            })()}
                           </div>
                           {/* Actions — visible on hover */}
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

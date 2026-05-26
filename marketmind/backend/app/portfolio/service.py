@@ -11,13 +11,14 @@ import logging
 import uuid
 from collections import defaultdict
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.db.models import CompanySignal, Evidence, Holding, Thesis
+from app.db.models import CompanySignal, ConfidenceSnapshot, Evidence, Holding, Thesis
 from app.ingestion.normalise import normalise
+from app.thesis.decay import weighted_confidence
 from app.portfolio.schema import (
     FeedGapSignal,
     GapCompany,
@@ -133,6 +134,38 @@ class PortfolioService:
                 conf, _, _, _ = weighted_confidence(ev)
                 thesis_confidence[thesis.id] = conf
 
+            # Build momentum per thesis from ConfidenceSnapshot (last 30 days)
+            thesis_ids = [t.id for t in theses]
+            snap_cutoff = date.today() - timedelta(days=30)
+            recent_cutoff = date.today() - timedelta(days=7)
+            snapshots_all = (
+                await session.execute(
+                    select(ConfidenceSnapshot)
+                    .where(
+                        ConfidenceSnapshot.thesis_id.in_(thesis_ids),
+                        ConfidenceSnapshot.snapshot_date >= snap_cutoff,
+                    )
+                    .order_by(ConfidenceSnapshot.snapshot_date)
+                )
+            ).scalars().all()
+
+            snaps_by_thesis: dict[uuid.UUID, list[ConfidenceSnapshot]] = defaultdict(list)
+            for snap in snapshots_all:
+                snaps_by_thesis[snap.thesis_id].append(snap)
+
+            thesis_momentum: dict[uuid.UUID, str] = {}
+            for tid, snaps in snaps_by_thesis.items():
+                recent = [s.confidence for s in snaps if s.snapshot_date >= recent_cutoff]
+                older = [s.confidence for s in snaps if s.snapshot_date < recent_cutoff]
+                if recent and older:
+                    delta = sum(recent) / len(recent) - sum(older) / len(older)
+                    if delta > 0.02:
+                        thesis_momentum[tid] = "rising"
+                    elif delta < -0.02:
+                        thesis_momentum[tid] = "falling"
+                    else:
+                        thesis_momentum[tid] = "flat"
+
         # ── Build lookup structures ──────────────────────────────────────────
 
         # Ticker → holding
@@ -154,6 +187,16 @@ class PortfolioService:
             norm: len({s.document_id for s in sigs})
             for norm, sigs in sig_groups.items()
         }
+
+        # ticker → corpus doc count for held companies (0 if not in corpus)
+        held_company_docs: dict[str, int] = {}
+        for h in holdings:
+            ticker = h.ticker.upper()
+            norm_ticker = normalise(h.ticker)
+            norm_name = normalise(h.company_name)
+            held_company_docs[ticker] = company_doc_counts.get(
+                norm_ticker, company_doc_counts.get(norm_name, 0)
+            )
 
         # thesis_id → set of normalised company names
         thesis_companies: dict[uuid.UUID, set[str]] = defaultdict(set)
@@ -199,7 +242,7 @@ class PortfolioService:
                 thesis_id=str(thesis.id),
                 thesis_name=thesis.name,
                 confidence=thesis_confidence.get(thesis.id, 0.0),
-                momentum="flat",    # feed momentum injected if needed; flat is safe default
+                momentum=thesis_momentum.get(thesis.id, "flat"),
                 held_companies=sorted(set(held)),
                 total_companies=total,
                 coverage_pct=round(coverage, 3),
@@ -268,6 +311,7 @@ class PortfolioService:
             overall_coverage=round(overall, 3),
             theses=exposures,
             gaps=gaps,
+            held_company_docs=held_company_docs,
         )
 
     # ── Feed gap signals ─────────────────────────────────────────────────────

@@ -217,6 +217,7 @@ export interface PortfolioAlignment {
   overall_coverage: number
   theses: ThesisExposure[]
   gaps: GapCompany[]
+  held_company_docs?: Record<string, number>  // ticker → corpus doc count
 }
 
 export interface LanguageDelta {
