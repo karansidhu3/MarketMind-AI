@@ -1,17 +1,17 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
-import { RefreshCw, AlertCircle, Sparkles, Zap, TrendingUp, TrendingDown, Minus, BookOpen, BarChart2, Bell, ChevronLeft, ChevronRight, Calendar, Layers, BriefcaseBusiness, Eye } from 'lucide-react'
+import { RefreshCw, AlertCircle, Sparkles, Zap, TrendingUp, TrendingDown, Minus, BookOpen, BarChart2, Bell, ChevronLeft, ChevronRight, Calendar, Layers, BriefcaseBusiness, Eye, X } from 'lucide-react'
 import { Tooltip } from '@/components/ui/Tooltip'
 import Link from 'next/link'
 import AppShell from '@/components/layout/AppShell'
 import SignalCard from '@/components/feed/SignalCard'
 import CompanyRadar from '@/components/feed/CompanyRadar'
-import { getFeed, getFeedDates, getCompanyRadar, regenerateFeed, getAlerts, streamFeedExplainSummary, streamThesisExplain, streamUnifiedExplain, getPortfolioFeedSignals } from '@/lib/api'
+import { getFeed, getFeedDates, getCompanyRadar, regenerateFeed, getAlerts, streamFeedExplainSummary, streamThesisExplain, streamUnifiedExplain, getPortfolioFeedSignals, getWatchlist, unwatchCompany } from '@/lib/api'
 import { formatDate, greet, cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 import { useCompany } from '@/contexts/CompanyContext'
-import type { FeedResponse, CompanyRadarItem, ThesisSignal, CompanyAlert, FeedGapSignal } from '@/lib/types'
+import type { FeedResponse, CompanyRadarItem, ThesisSignal, CompanyAlert, FeedGapSignal, WatchedCompany } from '@/lib/types'
 
 // ── Skeleton components ───────────────────────────────────────────────────────
 
@@ -762,6 +762,56 @@ function TimelineScrubber({ dates, viewDate, onSelect, loading }: TimelineScrubb
   )
 }
 
+// ── Watchlist row ─────────────────────────────────────────────────────────────
+
+function WatchlistRow({ item, onUnwatch }: { item: WatchedCompany; onUnwatch: (id: string) => void }) {
+  const { openCompany } = useCompany()
+  const [removing, setRemoving] = useState(false)
+
+  const latest  = item.weekly_counts[item.weekly_counts.length - 1] ?? 0
+  const prev    = item.weekly_counts[item.weekly_counts.length - 2] ?? 0
+  const trend   = latest > prev ? 'up' : latest < prev ? 'down' : 'flat'
+  const trendColor = trend === 'up' ? 'text-green' : trend === 'down' ? 'text-red' : 'text-text-tertiary'
+
+  async function handleUnwatch(e: React.MouseEvent) {
+    e.stopPropagation()
+    setRemoving(true)
+    onUnwatch(item.id)  // optimistic
+    try { await unwatchCompany(item.id) } catch { /* already removed optimistically */ }
+  }
+
+  return (
+    <div className="group relative flex items-center gap-2.5 px-3 py-2.5 border-b border-border/60 last:border-0 hover:bg-elevated/50 transition-colors">
+      <button
+        onClick={() => openCompany(item.normalised_name)}
+        className="flex-1 min-w-0 text-left"
+      >
+        <div className="flex items-center gap-1.5">
+          <span className="text-text-primary text-sm font-semibold truncate hover:text-accent transition-colors">
+            {item.display_name}
+          </span>
+          {item.ticker && (
+            <span className="text-text-tertiary text-[11px] font-mono shrink-0">{item.ticker}</span>
+          )}
+        </div>
+        <div className={cn('text-[11px] tabular-nums mt-0.5', trendColor)}>
+          {item.doc_count} docs
+          {trend === 'up' && latest > 0 && <span className="ml-1">↑{latest} this wk</span>}
+          {trend === 'down' && <span className="ml-1 text-text-tertiary">slowing</span>}
+        </div>
+      </button>
+      <button
+        onClick={handleUnwatch}
+        disabled={removing}
+        className="opacity-0 group-hover:opacity-100 p-1 rounded text-text-tertiary hover:text-red transition-all"
+        title="Remove from watchlist"
+      >
+        <X size={11} />
+      </button>
+    </div>
+  )
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function FeedPage() {
@@ -777,6 +827,7 @@ export default function FeedPage() {
   const [explainMode,  setExplainMode]  = useState(true)
   const [showHistory,  setShowHistory]  = useState(false)
   const [portfolioGaps, setPortfolioGaps] = useState<FeedGapSignal[]>([])
+  const [watchlist,     setWatchlist]     = useState<WatchedCompany[]>([])
   const { toast } = useToast()
 
   const isHistorical = viewDate !== null
@@ -790,10 +841,10 @@ export default function FeedPage() {
     return map
   }, [radar])
 
-  // Load radar + alerts + portfolio gaps once (always current, not historical)
+  // Load sidebar data once (always current, not historical)
   useEffect(() => {
-    Promise.all([getCompanyRadar(), getAlerts(), getFeedDates(), getPortfolioFeedSignals()])
-      .then(([r, a, d, g]) => { setRadar(r); setAlerts(a); setFeedDates(d); setPortfolioGaps(g) })
+    Promise.all([getCompanyRadar(), getAlerts(), getFeedDates(), getPortfolioFeedSignals(), getWatchlist()])
+      .then(([r, a, d, g, wl]) => { setRadar(r); setAlerts(a); setFeedDates(d); setPortfolioGaps(g); setWatchlist(wl) })
       .catch(() => {})
   }, [])
 
@@ -1033,18 +1084,44 @@ export default function FeedPage() {
                 )}
               </div>
 
-              {/* ── Right: company radar ─────────────────────────── */}
+              {/* ── Right: watchlist + radar ─────────────────────── */}
               <div className="flex-[3] min-w-0 w-full">
-                <div className="lg:sticky lg:top-[76px]">
-                  <div className="flex items-center gap-1.5 mb-2 px-1">
-                    <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest">
-                      Company Radar
-                    </h2>
-                    <Tooltip content="Sorted by week-over-week acceleration. A company going 0→5 this week ranks higher than one steady at 20. Surge badge = 2× or more growth." />
+                <div className="lg:sticky lg:top-[76px] space-y-5">
+
+                  {/* Watchlist — only shown when non-empty */}
+                  {watchlist.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-2 px-1">
+                        <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest">
+                          Watching
+                        </h2>
+                        <span className="text-text-tertiary/60 text-xs">({watchlist.length})</span>
+                      </div>
+                      <div className="bg-surface border border-border rounded-xl overflow-hidden">
+                        {watchlist.map(w => (
+                          <WatchlistRow
+                            key={w.id}
+                            item={w}
+                            onUnwatch={id => setWatchlist(prev => prev.filter(x => x.id !== id))}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Company Radar */}
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-2 px-1">
+                      <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest">
+                        Company Radar
+                      </h2>
+                      <Tooltip content="Sorted by week-over-week acceleration. A company going 0→5 this week ranks higher than one steady at 20. Surge badge = 2× or more growth." />
+                    </div>
+                    <div className="bg-surface border border-border rounded-xl">
+                      <CompanyRadar companies={radar.slice(0, 10)} initialAlerts={alerts} />
+                    </div>
                   </div>
-                  <div className="bg-surface border border-border rounded-xl">
-                    <CompanyRadar companies={radar.slice(0, 10)} initialAlerts={alerts} />
-                  </div>
+
                 </div>
               </div>
             </div>

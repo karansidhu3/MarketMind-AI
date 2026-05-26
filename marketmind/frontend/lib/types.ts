@@ -212,6 +212,16 @@ export interface FeedGapSignal {
   doc_count: number
 }
 
+export interface WatchedCompany {
+  id: string
+  normalised_name: string
+  display_name: string
+  ticker: string | null
+  doc_count: number
+  weekly_counts: number[]
+  created_at: string
+}
+
 export interface PortfolioAlignment {
   total_holdings: number
   overall_coverage: number

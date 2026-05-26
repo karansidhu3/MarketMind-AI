@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { X, ExternalLink, Building2, ArrowUpRight } from 'lucide-react'
+import { X, ExternalLink, Building2, ArrowUpRight, Bookmark, BookmarkCheck } from 'lucide-react'
 import Link from 'next/link'
 import { useCompany } from '@/contexts/CompanyContext'
-import { getCompany } from '@/lib/api'
+import { getCompany, getWatchlist, watchCompany, unwatchCompany } from '@/lib/api'
 import { cn, formatDateShort } from '@/lib/utils'
-import type { CompanyDetail, CompanyEvidenceItem, CompanyThesisBreakdown } from '@/lib/types'
+import type { CompanyDetail, CompanyEvidenceItem, CompanyThesisBreakdown, WatchedCompany } from '@/lib/types'
 
 // ── Verdict ───────────────────────────────────────────────────────────────────
 
@@ -200,29 +200,60 @@ function EvidenceRow({ ev }: { ev: CompanyEvidenceItem }) {
 
 export default function CompanyPanel({ demoMode = false }: { demoMode?: boolean }) {
   const { selectedCompany, closeCompany } = useCompany()
-  const [data, setData]       = useState<CompanyDetail | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError]     = useState<string | null>(null)
-  const panelRef              = useRef<HTMLDivElement>(null)
-  const [activeTab, setActiveTab] = useState<'overview' | 'evidence'>('overview')
+  const [data, setData]             = useState<CompanyDetail | null>(null)
+  const [loading, setLoading]       = useState(false)
+  const [error, setError]           = useState<string | null>(null)
+  const panelRef                    = useRef<HTMLDivElement>(null)
+  const [activeTab, setActiveTab]   = useState<'overview' | 'evidence'>('overview')
+  const [watchEntry, setWatchEntry] = useState<WatchedCompany | null>(null)
+  const [watching, setWatching]     = useState(false)   // toggle in-flight
 
-  // Fetch company data whenever selected changes (skip in demo mode)
+  // Fetch company data + watchlist status whenever selected changes
   useEffect(() => {
     if (!selectedCompany) {
       setData(null)
       setError(null)
+      setWatchEntry(null)
       return
     }
-    if (demoMode) return   // demo: panel opens but shows sign-in prompt
+    if (demoMode) return
     let cancelled = false
     setLoading(true)
     setError(null)
     setActiveTab('overview')
-    getCompany(selectedCompany)
-      .then(d => { if (!cancelled) { setData(d); setLoading(false) } })
-      .catch(e => { if (!cancelled) { setError(e.message); setLoading(false) } })
+    Promise.all([
+      getCompany(selectedCompany),
+      getWatchlist(),
+    ]).then(([d, wl]) => {
+      if (cancelled) return
+      setData(d)
+      setWatchEntry(wl.find(w => w.normalised_name === selectedCompany) ?? null)
+      setLoading(false)
+    }).catch(e => {
+      if (!cancelled) { setError(e.message); setLoading(false) }
+    })
     return () => { cancelled = true }
   }, [selectedCompany, demoMode])
+
+  async function handleToggleWatch() {
+    if (!data || !selectedCompany || watching) return
+    setWatching(true)
+    try {
+      if (watchEntry) {
+        await unwatchCompany(watchEntry.id)
+        setWatchEntry(null)
+      } else {
+        const entry = await watchCompany({
+          normalised_name: selectedCompany,
+          display_name: data.display_name,
+          ticker: data.ticker,
+        })
+        setWatchEntry(entry)
+      }
+    } finally {
+      setWatching(false)
+    }
+  }
 
   // Close on Escape
   useEffect(() => {
@@ -288,6 +319,25 @@ export default function CompanyPanel({ demoMode = false }: { demoMode?: boolean 
               <div className="h-4 w-40 bg-elevated rounded" />
             )}
           </div>
+          {/* Watch / unwatch — only shown when we have real data */}
+          {data && !demoMode && (
+            <button
+              onClick={handleToggleWatch}
+              disabled={watching}
+              title={watchEntry ? 'Remove from watchlist' : 'Add to watchlist'}
+              className={cn(
+                'p-2 rounded-lg transition-all duration-150 shrink-0 disabled:opacity-50',
+                watchEntry
+                  ? 'text-accent bg-accent/10 hover:bg-accent/15'
+                  : 'text-text-tertiary hover:text-accent hover:bg-elevated'
+              )}
+            >
+              {watchEntry
+                ? <BookmarkCheck size={15} />
+                : <Bookmark size={15} />
+              }
+            </button>
+          )}
           <button
             onClick={closeCompany}
             className="p-2 rounded-lg text-text-tertiary hover:text-text-secondary hover:bg-elevated transition-colors shrink-0"

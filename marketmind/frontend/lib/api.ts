@@ -149,6 +149,20 @@ export async function getPortfolioFeedSignals(): Promise<import('./types').FeedG
   return request('/portfolio/feed-signals')
 }
 
+// ── Watchlist ─────────────────────────────────────────────────────────────────
+
+export async function getWatchlist(): Promise<import('./types').WatchedCompany[]> {
+  return request('/watchlist')
+}
+
+export async function watchCompany(data: { normalised_name: string; display_name: string; ticker?: string | null }): Promise<import('./types').WatchedCompany> {
+  return request('/watchlist', { method: 'POST', body: JSON.stringify(data) })
+}
+
+export async function unwatchCompany(id: string): Promise<void> {
+  await request(`/watchlist/${id}`, { method: 'DELETE' })
+}
+
 // ── Company deep-dive ─────────────────────────────────────────────────────────
 
 export async function getCompany(normalisedName: string): Promise<import('./types').CompanyDetail> {

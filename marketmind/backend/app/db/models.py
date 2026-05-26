@@ -134,6 +134,21 @@ class ConfidenceSnapshot(Base):
     evidence_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 
+class WatchedCompany(Base):
+    """
+    User's watchlist — companies flagged for close monitoring.
+    Lighter than portfolio: no shares/cost_basis, just a bookmark.
+    Watched companies always appear in the feed sidebar regardless of radar rank.
+    """
+    __tablename__ = "watched_companies"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    normalised_name: Mapped[str] = mapped_column(String(200), nullable=False, unique=True, index=True)
+    display_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    ticker: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
 class Holding(Base):
     """
     User's portfolio holdings. Stored locally, never leaves the machine.
