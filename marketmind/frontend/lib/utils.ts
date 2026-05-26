@@ -6,13 +6,18 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', {
+  // Parse date-only strings (YYYY-MM-DD) as local noon, not UTC midnight.
+  // new Date("2026-05-26") = UTC midnight = May 25 5 PM in PDT → shows wrong day.
+  // Appending T12:00:00 keeps the correct calendar date in any UTC-12..+12 timezone.
+  const d = iso.length === 10 ? new Date(`${iso}T12:00:00`) : new Date(iso)
+  return d.toLocaleDateString('en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   })
 }
 
 export function formatDateShort(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', {
+  const d = iso.length === 10 ? new Date(`${iso}T12:00:00`) : new Date(iso)
+  return d.toLocaleDateString('en-US', {
     month: 'short', day: 'numeric',
   })
 }
