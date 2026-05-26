@@ -9,10 +9,10 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import AppShell from '@/components/layout/AppShell'
-import { getThesis, getThesisEvidence, getSupplyChain, getConfidenceHistory, getLanguageDelta, evaluateThesis, research } from '@/lib/api'
+import { getThesis, getThesisEvidence, getConfidenceHistory, getLanguageDelta, evaluateThesis, research } from '@/lib/api'
 import { formatConfidence, formatDate, cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
-import type { ThesisOut, EvidenceOut, SupplyChainLink, ConfidenceSnapshot, LanguageDelta, ResearchResponse } from '@/lib/types'
+import type { ThesisOut, EvidenceOut, ConfidenceSnapshot, LanguageDelta, ResearchResponse } from '@/lib/types'
 
 // ── Sentiment config ──────────────────────────────────────────────────────────
 
@@ -20,12 +20,6 @@ const SENTIMENT_CONFIG = {
   supporting: { label: 'Supporting', color: 'text-green',         bg: 'bg-green/10'  },
   opposing:   { label: 'Opposing',   color: 'text-red',           bg: 'bg-red/10'    },
   neutral:    { label: 'Neutral',    color: 'text-text-tertiary', bg: 'bg-elevated'  },
-}
-
-const REL_CONFIG: Record<string, { label: string; color: string }> = {
-  supplier: { label: 'Supplier',  color: 'text-amber' },
-  customer: { label: 'Customer',  color: 'text-accent' },
-  partner:  { label: 'Partner',   color: 'text-green'  },
 }
 
 // ── Confidence sparkline ──────────────────────────────────────────────────────
@@ -104,14 +98,7 @@ export default function ThesisDetailPage({ params }: { params: Promise<{ id: str
   const [filter,    setFilter]    = useState<'all' | 'supporting' | 'opposing' | 'neutral'>('all')
 
   // Main tab
-  const [mainTab,   setMainTab]   = useState<'evidence' | 'supply-chain' | 'search'>('evidence')
-
-  // Supply chain state
-  const [scQuery,   setScQuery]   = useState('')
-  const [scInput,   setScInput]   = useState('')
-  const [scLinks,   setScLinks]   = useState<SupplyChainLink[]>([])
-  const [scLoading, setScLoading] = useState(false)
-  const [scError,   setScError]   = useState('')
+  const [mainTab,   setMainTab]   = useState<'evidence' | 'search'>('evidence')
 
   // Language delta state
   const [delta,        setDelta]        = useState<LanguageDelta | null>(null)
@@ -152,23 +139,6 @@ export default function ThesisDetailPage({ params }: { params: Promise<{ id: str
       setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)
     }
   }, [loading, fromFeed]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function searchSupplyChain(company: string) {
-    const q = company.trim()
-    if (!q) return
-    setScQuery(q)
-    setScError('')
-    setScLoading(true)
-    setScLinks([])
-    try {
-      const results = await getSupplyChain(q)
-      setScLinks(results)
-    } catch (e: unknown) {
-      setScError(e instanceof Error ? e.message : 'Failed to fetch supply chain.')
-    } finally {
-      setScLoading(false)
-    }
-  }
 
   async function runEvaluate() {
     setEvalRunning(true)
@@ -521,9 +491,8 @@ export default function ThesisDetailPage({ params }: { params: Promise<{ id: str
             {/* ── Main tab switcher ──────────────────────────────────────── */}
             <div className="flex items-center gap-1 border-b border-border mb-5">
               {([
-                { key: 'evidence',     label: 'Evidence'      },
-                { key: 'supply-chain', label: 'Supply Chain'  },
-                { key: 'search',       label: 'Search Corpus' },
+                { key: 'evidence', label: 'Evidence'      },
+                { key: 'search',   label: 'Search Corpus' },
               ] as const).map(({ key, label }) => (
                 <button
                   key={key}
@@ -679,123 +648,6 @@ export default function ThesisDetailPage({ params }: { params: Promise<{ id: str
                         </div>
                       )
                     })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ── Supply Chain tab ───────────────────────────────────────── */}
-            {mainTab === 'supply-chain' && (
-              <div>
-                <p className="text-text-tertiary text-sm mb-4">
-                  Search for a company to see known supply chain relationships extracted from SEC filings.
-                </p>
-
-                {/* Search input */}
-                <div className="flex items-center gap-2 mb-5">
-                  <div className="relative flex-1">
-                    <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none" />
-                    <input
-                      type="text"
-                      value={scInput}
-                      onChange={e => setScInput(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') searchSupplyChain(scInput) }}
-                      placeholder="e.g. NVIDIA, TSMC, Broadcom…"
-                      className="w-full bg-surface border border-border rounded-lg pl-8 pr-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent transition-colors"
-                    />
-                  </div>
-                  <button
-                    onClick={() => searchSupplyChain(scInput)}
-                    disabled={!scInput.trim() || scLoading}
-                    className={cn(
-                      'flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-                      scInput.trim() && !scLoading
-                        ? 'bg-accent text-white hover:opacity-90'
-                        : 'bg-elevated text-text-tertiary cursor-not-allowed'
-                    )}
-                  >
-                    {scLoading
-                      ? <RefreshCw size={13} className="animate-spin" />
-                      : <ArrowRight size={13} />}
-                    Search
-                  </button>
-                </div>
-
-                {/* Results */}
-                {scLoading && (
-                  <div className="flex items-center gap-2 text-text-tertiary text-sm py-8 justify-center">
-                    <RefreshCw size={14} className="animate-spin" />
-                    Querying supply chain database…
-                  </div>
-                )}
-
-                {scError && !scLoading && (
-                  <div className="text-red text-sm bg-red/5 border border-red/20 rounded-xl px-4 py-3">
-                    {scError}
-                  </div>
-                )}
-
-                {!scLoading && !scError && scQuery && scLinks.length === 0 && (
-                  <div className="text-center py-12 text-text-tertiary text-sm">
-                    No supply chain relationships found for <span className="text-text-secondary">"{scQuery}"</span>.
-                    <p className="text-xs mt-1">Relationships are extracted from 10-K and 10-Q filings during ingestion.</p>
-                  </div>
-                )}
-
-                {!scLoading && scLinks.length > 0 && (
-                  <div>
-                    <p className="text-text-tertiary text-xs mb-3">
-                      {scLinks.length} relationship{scLinks.length !== 1 ? 's' : ''} found for
-                      <span className="text-text-secondary font-medium ml-1">"{scQuery}"</span>
-                    </p>
-                    <div className="space-y-2">
-                      {scLinks.map(link => {
-                        const rel = REL_CONFIG[link.relationship_type] ?? { label: link.relationship_type, color: 'text-text-secondary' }
-                        const isParent = link.parent_company.toLowerCase().includes(scQuery.toLowerCase())
-                        return (
-                          <div key={link.id} className="bg-surface border border-border rounded-xl p-4">
-                            {/* Relationship row */}
-                            <div className="flex items-center gap-2 mb-2 flex-wrap">
-                              <span className="text-text-primary text-sm font-medium">{link.parent_company}</span>
-                              <ArrowRight size={12} className="text-text-tertiary shrink-0" />
-                              <span className={cn('text-xs px-2 py-0.5 rounded-full bg-elevated font-medium', rel.color)}>
-                                {rel.label}
-                              </span>
-                              <ArrowRight size={12} className="text-text-tertiary shrink-0" />
-                              <span className="text-text-primary text-sm font-medium">{link.child_company}</span>
-                              {/* Highlight which side matched */}
-                              {isParent
-                                ? <span className="text-[10px] text-text-tertiary ml-auto">searched company is customer/hub</span>
-                                : <span className="text-[10px] text-text-tertiary ml-auto">searched company is supplier/child</span>
-                              }
-                            </div>
-                            {/* Evidence text */}
-                            {link.evidence_text && (
-                              <p className="text-text-tertiary text-xs leading-relaxed italic border-l-2 border-border pl-3">
-                                "{link.evidence_text}"
-                              </p>
-                            )}
-                            {/* Footer */}
-                            <div className="flex items-center gap-3 mt-2">
-                              <span className="text-text-tertiary text-xs tabular-nums">
-                                confidence {Math.round(link.confidence * 100)}%
-                              </span>
-                              <span className="text-text-tertiary text-[10px]">· doc {link.source_document_id.slice(0, 16)}…</span>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* No search yet */}
-                {!scLoading && !scQuery && (
-                  <div className="text-center py-12 text-text-tertiary text-sm">
-                    <p>Enter a company name above to explore its supply chain.</p>
-                    <p className="text-xs mt-2">
-                      Data is extracted from SEC 10-K and 10-Q filings — only available after ingestion has run.
-                    </p>
                   </div>
                 )}
               </div>

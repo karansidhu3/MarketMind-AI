@@ -776,6 +776,7 @@ export default function FeedPage() {
   const [regenerating, setRegenerating] = useState(false)
   // Data = technical cards, Explain = plain-English narrative per thesis (ADR-022)
   const [explainMode,  setExplainMode]  = useState(false)
+  const [showHistory,  setShowHistory]  = useState(false)
   const [portfolioGaps, setPortfolioGaps] = useState<FeedGapSignal[]>([])
   const { toast } = useToast()
 
@@ -848,13 +849,32 @@ export default function FeedPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Timeline scrubber */}
-            <TimelineScrubber
-              dates={feedDates}
-              viewDate={viewDate}
-              onSelect={handleSelectDate}
-              loading={loading}
-            />
+            {/* Timeline scrubber — shown when in history mode or when user toggled it */}
+            {(showHistory || isHistorical) && (
+              <TimelineScrubber
+                dates={feedDates}
+                viewDate={viewDate}
+                onSelect={handleSelectDate}
+                loading={loading}
+              />
+            )}
+
+            {/* History toggle — only shown when not already in historical mode */}
+            {!isHistorical && (
+              <button
+                onClick={() => setShowHistory(h => !h)}
+                className={cn(
+                  'flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-all',
+                  showHistory
+                    ? 'border-accent/50 text-accent bg-accent/8'
+                    : 'border-border text-text-tertiary hover:text-text-secondary hover:bg-elevated'
+                )}
+                title="View historical feeds"
+              >
+                <Calendar size={12} />
+                <span className="hidden sm:inline">History</span>
+              </button>
+            )}
 
             {/* Regenerate — disabled when viewing history */}
             {!isHistorical && (
@@ -973,33 +993,6 @@ export default function FeedPage() {
                     <div className="space-y-2">
                       {portfolioGaps.map(gap => (
                         <GapSignalRow key={gap.normalised_name} gap={gap} />
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                {/* Insider clusters */}
-                {feed.insider_clusters.length > 0 && (
-                  <section className="pt-6">
-                    <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest mb-2 px-1">
-                      Insider Clusters
-                    </h2>
-                    <div className="space-y-2">
-                      {feed.insider_clusters.map((cluster, i) => (
-                        <div
-                          key={i}
-                          className="bg-surface border border-border rounded-xl px-4 py-3 flex items-center justify-between animate-fade-in"
-                        >
-                          <div>
-                            <p className="text-text-primary text-sm font-medium">{cluster.company_name}</p>
-                            <p className="text-text-tertiary text-xs mt-0.5">
-                              {cluster.filing_count} insiders filed within {cluster.filed_within_days}d
-                            </p>
-                          </div>
-                          <span className="text-amber text-xs bg-amber/10 px-2.5 py-0.5 rounded-full font-medium">
-                            Cluster
-                          </span>
-                        </div>
                       ))}
                     </div>
                   </section>
