@@ -444,6 +444,80 @@ new companies, summary) changes with the selected date.
 
 ---
 
+## ADR-029 — Ingestor feed invalidation via direct Redis key deletion
+
+**Decision:** After each daily ingestion run, the scheduler invalidates the feed
+cache by directly deleting the three Redis keys rather than calling
+`POST /feed/regenerate` via HTTP.
+
+**Keys deleted:**
+```
+feed:generated:{date}
+feed:explain-summary:{date}
+feed:unified-explain:{date}
+```
+
+**Reason:**
+- The original approach called `http://localhost:8000/feed/regenerate` from inside
+  the ingestor container. This fails silently: `localhost` inside a Docker container
+  refers to the container itself, not the backend service. The correct hostname is
+  `backend`, but even with that fix the endpoint requires a JWT auth token that the
+  ingestor doesn't hold.
+- Direct Redis key deletion is simpler, has no network dependency, requires no auth,
+  and achieves the same result: the next page load triggers fresh feed synthesis
+  from the newly ingested corpus.
+- The backend's `FeedService.get_feed()` checks for the Redis key first; if absent,
+  it regenerates and re-caches. No changes to the backend were needed.
+
+**Implementation:** `scripts/scheduler.py` `_invalidate_feed_cache()`. Called
+immediately after a successful ingestion run completes and `_mark_done()` is set.
+
+---
+
+## ADR-030 — Multi-thesis LLM scoring (planned, not yet implemented)
+
+**Decision (planned):** Replace the current per-thesis LLM scoring loop with a
+single LLM call per document that scores all theses simultaneously.
+
+**Current behaviour:** `ThesisService.score_document()` iterates over all active
+theses, checks the keyword gate (15% threshold) per thesis, and for each passing
+thesis makes a separate `api/generate` call to classify sentiment. A document
+relevant to 3 theses makes 3 serial LLM calls, each taking 30–60 seconds.
+
+**Proposed change:** After keyword gating, collect all theses that passed for a
+given document and issue a single prompt:
+```
+Given this document, classify the sentiment for each of the following investment
+theses as SUPPORTING, OPPOSING, or NEUTRAL. Return JSON.
+
+Thesis 1: <name> — <description>
+Thesis 2: ...
+
+Document: <text>
+```
+Parse the structured response and write one evidence record per thesis in one pass.
+
+**Expected impact:**
+- A document triggering 3 theses goes from 3 × ~45s = 135s → 1 × ~60s = 60s.
+- At 280 targeted docs per connector with ~40% keyword hit rate across multiple
+  theses, this could cut the 5–7hr daily ingestion run to ~2hrs.
+- No change to data quality — same model, same classification task, same evidence
+  schema.
+
+**Tradeoffs:**
+- Prompt engineering required — structured JSON output with per-thesis verdicts
+  needs reliable parsing. One malformed response drops scoring for all theses on
+  that document.
+- Slightly longer per-call latency as the prompt is larger.
+- Needs fallback: if the combined response fails to parse, retry as individual calls.
+
+**Status:** Planned. Implement after observing data quality from the first full
+targeted ingestion run (2026-05-26). See also: `KEYWORD_THRESHOLD` in
+`app/thesis/service.py` (currently 0.15) — raising to 0.25 is a secondary lever
+if multi-thesis scoring alone is insufficient.
+
+---
+
 ## ADR-026 — Corpus targeting is the highest-leverage infrastructure investment
 
 **Decision:** Future ingestion work should prioritise targeted sector connectors

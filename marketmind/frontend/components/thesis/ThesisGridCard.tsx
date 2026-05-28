@@ -7,7 +7,7 @@ import { getConfidenceHistory } from '@/lib/api'
 import { formatConfidence, cn } from '@/lib/utils'
 import type { ThesisOut, ConfidenceSnapshot } from '@/lib/types'
 
-// ── Mini sparkline SVG ────────────────────────────────────────────────────────
+// ── Full-width responsive sparkline ──────────────────────────────────────────
 
 function MiniSparkline({ points, trend }: { points: number[]; trend: 'up' | 'down' | 'flat' }) {
   if (points.length < 2) return null
@@ -19,10 +19,11 @@ function MiniSparkline({ points, trend }: { points: number[]; trend: 'up' | 'dow
 
   const coords = points.map((v, i) => {
     const x = (i / (points.length - 1)) * W
-    const y = H - ((v - min) / range) * (H - 4) - 2
+    const y = H - ((v - min) / range) * (H - 6) - 3
     return `${x.toFixed(1)},${y.toFixed(1)}`
   })
 
+  const last = coords[coords.length - 1].split(',')
   const color = trend === 'up' ? 'var(--green)' : trend === 'down' ? 'var(--red)' : 'var(--text-tertiary)'
 
   return (
@@ -34,21 +35,15 @@ function MiniSparkline({ points, trend }: { points: number[]; trend: 'up' | 'dow
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
-        opacity={0.7}
+        opacity={0.75}
       />
-      {/* Endpoint dot */}
-      {(() => {
-        const last = coords[coords.length - 1].split(',')
-        return (
-          <circle
-            cx={parseFloat(last[0])}
-            cy={parseFloat(last[1])}
-            r={2.5}
-            fill={`rgb(${color})`}
-            opacity={0.9}
-          />
-        )
-      })()}
+      <circle
+        cx={parseFloat(last[0])}
+        cy={parseFloat(last[1])}
+        r={2}
+        fill={`rgb(${color})`}
+        opacity={0.9}
+      />
     </svg>
   )
 }
@@ -59,28 +54,28 @@ function calcTrend(history: ConfidenceSnapshot[]): 'up' | 'down' | 'flat' {
   if (history.length < 4) return 'flat'
   const recent = history.slice(-3).reduce((s, p) => s + p.confidence, 0) / 3
   const prior  = history.slice(-7, -3).reduce((s, p) => s + p.confidence, 0) / Math.max(history.slice(-7, -3).length, 1)
-  const delta = recent - prior
+  const delta  = recent - prior
   if (delta > 0.03) return 'up'
   if (delta < -0.03) return 'down'
   return 'flat'
 }
 
-// ── Trend badge ───────────────────────────────────────────────────────────────
+// ── Health badge ──────────────────────────────────────────────────────────────
 
-function TrendBadge({ trend }: { trend: 'up' | 'down' | 'flat' }) {
+function HealthBadge({ trend }: { trend: 'up' | 'down' | 'flat' }) {
   if (trend === 'up') return (
-    <span className="inline-flex items-center gap-1 text-xs text-green bg-green/10 border border-green/20 px-2 py-0.5 rounded-full font-semibold">
-      <TrendingUp size={10} /> Strengthening
+    <span className="inline-flex items-center gap-1 text-[11px] text-green bg-green/10 border border-green/20 px-2 py-0.5 rounded-full font-semibold">
+      <TrendingUp size={9} /> Strengthening
     </span>
   )
   if (trend === 'down') return (
-    <span className="inline-flex items-center gap-1 text-xs text-red bg-red/10 border border-red/20 px-2 py-0.5 rounded-full font-semibold">
-      <TrendingDown size={10} /> Weakening
+    <span className="inline-flex items-center gap-1 text-[11px] text-red bg-red/10 border border-red/20 px-2 py-0.5 rounded-full font-semibold">
+      <TrendingDown size={9} /> Weakening
     </span>
   )
   return (
-    <span className="inline-flex items-center gap-1 text-xs text-text-tertiary bg-elevated border border-border px-2 py-0.5 rounded-full font-medium">
-      <Minus size={10} /> Steady
+    <span className="inline-flex items-center gap-1 text-[11px] text-text-tertiary bg-elevated border border-border px-2 py-0.5 rounded-full font-medium">
+      <Minus size={9} /> Steady
     </span>
   )
 }
@@ -97,7 +92,6 @@ export default function ThesisGridCard({ thesis }: { thesis: ThesisOut }) {
   const hasEvidence = thesis.evidence_count > 0
   const trend       = calcTrend(history)
   const points      = history.map(h => h.confidence)
-
   const supportPct  = hasEvidence ? Math.round(thesis.confidence * 100) : null
   const opposePct   = hasEvidence ? Math.round((thesis.opposing_count / thesis.evidence_count) * 100) : null
 
@@ -105,81 +99,75 @@ export default function ThesisGridCard({ thesis }: { thesis: ThesisOut }) {
     <Link
       href={`/thesis/${thesis.id}`}
       className={cn(
-        'group flex flex-col bg-surface border border-border rounded-2xl p-5 h-full',
-        'hover:border-accent/30 hover:bg-elevated/40 transition-all duration-150',
+        'group flex flex-col bg-surface border border-border rounded-2xl p-5',
+        'hover:border-accent/30 hover:shadow-sm transition-all duration-150',
         !hasEvidence && 'opacity-70'
       )}
     >
-      {/* ── Header ── */}
-      <div className="mb-1">
-        <div className="flex items-start justify-between gap-2">
+      {/* ── Name + badge row ── */}
+      <div className="mb-3">
+        <div className="flex items-start justify-between gap-2 mb-1.5">
           <h3 className="text-text-primary font-semibold text-base leading-snug flex-1">
             {thesis.name}
           </h3>
           {thesis.is_system && (
-            <span className="text-[10px] text-text-tertiary bg-elevated px-2 py-0.5 rounded-full shrink-0 mt-0.5">
+            <span className="text-[10px] text-text-tertiary bg-elevated px-1.5 py-0.5 rounded-full shrink-0 mt-0.5">
               System
             </span>
           )}
         </div>
-        {/* Health label — prominent, right under the name */}
-        <div className="mt-1.5 mb-3">
-          {hasEvidence
-            ? <TrendBadge trend={trend} />
-            : <span className="inline-flex items-center text-xs text-amber bg-amber/10 border border-amber/20 px-2 py-0.5 rounded-full font-medium">No data yet</span>
-          }
-        </div>
+        {hasEvidence
+          ? <HealthBadge trend={trend} />
+          : <span className="inline-flex items-center text-[11px] text-amber bg-amber/10 border border-amber/20 px-2 py-0.5 rounded-full font-medium">No data yet</span>
+        }
       </div>
 
       {hasEvidence ? (
         <>
-          {/* ── Sparkline — fills available space ── */}
-          <div className="flex-1 flex items-end mb-4">
-            {points.length >= 2
+          {/* ── Sparkline — needs 5+ data points for a meaningful trend ── */}
+          <div className="mb-3">
+            {points.length >= 5
               ? <MiniSparkline points={points} trend={trend} />
               : <div className="w-20 h-7 flex items-center">
-                  <div className="h-px w-full bg-border" />
+                  <span className="text-[10px] text-text-tertiary italic">building history…</span>
                 </div>
             }
           </div>
 
-          {/* ── Numbers — same visual weight as thesis name ── */}
-          <div className="flex items-baseline justify-between mb-2.5">
-            <div className={cn(
-              'text-lg font-bold tabular-nums leading-none',
+          {/* ── Stats — small, tertiary ── */}
+          <div className="flex items-baseline justify-between mb-2">
+            <span className={cn(
+              'text-sm font-semibold tabular-nums',
               (supportPct ?? 0) >= 60 ? 'text-green' :
-              (supportPct ?? 0) >= 40 ? 'text-text-primary' :
+              (supportPct ?? 0) >= 40 ? 'text-text-secondary' :
               'text-red'
             )}>
-              {supportPct ?? '—'}%
+              {supportPct}%
               <span className="text-text-tertiary text-[10px] font-normal ml-1">support</span>
-            </div>
-            <div className="text-text-tertiary text-xs tabular-nums">
+            </span>
+            <span className="text-text-tertiary text-[11px] tabular-nums">
               {thesis.evidence_count.toLocaleString()} signals
-            </div>
+            </span>
           </div>
 
           {/* ── Dual-color bar ── */}
-          <div className="h-1 bg-border/50 rounded-full overflow-hidden">
+          <div className="h-1.5 bg-border/40 rounded-full overflow-hidden">
             <div className="h-full flex">
               <div
                 className="h-full bg-green/60 rounded-l-full transition-all duration-500"
-                style={{ width: `${(supportPct ?? 0)}%` }}
+                style={{ width: `${supportPct ?? 0}%` }}
               />
               <div
                 className="h-full bg-red/50 rounded-r-full transition-all duration-500"
-                style={{ width: `${(opposePct ?? 0)}%` }}
+                style={{ width: `${opposePct ?? 0}%` }}
               />
             </div>
           </div>
         </>
       ) : (
-        /* ── Empty state ── */
-        <div className="flex-1 flex items-end">
-          <p className="text-text-tertiary text-[11px] italic">
-            No signals yet — click to run evaluation
-          </p>
-        </div>
+        <p className="text-text-tertiary text-[11px] italic mt-auto pt-4">
+          No signals yet — click to run evaluation
+        </p>
       )}
     </Link>
   )

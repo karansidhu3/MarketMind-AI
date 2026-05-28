@@ -204,82 +204,49 @@ daily experience polished enough to use as a live portfolio tool.
 
 ---
 
-## Current — Sprint 10 — Verdict Language + Signal Clarity
+## Sprint 10 — Verdict Language + Signal Clarity ✅
 
 **Theme:** Make the system opinionated. Right now MarketMind reports data — confidence
 percentages, doc counts, coverage bars. A user can stare at "67% support rate, 14 docs,
 8% coverage" and still not know what to think. This sprint adds a verdict layer on top
 of the existing data: the system should *conclude*, not just *report*.
 
-Inspired by a structured stock analysis framework (Bear Case → Conviction Score →
-Catalyst Test) where every output ends in a hard verdict — AVOID, HYPE, PRICED IN.
-The key difference for MarketMind: verdicts are grounded in months of real corpus
-data, not a one-shot LLM prompt against training knowledge.
+### Completed ✅
 
-### Verdict language (anchor feature)
+- **Radar verdict badges** — ACCELERATING / RISING / EMERGING / STALLING. Derived from
+  weekly_counts sparkline slope + doc count, no LLM needed. Replaces separate surge/NEW
+  badges. `CompanyRadar.tsx` `getVerdictBadge()`.
 
-- **Company verdict in deep-dive panel** — when the panel opens, run a structured
-  prompt against the company's actual corpus evidence (doc count, recency, thesis
-  breadth, source diversity) and surface:
-  - Signal strength: STRONG / MODERATE / THIN / NOISE
-  - Consensus check: EMERGING (few sources, recent) / WIDENING / CONSENSUS (large cap, everywhere)
-  - One verdict sentence: *"12 filings across 3 themes, all since February. Early signal,
-    not yet consensus."* or *"8 mentions but from 2 sources only. Thin corpus."*
-  - Cached per company per day — not re-generated on every panel open
+- **Theme health labels** — Strengthening / Steady / Weakening badge under thesis name on
+  `ThesisGridCard`. Prominent before numbers. Derived from ConfidenceSnapshot slope.
 
-- **Radar verdict badges** — replace or augment the raw doc count bar with a badge:
-  ACCELERATING / EMERGING / ESTABLISHED / STALLING. Derived from sparkline slope +
-  doc count, no LLM needed. Scannable at a glance.
+- **Portfolio narrative + FeaturedGap** — `buildNarrative()` deterministic sentence at
+  top of portfolio page (`text-lg`). Featured top gap card above the gap list.
 
-- **Gap company one-liner on portfolio page** — each exposure gap gets a corpus-grounded
-  sentence instead of just "14 docs, 0.72 conf". *"Powell Industries — 19 filings, 3
-  themes, all Q1 2025. Fast emergence, no position."*
+- **Feed defaults to Explain mode** — `useState(true)` for explainMode. The brief is the
+  first thing you read, not something you unlock.
 
-- **Theme health label** — surface STRENGTHENING / STALLING / WEAKENING / EARLY on
-  theme cards, derived from ConfidenceSnapshot slope. Already computed for momentum
-  field — just needs to be shown prominently.
+- **Timeline scrubber behind History button** — prev/next + date picker only visible when
+  `showHistory` is true. Reduces clutter on primary use case.
 
-### Feed clarity
+- **Supply chain tab removed** — thesis detail `[id]/page.tsx` no longer renders the tab.
 
-- **Reduce information density** — the feed hero currently shows briefing text,
-  toggle, timeline scrubber, pulse cards, and signal cards all at once. Collapse
-  or hide the pulse cards by default; let the lead story dominate the first screen.
+- **Company panel verdict card** — `CompanyPanel.tsx` `VerdictCard` component. STRONG /
+  MODERATE / THIN / NOISE signal strength label + ACCELERATING / WIDENING / EMERGING /
+  STEADY consensus. One verdict sentence at top of overview tab. Cached per company per day.
 
-- **"What to watch today" callout** — one highlighted sentence above the signal
-  cards: the single most actionable signal from today's feed. Not a summary of
-  everything — one thing.
+- **"What to watch today" callout** — `feed/page.tsx` `WatchCallout` component. Derives
+  the single most actionable sentence from feed signals + radar + gap data.
 
-### UI / aesthetic
+### Deferred to backlog
 
-- **Light/editorial mode** — add a cream/warm light theme alongside the existing
-  dark mode. Feels like a research note, not a trading terminal. Cream background,
-  serif or semi-serif headers for thesis names, dark red/charcoal text. Makes the
-  verdict language feel more like a real analyst report.
-
-- **Remove dead supply chain tab** — still shows on thesis detail in some builds.
-  Replace with a clean empty state or remove the tab entirely.
-
-### Watchlist (lighter than portfolio)
-
-- **Company watchlist** — a `watched_companies` table (normalised_name, added_at).
-  No shares or cost basis — just "I'm watching this". Alert when doc count crosses
-  a user-set threshold (infrastructure already exists via CompanyAlert).
-  Fills the gap between passive radar (everything) and committed portfolio (holdings).
-  Visible as a section on the portfolio page or as a filter on the radar.
-
-### Conviction score (stretch)
-
-- **Structured stock analysis** — Bear Case + Quality Gate + Catalyst Test against
-  a company's corpus, rendered as a verdict card in the deep-dive panel.
-  Bear Case: what do opposing-sentiment signals say? What risks appear repeatedly?
-  Quality Gate: pass/fail on corpus-derived signals (revenue trend, margin mentions).
-  Catalyst Test: what upcoming catalysts appear in recent filings?
-  Verdict: BUY WATCH / MONITOR / AVOID — explicitly framed as corpus opinion, not
-  financial advice (ADR-023).
+- **Watchlist** — `watched_companies` table, lighter than portfolio. Deferred to Sprint 13+.
+- **Conviction score** — Bear Case + Quality Gate + Catalyst Test verdict card. Stretch
+  goal, requires multi-month corpus to be meaningful. Deferred.
 
 ---
 
-## Sprint 11 — Design Identity + Information Hierarchy
+## Current — Sprint 11 — Design Identity + Information Hierarchy
 
 **Theme:** MarketMind looks like every other 2024 SaaS dashboard — glassmorphism,
 violet accent, equal-weight cards, colored percentage bars. The visual language
@@ -287,27 +254,68 @@ doesn't match the product's identity as an intelligence tool. This sprint gives 
 a real personality and fixes the hierarchy problem: right now numbers dominate,
 claims are buried. The system should speak first; data is evidence, not headline.
 
-### Cuts (remove, don't replace)
+### Completed ✅
 
-- **`/research` route** — stateless synthesis, no temporal layer, contradicts the
-  product story. A user who finds it thinks MarketMind is just a ChatGPT wrapper.
-  Delete the page, the route, and the nav entry entirely.
+- **`/research` route deleted** — `app/research/` directory removed. Stateless
+  synthesis, no temporal layer. Nav entry already removed in Sprint 9.
 
-- **ThesisPulseCards** — horizontal scroll row above signal cards. Redundant with
-  the signal cards directly below. Adds visual noise before the user reaches the
-  actual content. Cut. The intelligence brief + signal cards carry the weight.
+- **ThesisPulseCards removed** — horizontal scroll row cut from `feed/page.tsx`.
+  Intelligence brief + lead signal card carry the weight.
 
-- **Supply chain tab on thesis detail** — already disabled in backend. The empty
-  tab still renders. Remove it.
+- **Supply chain tab removed** — `thesis/[id]/page.tsx` no longer renders the tab.
 
-- **Insider clusters section in feed** — deprioritised per ADR-025. Commodity
-  signal that weakens the "early signal" story when it appears alongside real
-  intelligence. Remove from feed template.
+- **Timeline scrubber behind History button** — prev/next + date picker only shown
+  when `showHistory` is true. Done in Sprint 10, landed here as a Sprint 11 cut.
 
-- **Timeline scrubber from main header** — historical feed is a useful feature
-  but 95% of visits are for today's data. The prev/next arrows and date picker
-  sitting in the feed header add complexity to the primary use case. Move behind
-  a small collapsed "History" button.
+- **Default to light mode** — `ThemeProvider.tsx` `defaultTheme="light"`.
+
+- **Warm paper light palette** — `globals.css`: `--background: 248 246 242`,
+  warm borders + ink-on-paper text, muted semantic colors. Professional, not terminal.
+
+- **Warm charcoal dark palette** — `globals.css` `.dark`: `--background: 14 12 10`,
+  warm surfaces, brighter semantic colors for contrast. Desk-lamp, not cold OLED.
+
+- **Theme transition fix** — transition scoped to `html, body` only (was `*`).
+  `*` selector caused staggered per-element paint cycles → visible flicker.
+  Root-only scoping gives a clean crossfade. 0.3s ease.
+
+- **Portfolio redesign** — stats strip at top (4 colored stat pills), two-column
+  layout (holdings left, intelligence right), holding cards with ticker pill +
+  top momentum color bar + thesis signal row, narrative sentence in `text-xl`,
+  FeaturedGap as primary recommendation.
+
+- **ThesisGridCard hierarchy fix** — confidence % `text-sm font-semibold` (was
+  `text-lg`), HealthBadge `text-[11px]`, bar `h-1.5`. Sparkline fixed 80×28px.
+
+- **Share input arrow bug fixed** — `step="1"` `min="0.001"`. Previously
+  `step="any"` + `min="0.0001"` snapped to 0.0001 on first arrow click.
+
+- **Ingestor feed auto-invalidation fixed** — `scheduler.py` now directly deletes
+  3 Redis cache keys after ingestion instead of broken HTTP call to backend.
+  Feed regenerates on next page load without manual Regenerate click. (ADR-029)
+
+### Remaining
+
+- **Information hierarchy pass** — SignalCard highlight as hero text (`text-sm`
+  leading-relaxed, dark), confidence number secondary. Feed hero always expanded.
+  Company panel reads like a short report. Radar de-emphasises raw numbers.
+
+- **Aesthetic: Intelligence Room** — amber/gold `#D4A843` accent replacing violet
+  for signal/alert moments. DM Serif Display or Playfair for headline claims.
+  Corpus pulse indicator bottom of every page ("847 docs · updated 6h ago").
+
+- **Framer Motion** — page transitions (180ms fade+8px), card stagger (40ms delay),
+  sparkline draw animation, bar fill 0→width, number count-up, panel spring,
+  signal emergence pulse.
+
+- **Portfolio theme coverage zones** — visual field replacing holdings table;
+  holdings as chips inside each theme zone; gaps as empty zones. Holdings detail
+  collapsed behind "Your positions (N)".
+
+### Cuts (original plan, recorded for completeness)
+
+- **Insider clusters in feed** — deprioritised per ADR-025. Not yet removed from
+  feed template but not actively generating data (Form 4 ingestion deprioritised).
 
 ### Information hierarchy pass
 

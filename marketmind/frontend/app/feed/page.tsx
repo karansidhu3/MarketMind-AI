@@ -8,7 +8,7 @@ import AppShell from '@/components/layout/AppShell'
 import SignalCard from '@/components/feed/SignalCard'
 import CompanyRadar from '@/components/feed/CompanyRadar'
 import { getFeed, getFeedDates, getCompanyRadar, regenerateFeed, getAlerts, streamFeedExplainSummary, streamThesisExplain, streamUnifiedExplain, getPortfolioFeedSignals, getWatchlist, unwatchCompany } from '@/lib/api'
-import { formatDate, greet, cn } from '@/lib/utils'
+import { formatDate, greet, timeAgo, cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 import { useCompany } from '@/contexts/CompanyContext'
 import type { FeedResponse, CompanyRadarItem, ThesisSignal, CompanyAlert, FeedGapSignal, WatchedCompany } from '@/lib/types'
@@ -896,15 +896,22 @@ export default function FeedPage() {
 
             {/* Regenerate — disabled when viewing history */}
             {!isHistorical && (
-              <button
-                onClick={handleRegenerate}
-                disabled={regenerating || loading}
-                className="flex items-center gap-1.5 text-xs text-text-tertiary hover:text-text-secondary px-3 py-1.5 rounded-lg border border-border hover:bg-elevated transition-all disabled:opacity-40"
-                title="Regenerate feed"
-              >
-                <RefreshCw size={12} className={regenerating ? 'animate-spin' : ''} />
-                <span className="hidden sm:inline">{regenerating ? 'Regenerating…' : 'Regenerate'}</span>
-              </button>
+              <div className="flex items-center gap-2">
+                {feed && !regenerating && (
+                  <span className="text-[11px] text-text-tertiary hidden sm:inline">
+                    Updated {timeAgo(feed.generated_at)}
+                  </span>
+                )}
+                <button
+                  onClick={handleRegenerate}
+                  disabled={regenerating || loading}
+                  className="flex items-center gap-1.5 text-xs text-text-tertiary hover:text-text-secondary px-3 py-1.5 rounded-lg border border-border hover:bg-elevated transition-all disabled:opacity-40"
+                  title="Regenerate feed"
+                >
+                  <RefreshCw size={12} className={regenerating ? 'animate-spin' : ''} />
+                  <span className="hidden sm:inline">{regenerating ? 'Regenerating…' : 'Regenerate'}</span>
+                </button>
+              </div>
             )}
           </div>
         </div>

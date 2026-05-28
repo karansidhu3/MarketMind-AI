@@ -19,9 +19,13 @@ function isNew(firstSeen: string): boolean {
 
 function weekGrowth(counts: number[]): number {
   if (!counts || counts.length < 2) return 0
-  const thisWeek  = counts[counts.length - 1]
-  const lastWeek  = counts[counts.length - 2] || 0
-  if (lastWeek === 0) return thisWeek > 0 ? 999 : 0
+  const thisWeek   = counts[counts.length - 1]
+  const lastWeek   = counts[counts.length - 2] || 0
+  // Only treat as surge if there was actual prior history — not just first-ever data.
+  // Without this check, a company appearing for the first time returns 999 growth
+  // and shows "↑157 new · Accelerating" which is misleading noise.
+  const hasPriorData = counts.slice(0, -1).some(v => v > 0)
+  if (lastWeek === 0) return (thisWeek > 0 && hasPriorData) ? 999 : 0
   return thisWeek / lastWeek
 }
 

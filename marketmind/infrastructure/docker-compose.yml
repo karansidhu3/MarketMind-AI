@@ -72,7 +72,6 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-marketmind}:${POSTGRES_PASSWORD:-marketmind}@postgres:5432/${POSTGRES_DB:-marketmind}
       REDIS_URL: redis://redis:6379
       QDRANT_URL: http://qdrant:6333
-      OLLAMA_URL: http://ollama:11434
     ports:
       - "8000:8000"
     depends_on:
@@ -97,7 +96,6 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-marketmind}:${POSTGRES_PASSWORD:-marketmind}@postgres:5432/${POSTGRES_DB:-marketmind}
       REDIS_URL: redis://redis:6379
       QDRANT_URL: http://qdrant:6333
-      OLLAMA_URL: http://ollama:11434
       INGEST_HOUR_PT: ${INGEST_HOUR_PT:-6}
     command: ["python", "scripts/scheduler.py"]
     depends_on:

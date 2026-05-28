@@ -4,32 +4,38 @@
 
 /* ── Color tokens (RGB triplets — supports Tailwind opacity modifiers) ── */
 :root {
-  /* Light mode */
-  --background:    250 250 250;
+  /* Light mode — warm paper tone, reads like a research document */
+  --background:    248 246 242;
   --surface:       255 255 255;
-  --elevated:      244 244 245;
-  --border:        228 228 231;
-  --border-subtle: 244 244 245;
-  --text-primary:  9 9 11;
-  --text-secondary:82 82 91;
-  --text-tertiary: 161 161 170;
+  --elevated:      242 240 236;
+  --border:        222 218 212;
+  --border-subtle: 235 232 227;
+  --text-primary:  15 12 8;
+  --text-secondary:75 70 62;
+  --text-tertiary: 148 142 132;
 
   /* Accent colors — same in both modes */
   --accent:  124 58 237;
-  --green:   48 209 88;
-  --red:     255 69 58;
-  --amber:   255 179 0;
+  --green:   22 163 74;
+  --red:     220 38 38;
+  --amber:   217 119 6;
 }
 
 .dark {
-  --background:    9 9 11;
-  --surface:       17 17 19;
-  --elevated:      26 26 29;
-  --border:        34 34 38;
-  --border-subtle: 26 26 29;
-  --text-primary:  242 242 243;
-  --text-secondary:138 138 143;
-  --text-tertiary: 85 85 90;
+  /* Warm charcoal — desk lamp, not cold OLED */
+  --background:    14 12 10;
+  --surface:       21 19 16;
+  --elevated:      30 27 23;
+  --border:        44 40 34;
+  --border-subtle: 30 27 23;
+  --text-primary:  238 234 228;
+  --text-secondary:148 142 132;
+  --text-tertiary: 90 85 77;
+
+  /* Brighter semantic colors — need more contrast on dark bg */
+  --green:   34 197 94;
+  --red:     239 68 68;
+  --amber:   245 158 11;
 }
 
 /* ── Reset ─────────────────────────────────────────────────────────────── */
@@ -60,6 +66,12 @@ body {
   outline: 1.5px solid rgb(var(--accent));
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/* ── Theme transition — smooth dark/light switch ───────────────────────── */
+/* Scoped to html/body only — applying to * causes staggered flicker */
+html, body {
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 @layer utilities {

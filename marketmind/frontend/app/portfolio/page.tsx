@@ -210,8 +210,8 @@ function HoldingForm({ initial, onSave, onCancel }: HoldingFormProps) {
             value={shares}
             onChange={e => setShares(e.target.value)}
             placeholder="100"
-            min="0.0001"
-            step="any"
+            min="0.001"
+            step="1"
             required
             className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent"
           />
@@ -267,43 +267,35 @@ function ExposureCard({ exposure }: { exposure: ThesisExposure }) {
 
   return (
     <div className="bg-surface border border-border rounded-xl p-4 hover:border-border/80 transition-colors">
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="flex-1 min-w-0">
-          <p className="text-text-primary text-xs font-semibold leading-snug truncate">
-            {exposure.thesis_name}
-          </p>
-          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-            <p className="text-text-tertiary text-[11px]">
-              Confidence: <span className="text-text-secondary font-medium">{formatConfidence(exposure.confidence)}</span>
-              {' · '}
-              {exposure.total_companies} companies
-            </p>
-            <span className={cn('flex items-center gap-0.5 text-[11px]', momColor)}>
-              <MomIcon size={9} />
-              <span>{exposure.momentum}</span>
-            </span>
-          </div>
-        </div>
-        <span className={cn(
-          'text-xs font-bold tabular-nums shrink-0 px-2 py-0.5 rounded-full',
-          pct >= 30 ? 'text-green bg-green/10' :
-          pct >= 10 ? 'text-amber bg-amber/10' :
-          'text-text-tertiary bg-elevated'
-        )}>
-          {pct}%
-        </span>
-      </div>
+      {/* Thesis name — most important, reads first */}
+      <p className="text-text-primary text-sm font-semibold leading-snug truncate mb-1">
+        {exposure.thesis_name}
+      </p>
 
-      {/* Coverage bar */}
-      <div className="h-1.5 bg-border/50 rounded-full overflow-hidden mb-3">
+      {/* Momentum label — health before numbers */}
+      <span className={cn('inline-flex items-center gap-1 text-[11px] mb-3', momColor)}>
+        <MomIcon size={9} />
+        <span className="capitalize">{exposure.momentum}</span>
+      </span>
+
+      {/* Coverage bar — taller, more visible */}
+      <div className="h-2 bg-border/40 rounded-full overflow-hidden mb-2">
         <div
           className={cn(
             'h-full rounded-full transition-all duration-500',
-            pct >= 30 ? 'bg-green/60' : pct >= 10 ? 'bg-amber/60' : 'bg-border'
+            pct >= 30 ? 'bg-green/70' : pct >= 10 ? 'bg-amber/70' : 'bg-border'
           )}
           style={{ width: `${Math.max(pct, 2)}%` }}
         />
       </div>
+
+      {/* Numbers — tertiary, supporting */}
+      <p className="text-text-tertiary text-[11px] tabular-nums mb-3">
+        <span className={cn('font-semibold', pct >= 30 ? 'text-green' : pct >= 10 ? 'text-amber' : 'text-text-tertiary')}>
+          {pct}%
+        </span>
+        {' covered · '}{formatConfidence(exposure.confidence)} conf · {exposure.total_companies} co.
+      </p>
 
       {/* Holdings in this thesis */}
       {hasHoldings ? (
@@ -315,7 +307,7 @@ function ExposureCard({ exposure }: { exposure: ThesisExposure }) {
           ))}
         </div>
       ) : (
-        <p className="text-text-tertiary text-[11px] italic">No holdings in this thesis yet.</p>
+        <p className="text-text-tertiary text-[11px] italic">No exposure yet.</p>
       )}
     </div>
   )
@@ -380,11 +372,10 @@ export default function PortfolioPage() {
   const [alignment,  setAlignment]  = useState<PortfolioAlignment | null>(null)
   const [loading,    setLoading]    = useState(true)
   const [error,      setError]      = useState('')
-  const [showAdd,    setShowAdd]    = useState(false)
-  const [editingId,  setEditingId]  = useState<string | null>(null)
-  const [deleting,     setDeleting]     = useState<string | null>(null)
-  const [refreshing,   setRefreshing]   = useState(false)
-  const [showAllGaps,  setShowAllGaps]  = useState(false)
+  const [showAdd,        setShowAdd]        = useState(false)
+  const [editingId,      setEditingId]      = useState<string | null>(null)
+  const [deleting,       setDeleting]       = useState<string | null>(null)
+  const [refreshing,     setRefreshing]     = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -458,13 +449,8 @@ export default function PortfolioPage() {
       <div className="max-w-[1400px] mx-auto px-8 py-8">
 
         {/* ── Page header ── */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-text-primary font-semibold text-base leading-tight">Portfolio</h1>
-            <p className="text-text-tertiary text-xs mt-0.5">
-              Track your holdings. See which theses you&apos;re exposed to — and where the gaps are.
-            </p>
-          </div>
+        <div className="flex items-center justify-between mb-5">
+          <h1 className="text-text-primary font-semibold text-base leading-tight">Portfolio</h1>
           <button
             onClick={handleRefresh}
             disabled={loading || refreshing}
@@ -475,6 +461,44 @@ export default function PortfolioPage() {
           </button>
         </div>
 
+        {/* ── Stats strip ── */}
+        {!loading && alignment && (
+          <div className="grid grid-cols-4 gap-3 mb-6">
+            {[
+              {
+                label: 'Positions',
+                value: String(alignment.total_holdings),
+                sub: 'tracked',
+                color: 'text-text-primary',
+              },
+              {
+                label: 'Theme Coverage',
+                value: `${coveragePct}%`,
+                sub: 'of tracked themes',
+                color: coveragePct >= 30 ? 'text-green' : coveragePct >= 10 ? 'text-amber' : 'text-text-secondary',
+              },
+              {
+                label: 'Rising Themes',
+                value: String(alignment.theses.filter(t => t.momentum === 'rising').length),
+                sub: `of ${alignment.theses.length} themes`,
+                color: 'text-accent',
+              },
+              {
+                label: 'Gap Signals',
+                value: String(alignment.gaps.length),
+                sub: alignment.gaps.length > 0 ? 'companies not held' : 'none found',
+                color: alignment.gaps.length > 0 ? 'text-amber' : 'text-green',
+              },
+            ].map(({ label, value, sub, color }) => (
+              <div key={label} className="bg-surface border border-border rounded-xl px-4 py-3">
+                <p className="text-text-tertiary text-[11px] uppercase tracking-widest mb-1">{label}</p>
+                <p className={`text-2xl font-bold tabular-nums leading-none mb-0.5 ${color}`}>{value}</p>
+                <p className="text-text-tertiary text-[11px]">{sub}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
         {error && (
           <div className="flex items-center gap-2 text-red text-sm bg-red/5 border border-red/20 rounded-xl px-4 py-3 mb-6">
             <AlertCircle size={14} /> {error}
@@ -484,48 +508,44 @@ export default function PortfolioPage() {
         {loading ? (
           /* ── Skeleton ── */
           <div className="flex gap-6 items-start">
-            <div className="flex-[5] space-y-3">
-              <Skeleton className="h-8 w-40 mb-4" />
-              {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
+            <div className="flex-[4] space-y-3">
+              <Skeleton className="h-5 w-32 mb-2" />
+              {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}
             </div>
-            <div className="flex-[7] space-y-4">
-              <Skeleton className="h-24 w-full rounded-xl" />
+            <div className="flex-[6] space-y-4">
+              <Skeleton className="h-20 w-full rounded-2xl" />
               <div className="grid grid-cols-2 gap-3">
                 {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
               </div>
+              <Skeleton className="h-28 w-full rounded-2xl" />
             </div>
           </div>
         ) : (
           <div className="flex gap-6 items-start">
 
-            {/* ── Left: holdings list ── */}
-            <div className="flex-[5] min-w-0">
+            {/* ── Left: Holdings ── always visible, proper cards ── */}
+            <div className="flex-[4] min-w-0">
               <div className="flex items-center justify-between mb-3 px-1">
                 <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest">
-                  Holdings
+                  Positions
                 </h2>
-                <span className="text-text-tertiary text-xs tabular-nums">{holdings.length} position{holdings.length !== 1 ? 's' : ''}</span>
+                <span className="text-text-tertiary text-xs tabular-nums">{holdings.length}</span>
               </div>
 
-              {/* Add form */}
               {showAdd && (
                 <div className="mb-3">
-                  <HoldingForm
-                    onSave={handleAdd}
-                    onCancel={() => setShowAdd(false)}
-                  />
+                  <HoldingForm onSave={handleAdd} onCancel={() => setShowAdd(false)} />
                 </div>
               )}
 
-              {/* Holdings list */}
               {holdings.length === 0 && !showAdd ? (
                 <div className="bg-surface border border-border rounded-xl py-12 px-6 text-center">
                   <div className="w-10 h-10 rounded-xl bg-elevated flex items-center justify-center mx-auto mb-3">
                     <BriefcaseBusiness size={18} className="text-text-tertiary" />
                   </div>
-                  <p className="text-text-primary text-sm font-medium mb-1">No holdings yet</p>
-                  <p className="text-text-tertiary text-xs leading-relaxed max-w-[240px] mx-auto mb-4">
-                    Add your positions to see which theses you&apos;re exposed to and where the gaps are.
+                  <p className="text-text-primary text-sm font-medium mb-1">No positions yet</p>
+                  <p className="text-text-tertiary text-xs leading-relaxed max-w-[200px] mx-auto mb-4">
+                    Add holdings to see which themes you&apos;re exposed to.
                   </p>
                   <button
                     onClick={() => setShowAdd(true)}
@@ -535,145 +555,139 @@ export default function PortfolioPage() {
                   </button>
                 </div>
               ) : (
-                <>
-                  <div className="bg-surface border border-border rounded-xl overflow-hidden mb-3">
-                    {holdings.map(h => (
-                      editingId === h.id ? (
-                        <div key={h.id} className="p-3 border-b border-border last:border-0">
-                          <HoldingForm
-                            initial={h}
-                            onSave={async (data) => handleUpdate(h.id, { shares: data.shares, cost_basis: data.cost_basis })}
-                            onCancel={() => setEditingId(null)}
-                          />
-                        </div>
-                      ) : (
-                        <div
-                          key={h.id}
-                          className="group flex items-center gap-3 px-4 py-3 border-b border-border/60 last:border-0 hover:bg-elevated/50 transition-colors"
-                        >
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-baseline gap-2">
-                              <span className="text-accent text-xs font-mono font-semibold">{h.ticker}</span>
-                              <span className="text-text-primary text-xs truncate">{h.company_name}</span>
-                            </div>
-                            <div className="text-text-tertiary text-[11px] mt-0.5 flex items-center gap-2">
-                              <span className="tabular-nums">{h.shares.toLocaleString()} shares</span>
-                              {h.cost_basis && (
-                                <span className="tabular-nums">· ${h.cost_basis.toFixed(2)} cost</span>
+                <div className="space-y-2">
+                  {holdings.map(h => {
+                    const theses = tickerTheses[h.ticker] ?? []
+                    const docCount = alignment?.held_company_docs?.[h.ticker] ?? 0
+                    const primary = theses[0]
+                    const mom = primary?.momentum ?? 'flat'
+                    const MomIcon = mom === 'rising' ? TrendingUp : mom === 'falling' ? TrendingDown : Minus
+                    const momColor = mom === 'rising' ? 'text-green' : mom === 'falling' ? 'text-red' : 'text-text-tertiary'
+
+                    return editingId === h.id ? (
+                      <div key={h.id}>
+                        <HoldingForm
+                          initial={h}
+                          onSave={async (data) => handleUpdate(h.id, { shares: data.shares, cost_basis: data.cost_basis })}
+                          onCancel={() => setEditingId(null)}
+                        />
+                      </div>
+                    ) : (
+                      <div
+                        key={h.id}
+                        className="group relative bg-surface border border-border rounded-xl overflow-hidden hover:border-accent/30 hover:shadow-sm transition-all"
+                      >
+                        {/* Top accent bar — momentum color */}
+                        <div className={cn(
+                          'h-0.5 w-full',
+                          mom === 'rising' ? 'bg-green/50' : mom === 'falling' ? 'bg-red/40' : 'bg-border'
+                        )} />
+
+                        <div className="p-4">
+                          {/* Row 1: ticker + momentum badge + actions */}
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className="text-accent font-mono font-bold text-base leading-none tracking-tight">
+                              {h.ticker}
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                              {primary && (
+                                <span className={cn(
+                                  'flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md shrink-0',
+                                  mom === 'rising' ? 'text-green bg-green/10' :
+                                  mom === 'falling' ? 'text-red bg-red/10' :
+                                  'text-text-tertiary bg-elevated'
+                                )}>
+                                  <MomIcon size={8} />
+                                  {mom === 'rising' ? 'Rising' : mom === 'falling' ? 'Falling' : 'Flat'}
+                                </span>
                               )}
+                              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => setEditingId(h.id)} className="p-1.5 rounded-lg text-text-tertiary hover:text-text-secondary hover:bg-elevated" title="Edit">
+                                  <Pencil size={11} />
+                                </button>
+                                <button onClick={() => handleDelete(h.id)} disabled={deleting === h.id} className="p-1.5 rounded-lg text-text-tertiary hover:text-red hover:bg-red/5 disabled:opacity-50" title="Remove">
+                                  {deleting === h.id ? <RefreshCw size={11} className="animate-spin" /> : <Trash2 size={11} />}
+                                </button>
+                              </div>
                             </div>
-                            {/* Corpus context line */}
-                            {(() => {
-                              const theses = tickerTheses[h.ticker] ?? []
-                              const docCount = alignment?.held_company_docs?.[h.ticker] ?? 0
-                              if (theses.length === 0 && docCount === 0) return null
-                              const primary = theses[0]
-                              const mom = primary?.momentum ?? 'flat'
-                              const MomIcon = mom === 'rising' ? TrendingUp : mom === 'falling' ? TrendingDown : Minus
-                              const momColor = mom === 'rising' ? 'text-green' : mom === 'falling' ? 'text-red' : 'text-text-tertiary'
-                              return (
-                                <div className="text-text-tertiary text-[11px] mt-1 flex items-center gap-1.5 flex-wrap">
-                                  {primary && (
-                                    <span className={cn('flex items-center gap-0.5', momColor)}>
-                                      <MomIcon size={9} />
-                                      <span className="text-text-tertiary">{primary.thesis_name.split(' ').slice(0, 3).join(' ')}</span>
-                                    </span>
-                                  )}
-                                  {theses.length > 1 && (
-                                    <span className="text-text-tertiary">+{theses.length - 1} more</span>
-                                  )}
-                                  {docCount > 0 && (
-                                    <span className="text-text-tertiary">
-                                      · <span className="tabular-nums">{docCount}</span> corpus doc{docCount !== 1 ? 's' : ''}
-                                    </span>
-                                  )}
-                                </div>
-                              )
-                            })()}
                           </div>
-                          {/* Actions — visible on hover */}
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => setEditingId(h.id)}
-                              className="p-1.5 rounded-lg text-text-tertiary hover:text-text-secondary hover:bg-elevated transition-colors"
-                              title="Edit"
-                            >
-                              <Pencil size={11} />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(h.id)}
-                              disabled={deleting === h.id}
-                              className="p-1.5 rounded-lg text-text-tertiary hover:text-red hover:bg-red/5 transition-colors disabled:opacity-50"
-                              title="Remove"
-                            >
-                              {deleting === h.id ? <RefreshCw size={11} className="animate-spin" /> : <Trash2 size={11} />}
-                            </button>
+
+                          {/* Row 2: company name */}
+                          <p className="text-text-secondary text-xs truncate mb-3">{h.company_name}</p>
+
+                          {/* Row 3: thesis signal */}
+                          {primary ? (
+                            <p className={cn('text-[11px] truncate mb-3', momColor)}>
+                              {primary.thesis_name.split(' ').slice(0, 3).join(' ')}
+                              {theses.length > 1 && <span className="text-text-tertiary"> +{theses.length - 1}</span>}
+                            </p>
+                          ) : (
+                            <p className="text-text-tertiary text-[11px] italic mb-3">No theme coverage</p>
+                          )}
+
+                          {/* Row 4: position stats */}
+                          <div className="flex items-center gap-2 text-[11px] text-text-tertiary tabular-nums pt-2.5 border-t border-border/40">
+                            <span>{h.shares.toLocaleString()} sh</span>
+                            {h.cost_basis && <span>· ${h.cost_basis.toFixed(2)}</span>}
+                            {docCount > 0 && (
+                              <span className="ml-auto text-accent font-semibold">{docCount} docs</span>
+                            )}
                           </div>
                         </div>
-                      )
-                    ))}
-                  </div>
+                      </div>
+                    )
+                  })}
 
                   {!showAdd && (
                     <button
                       onClick={() => setShowAdd(true)}
-                      className="flex items-center gap-1.5 w-full justify-center text-xs text-text-tertiary hover:text-text-secondary border border-dashed border-border hover:border-border rounded-xl py-2.5 transition-colors"
+                      className="flex items-center gap-1.5 w-full justify-center text-xs text-text-tertiary hover:text-text-secondary border border-dashed border-border hover:border-border/80 rounded-xl py-3 transition-colors"
                     >
-                      <Plus size={12} />
-                      Add holding
+                      <Plus size={12} /> Add holding
                     </button>
                   )}
-                </>
+                </div>
               )}
             </div>
 
-            {/* ── Right: alignment + gaps ── */}
-            <div className="flex-[7] min-w-0 space-y-6">
+            {/* ── Right: Intelligence — narrative + exposure + gaps ── */}
+            <div className="flex-[6] min-w-0 space-y-5">
+
+              {/* Narrative card — pull-quote treatment */}
+              <div className="relative bg-surface border border-border rounded-2xl overflow-hidden">
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent/60 rounded-l-2xl" />
+                <div
+                  aria-hidden
+                  className="absolute -top-16 -right-16 w-48 h-48 rounded-full pointer-events-none"
+                  style={{ background: 'radial-gradient(circle, rgb(var(--accent) / 0.05), transparent 70%)' }}
+                />
+                <div className="relative pl-6 pr-5 py-5">
+                  <p className="text-text-primary text-xl font-semibold leading-snug mb-3">
+                    {narrative || 'Add holdings to see how your portfolio aligns with your tracked themes.'}
+                  </p>
+                  {alignment && (
+                    <p className="text-text-tertiary text-xs">
+                      <span className={cn(
+                        'font-semibold tabular-nums mr-1',
+                        coveragePct >= 30 ? 'text-green' : coveragePct >= 10 ? 'text-amber' : 'text-text-secondary'
+                      )}>
+                        {coveragePct}% theme coverage
+                      </span>
+                      · {alignment.total_holdings} position{alignment.total_holdings !== 1 ? 's' : ''}
+                    </p>
+                  )}
+                </div>
+              </div>
 
               {alignment && (
                 <>
-                  {/* Narrative + coverage */}
-                  <div className="relative bg-surface border border-border rounded-2xl p-5 overflow-hidden">
-                    <div
-                      aria-hidden
-                      className="absolute -top-16 -right-16 w-48 h-48 rounded-full pointer-events-none"
-                      style={{ background: 'radial-gradient(circle, rgb(var(--accent) / 0.06), transparent 70%)' }}
-                    />
-                    <div className="relative">
-                      {/* Narrative — system speaks first */}
-                      {narrative ? (
-                        <p className="text-text-primary text-base font-semibold leading-snug mb-3">
-                          {narrative}
-                        </p>
-                      ) : (
-                        <p className="text-text-primary text-base font-semibold leading-snug mb-3">
-                          Add holdings to see how your portfolio aligns with your tracked themes.
-                        </p>
-                      )}
-                      {/* Coverage as supporting evidence */}
-                      <div className="flex items-center gap-3">
-                        <span className={cn(
-                          'text-2xl font-bold tabular-nums leading-none',
-                          coveragePct >= 30 ? 'text-green' :
-                          coveragePct >= 10 ? 'text-amber' :
-                          'text-text-tertiary'
-                        )}>
-                          {coveragePct}%
-                        </span>
-                        <span className="text-text-tertiary text-xs">
-                          theme coverage · {alignment.total_holdings} position{alignment.total_holdings !== 1 ? 's' : ''}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Thesis breakdown */}
+                  {/* Thesis exposure grid */}
                   {alignment.theses.length > 0 && (
                     <div>
                       <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest mb-3 px-1">
-                        Thesis Exposure
+                        Theme Exposure
                       </h2>
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="grid grid-cols-2 gap-3">
                         {alignment.theses.map(e => (
                           <ExposureCard key={e.thesis_id} exposure={e} />
                         ))}
@@ -681,27 +695,15 @@ export default function PortfolioPage() {
                     </div>
                   )}
 
-                  {/* Featured gap + rest */}
+                  {/* Gap signals */}
                   {alignment.gaps.length > 0 && (
                     <div className="space-y-3">
                       <FeaturedGap gap={alignment.gaps[0]} />
-
                       {alignment.gaps.length > 1 && (
-                        <div>
-                          <button
-                            onClick={() => setShowAllGaps(g => !g)}
-                            className="flex items-center gap-1.5 text-xs text-text-tertiary hover:text-text-secondary px-1 mb-2 transition-colors"
-                          >
-                            <ChevronRight size={12} className={cn('transition-transform', showAllGaps && 'rotate-90')} />
-                            {showAllGaps ? 'Hide' : `${alignment.gaps.length - 1} more gap signal${alignment.gaps.length - 1 !== 1 ? 's' : ''}`}
-                          </button>
-                          {showAllGaps && (
-                            <div className="bg-surface border border-border rounded-xl">
-                              {alignment.gaps.slice(1).map((gap, i) => (
-                                <GapRow key={`${gap.company_name}-${i}`} gap={gap} rank={i + 2} />
-                              ))}
-                            </div>
-                          )}
+                        <div className="bg-surface border border-border rounded-xl">
+                          {alignment.gaps.slice(1, 4).map((gap, i) => (
+                            <GapRow key={`${gap.company_name}-${i}`} gap={gap} rank={i + 2} />
+                          ))}
                         </div>
                       )}
                     </div>
@@ -713,19 +715,18 @@ export default function PortfolioPage() {
                         <Check size={14} className="text-green" />
                       </div>
                       <p className="text-text-primary text-sm font-medium">No significant gaps found</p>
-                      <p className="text-text-tertiary text-xs mt-1">
-                        Your holdings cover the companies currently on the radar.
-                      </p>
+                      <p className="text-text-tertiary text-xs mt-1">Your holdings cover the companies currently on the radar.</p>
                     </div>
                   )}
                 </>
               )}
 
-              {!alignment && !loading && (
+              {!alignment && (
                 <div className="bg-surface border border-border rounded-xl py-12 px-6 text-center">
                   <p className="text-text-tertiary text-sm">Add holdings to see alignment data.</p>
                 </div>
               )}
+
             </div>
           </div>
         )}

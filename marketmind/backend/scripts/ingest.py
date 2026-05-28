@@ -148,6 +148,51 @@ SOURCES = [
             credibility_score=0.70,
         ),
     ),
+
+    # ── 5. Sector trade press — surfaces headwinds + skeptical analysis ───────
+    # These are the primary source of opposing evidence. Company filings are
+    # always positive about their sector — trade press covers budget cuts,
+    # demand slowdowns, competition, and analyst skepticism.
+    (
+        "Breaking Defense — defense industry news",
+        GenericRSSConnector(
+            "https://breakingdefense.com/feed/",
+            source_name="Breaking Defense",
+            credibility_score=0.78,
+        ),
+    ),
+    (
+        "Utility Dive — energy grid news",
+        GenericRSSConnector(
+            "https://www.utilitydive.com/feeds/news/",
+            source_name="Utility Dive",
+            credibility_score=0.78,
+        ),
+    ),
+    (
+        "EE Times — semiconductor industry",
+        GenericRSSConnector(
+            "https://www.eetimes.com/feed/",
+            source_name="EE Times",
+            credibility_score=0.78,
+        ),
+    ),
+    (
+        "The Register — technology analysis",
+        GenericRSSConnector(
+            "https://www.theregister.com/headlines.atom",
+            source_name="The Register",
+            credibility_score=0.72,
+        ),
+    ),
+    (
+        "Ars Technica — technology news",
+        GenericRSSConnector(
+            "https://feeds.arstechnica.com/arstechnica/index",
+            source_name="Ars Technica",
+            credibility_score=0.75,
+        ),
+    ),
 ]
 
 

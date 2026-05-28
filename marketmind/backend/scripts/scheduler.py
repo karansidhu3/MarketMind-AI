@@ -9,6 +9,11 @@ Smart catch-up behaviour:
 Schedule: once per day. Configurable via INGEST_HOUR_PT (Pacific Time, default 6 AM).
 Handles DST automatically — no manual UTC offset needed.
 
+Ollama readiness check:
+  Before starting ingestion, polls OLLAMA_URL/api/tags until Ollama responds.
+  This handles the case where a remote Ollama host (e.g. a PC waking from sleep)
+  hasn't finished loading yet when the scheduler fires.
+
 Logs: docker compose logs ingestor --tail=50
 """
 import asyncio
@@ -35,9 +40,15 @@ logger = logging.getLogger("scheduler")
 # Set INGEST_HOUR_PT in docker-compose.yml or .env; default is 6 AM PT.
 INGEST_HOUR_PT  = int(os.getenv("INGEST_HOUR_PT", "6"))
 PT              = ZoneInfo("America/Vancouver")
-REDIS_URL       = os.getenv("REDIS_URL", "redis://redis:6379")
-BACKEND_URL     = os.getenv("BACKEND_INTERNAL_URL", "http://localhost:8000")
+REDIS_URL        = os.getenv("REDIS_URL", "redis://redis:6379")
+OLLAMA_URL       = os.getenv("OLLAMA_URL", "http://ollama:11434")
+BACKEND_URL      = os.getenv("BACKEND_URL", "http://backend:8000")
+ADMIN_EMAIL      = os.getenv("ADMIN_EMAIL", "admin@marketmind.local")
+ADMIN_PASSWORD   = os.getenv("ADMIN_PASSWORD", "marketmind")
 _DONE_KEY_PREFIX = "ingest:done:"  # ingest:done:2026-05-23
+
+# How long to wait for Ollama to become ready before giving up
+_OLLAMA_WAIT_SECONDS = int(os.getenv("OLLAMA_WAIT_SECONDS", "300"))  # 5 minutes
 
 
 def _done_key(for_date: date | None = None) -> str:
@@ -54,23 +65,84 @@ async def _mark_done(redis) -> None:
     await redis.set(_done_key(), "1", ex=25 * 3600)
 
 
+async def _wait_for_ollama() -> bool:
+    """Poll Ollama until it responds or timeout is reached.
+
+    Returns True if Ollama is ready, False if it timed out.
+    Useful when Ollama runs on a remote host (e.g. a PC waking from sleep)
+    and needs a moment to load before the first embed/generate call.
+    """
+    url = f"{OLLAMA_URL}/api/tags"
+    deadline = asyncio.get_event_loop().time() + _OLLAMA_WAIT_SECONDS
+    attempt = 0
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        while asyncio.get_event_loop().time() < deadline:
+            try:
+                r = await client.get(url)
+                if r.status_code == 200:
+                    if attempt > 0:
+                        logger.info("Ollama ready after %d attempt(s)", attempt + 1)
+                    return True
+            except Exception:
+                pass
+            attempt += 1
+            logger.info("Waiting for Ollama to be ready (attempt %d)…", attempt)
+            await asyncio.sleep(10)
+    logger.error("Ollama did not respond within %ds — aborting ingestion", _OLLAMA_WAIT_SECONDS)
+    return False
+
+
+async def _prewarm_explain_caches() -> None:
+    """Call POST /feed/regenerate to pre-generate all explain caches.
+
+    Fires immediately after ingestion while Ollama (PC) is still on.
+    By the time the user opens the app in the morning, Explain mode loads
+    instantly from Redis rather than waiting for a fresh LLM call.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            # Get JWT token
+            r = await client.post(
+                f"{BACKEND_URL}/auth/login",
+                json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD},
+            )
+            r.raise_for_status()
+            token = r.json()["access_token"]
+
+            # Trigger feed regeneration — backend fires _warm_explain_caches
+            # as a background task (unified explain + per-thesis narratives)
+            r = await client.post(
+                f"{BACKEND_URL}/feed/regenerate",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            r.raise_for_status()
+            logger.info("Feed regenerated — explain caches pre-warming in background")
+    except Exception:
+        logger.warning("Could not pre-warm explain caches — Explain will generate on first open")
+
+
 async def _run_ingestion() -> int:
     import ingest
     importlib.reload(ingest)
     return await ingest.main()
 
 
-async def _regenerate_feed() -> None:
-    """Invalidate today's feed cache so the next GET /feed call regenerates it."""
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.post(f"{BACKEND_URL}/feed/regenerate")
-            if resp.status_code in (200, 202):
-                logger.info("Feed cache invalidated — will regenerate on next request")
-            else:
-                logger.warning("Feed regenerate returned %d — feed may be stale", resp.status_code)
-    except Exception:
-        logger.warning("Could not reach backend to regenerate feed — cache will expire naturally")
+async def _invalidate_feed_cache(redis, for_date: date | None = None) -> None:
+    """Delete today's feed cache keys directly via Redis.
+
+    Avoids the HTTP + auth round-trip to the backend. The next time any user
+    loads the feed, the backend will regenerate it from the freshly ingested corpus.
+    Also clears the explain-summary and unified-explain caches so the LLM
+    narratives are re-synthesised from the new data.
+    """
+    d = (for_date or date.today()).isoformat()
+    keys = [
+        f"feed:generated:{d}",
+        f"feed:explain-summary:{d}",
+        f"feed:unified-explain:{d}",
+    ]
+    deleted = await redis.delete(*keys)
+    logger.info("Feed cache invalidated — %d key(s) cleared for %s", deleted, d)
 
 
 def _next_scheduled() -> datetime:
@@ -96,11 +168,17 @@ async def main() -> None:
             if not await _already_ran_today(redis):
                 logger.info("Today's ingestion has not run yet — starting now")
                 try:
+                    if not await _wait_for_ollama():
+                        logger.error("Skipping ingestion — Ollama unreachable. Will retry in 1 hour")
+                        await asyncio.sleep(3600)
+                        continue
                     count = await _run_ingestion()
                     await _mark_done(redis)
                     logger.info("Ingestion complete — %d document(s) ingested", count)
-                    # Invalidate feed cache so it regenerates with today's signals
-                    await _regenerate_feed()
+                    # Invalidate feed cache so it regenerates with today's signals,
+                    # then pre-warm all explain caches while Ollama is still running.
+                    await _invalidate_feed_cache(redis)
+                    await _prewarm_explain_caches()
                 except Exception:
                     logger.exception("Ingestion failed — will retry in 1 hour")
                     await asyncio.sleep(3600)

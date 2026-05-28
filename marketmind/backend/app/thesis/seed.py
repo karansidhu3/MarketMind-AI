@@ -49,9 +49,14 @@ SYSTEM_THESES = [
             "cannot keep pace with demand — creating durable revenue visibility for suppliers."
         ),
         "keywords": [
-            "defense spending", "munitions", "replenishment", "production capacity",
-            "defense contract", "military", "DoD", "NATO", "artillery", "missile",
-            "hypersonic", "unmanned", "drone", "shipbuilding",
+            # Filing language — what actually appears in LMT/RTX/NOC 10-Q/8-K
+            "U.S. government", "government contract", "national security",
+            "defense program", "defense budget", "weapons system", "procurement",
+            "backlog", "DoD", "military",
+            # Domain-specific terms
+            "defense spending", "defense contract", "munitions", "replenishment",
+            "NATO", "missile", "hypersonic", "unmanned", "drone", "shipbuilding",
+            "artillery", "prime contractor",
         ],
     },
     {

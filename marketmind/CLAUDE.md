@@ -150,46 +150,41 @@ RSS connectors. Embeddings via nomic-embed-text. Qdrant storage. UUID5 deduplica
 - Portfolio: optimistic delete — holding disappears instantly
 - Supply chain LLM disabled — `supply_chain_extractor=None` in ingest.py (ADR-024)
 
-### Sprint 10 plan
+### Sprint 10 (complete ✅)
 
-See docs/roadmap.md for full detail. Summary:
-
-Completed ✅:
 - Radar verdict badges (ACCELERATING/RISING/EMERGING/STALLING) — `CompanyRadar.tsx`
-  `getVerdictBadge()` from weekly_counts, replaces separate surge/NEW badges
 - Theme health labels (Strengthening/Steady/Weakening) — `ThesisGridCard.tsx`
-  badge under thesis name, prominent before numbers
-- Portfolio narrative + FeaturedGap — `portfolio/page.tsx`
-  `buildNarrative()` deterministic sentence, featured top gap card
+- Portfolio narrative + FeaturedGap — `portfolio/page.tsx` `buildNarrative()`
 - Feed defaults to Explain mode — `useState(true)` for explainMode
-- Timeline scrubber demoted behind History button — shown only when `showHistory`
+- Timeline scrubber behind History button — shown only when `showHistory`
 - Supply chain tab removed from thesis detail — `thesis/[id]/page.tsx`
-- Company panel verdict card ✅ — `CompanyPanel.tsx` VerdictCard component,
-  STRONG/MODERATE/THIN/NOISE strength label + ACCELERATING/WIDENING/EMERGING/STEADY
-  consensus, one-sentence interpretation at top of overview tab
-- "What to watch today" callout ✅ — `feed/page.tsx` WatchCallout component,
-  derives most actionable sentence from feed signals + radar + gap data
+- Company panel verdict card — `CompanyPanel.tsx` VerdictCard, STRONG/MODERATE/THIN/NOISE
+- "What to watch today" callout — `feed/page.tsx` WatchCallout component
+
+### Current sprint: Sprint 11 (Design Identity) — in progress
+
+Completed so far:
+- `/research` route deleted — `app/research/` directory removed
+- ThesisPulseCards removed — `feed/page.tsx`
+- Default to light mode — `ThemeProvider.tsx` `defaultTheme="light"`
+- Warm paper light palette + warm charcoal dark palette — `globals.css`
+- Theme transition fix — scoped to `html, body` only (ADR-029 area)
+- Portfolio redesign — stats strip, two-column layout, holding cards with ticker
+  pill + momentum color bar, narrative sentence `text-xl`, FeaturedGap
+- ThesisGridCard hierarchy fix — confidence % stepped down, HealthBadge
+- Share input arrow bug fixed — `step="1"` `min="0.001"` in HoldingForm
+- Ingestor feed auto-invalidation fixed — direct Redis key deletion (ADR-029)
 
 Remaining:
-- **Watchlist** — lighter than portfolio; watch a company, alert on doc spike
-- **Light/editorial mode** — cream theme that feels like a research note
-- **Conviction score** (stretch) — Bear Case + Quality Gate + Catalyst Test
+- Information hierarchy pass — SignalCard highlight as hero, panel reads like report
+- Aesthetic: Intelligence Room — amber/gold accent, DM Serif Display, corpus pulse
+- Framer Motion — transitions, stagger, sparkline draw, bar fill, panel spring
+- Portfolio theme coverage zones — visual field, holdings as chips
 
-### Sprint 11 plan (Design Identity)
-
-See docs/roadmap.md for full detail. Summary:
-- **Cuts** — /research route, ThesisPulseCards, supply chain tab, insider
-  clusters in feed, timeline scrubber moved behind History button
-- **Information hierarchy pass** — claims large/dark, numbers small/muted.
-  SignalCard highlight as hero text. Feed brief default-expanded. Portfolio
-  narrative sentence at top. Company panel reads like a report.
-- **Aesthetic: Intelligence Room** — warm charcoal background, amber/gold
-  accent replacing violet for signal moments, DM Serif Display for headlines,
-  corpus pulse indicator showing system is alive
-- **Framer Motion** — page transitions, card stagger, sparkline draw animation,
-  bar fill animation, number count-up, company panel spring, signal emergence pulse
-- **Portfolio restructure** — theme coverage zones replacing table, single
-  featured gap recommendation, holdings collapsed to administrative detail
+Performance optimization planned (ADR-030):
+- Multi-thesis LLM scoring — one `api/generate` call per document for all theses
+  instead of one call per thesis. Estimated 2–3× speedup. Implement after reviewing
+  data quality from first full targeted ingestion run (2026-05-26).
 
 ### Ingestion sources (scripts/ingest.py)
 Generic feeds:
