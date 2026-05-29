@@ -26,16 +26,16 @@ export default function Header() {
   }
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-14 select-none">
-      {/* Frosted glass layer */}
-      <div className="absolute inset-0 bg-surface/85 backdrop-blur-xl border-b border-border/50" />
-
-      <div className="relative max-w-[1400px] mx-auto h-full px-4 sm:px-6 flex items-center gap-4 sm:gap-6">
+    <header
+      className="fixed top-3 left-4 right-4 z-50 select-none bg-surface/85 backdrop-blur-xl border border-border/50 rounded-2xl"
+      style={{ boxShadow: 'var(--c-navbar-shadow)' }}
+    >
+      <div className="max-w-[1400px] mx-auto h-12 px-4 sm:px-5 flex items-center gap-4 sm:gap-6">
 
         {/* ── Logo ── */}
-        <Link href="/feed" className="flex items-center shrink-0">
-          <Logo size={22} showWordmark className="hidden sm:inline-flex" />
-          <Logo size={22} className="sm:hidden" />
+        <Link href="/feed" className="flex items-center shrink-0 active:scale-[0.95] transition-transform">
+          <Logo size={20} showWordmark className="hidden sm:inline-flex" />
+          <Logo size={20} className="sm:hidden" />
         </Link>
 
         {/* ── Divider (hidden on xs) ── */}
@@ -50,8 +50,7 @@ export default function Header() {
                 key={href}
                 href={href}
                 className={cn(
-                  'flex items-center gap-1.5 rounded-lg transition-all duration-150',
-                  // compact on mobile (icon only), full on sm+
+                  'flex items-center gap-1.5 rounded-lg transition-all duration-150 active:scale-[0.95]',
                   'px-2 py-1.5 sm:px-3 sm:py-1.5',
                   'text-xs font-medium',
                   active
@@ -61,7 +60,6 @@ export default function Header() {
                 title={label}
               >
                 <Icon size={13} strokeWidth={active ? 2.25 : 1.75} />
-                {/* Label hidden on mobile, visible on sm+ */}
                 <span className="hidden sm:inline">{label}</span>
               </Link>
             )
@@ -76,7 +74,7 @@ export default function Header() {
           {/* Theme toggle */}
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="p-2 rounded-lg text-text-tertiary hover:text-text-secondary hover:bg-elevated/70 transition-colors"
+            className="p-2 rounded-lg text-text-tertiary hover:text-text-secondary hover:bg-elevated/70 transition-colors active:scale-[0.95]"
             title={mounted ? (theme === 'dark' ? 'Light mode' : 'Dark mode') : 'Toggle theme'}
           >
             {mounted ? (
@@ -90,10 +88,10 @@ export default function Header() {
 
           <div className="w-px h-4 bg-border mx-0.5 hidden sm:block" />
 
-          {/* Sign out — icon only on mobile, icon + text on sm+ */}
+          {/* Sign out */}
           <button
             onClick={signOut}
-            className="flex items-center gap-1.5 px-2 py-2 sm:px-2.5 sm:py-1.5 rounded-lg text-xs text-text-tertiary hover:text-text-secondary hover:bg-elevated/70 transition-colors"
+            className="flex items-center gap-1.5 px-2 py-2 sm:px-2.5 sm:py-1.5 rounded-lg text-xs text-text-tertiary hover:text-text-secondary hover:bg-elevated/70 transition-colors active:scale-[0.95]"
             title="Sign out"
           >
             <LogOut size={13} strokeWidth={1.75} />

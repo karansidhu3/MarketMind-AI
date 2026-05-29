@@ -25,6 +25,20 @@ module.exports = {
         green:            'rgb(var(--green) / <alpha-value>)',
         red:              'rgb(var(--red) / <alpha-value>)',
         amber:            'rgb(var(--amber) / <alpha-value>)',
+        // Warm neutral scale — resolves to warm values in both light and dark mode
+        neutral: {
+          50:  'rgb(var(--color-neutral-50)  / <alpha-value>)',
+          100: 'rgb(var(--color-neutral-100) / <alpha-value>)',
+          200: 'rgb(var(--color-neutral-200) / <alpha-value>)',
+          300: 'rgb(var(--color-neutral-300) / <alpha-value>)',
+          400: 'rgb(var(--color-neutral-400) / <alpha-value>)',
+          500: 'rgb(var(--color-neutral-500) / <alpha-value>)',
+          600: 'rgb(var(--color-neutral-600) / <alpha-value>)',
+          700: 'rgb(var(--color-neutral-700) / <alpha-value>)',
+          800: 'rgb(var(--color-neutral-800) / <alpha-value>)',
+          900: 'rgb(var(--color-neutral-900) / <alpha-value>)',
+          950: 'rgb(var(--color-neutral-950) / <alpha-value>)',
+        },
       },
       animation: {
         'fade-in':  'fadeIn 0.25s ease forwards',

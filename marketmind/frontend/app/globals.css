@@ -2,89 +2,227 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Color tokens (RGB triplets — supports Tailwind opacity modifiers) ── */
+/* ── Color system (CareerOS shared design language) ──────────────────────── */
 :root {
-  /* Light mode — warm paper, not clinical white */
-  --background:    248 246 242;
-  --surface:       244 241 236;   /* warm off-white — was pure 255 255 255 */
-  --elevated:      237 233 227;
-  --border:        214 209 201;
-  --border-subtle: 226 222 215;
-  --text-primary:  15 12 8;
-  --text-secondary:75 70 62;
-  --text-tertiary: 148 142 132;
+  /* Accent — violet, product-specific */
+  --c-accent:        #7C3AED;
+  --c-accent-dim:    rgba(124, 58, 237, 0.06);
+  --c-accent-border: rgba(124, 58, 237, 0.12);
 
-  /* Accent — same across modes */
-  --accent:  124 58 237;
-  --green:   22 163 74;
-  --red:     220 38 38;
-  --amber:   217 119 6;
+  --c-btn-bg:     linear-gradient(180deg, #7C3AED 0%, #6D28D9 100%);
+  --c-btn-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 4px 12px rgba(0, 0, 0, 0.15);
+
+  --c-surface:         rgba(255, 255, 255, 0.82);
+  --c-surface-raised:  rgba(255, 255, 255, 0.94);
+  --c-surface-overlay: rgba(255, 255, 255, 1);
+
+  --c-border:        rgba(0, 0, 0, 0.07);
+  --c-border-subtle: rgba(0, 0, 0, 0.05);
+
+  --c-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --c-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.07), 0 1px 4px rgba(0, 0, 0, 0.04);
+
+  --c-navbar:        rgba(245, 245, 247, 0.82);
+  --c-navbar-shadow: 0 4px 24px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.04);
+
+  --c-icon-hover: rgba(0, 0, 0, 0.05);
+
+  --c-glass-bg:     rgba(255, 255, 255, 0.90);
+  --c-glass-border: rgba(0, 0, 0, 0.06);
+  --c-glass-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 20px rgba(0, 0, 0, 0.04);
+
+  --c-kbd-bg:     rgba(0, 0, 0, 0.03);
+  --c-kbd-border: rgba(0, 0, 0, 0.08);
+  --c-kbd-text:   #9CA3AF;
+
+  --c-success:        #10b981;
+  --c-success-dim:    rgba(16, 185, 129, 0.08);
+  --c-success-border: rgba(16, 185, 129, 0.2);
+
+  --c-warn:           #f59e0b;
+  --c-warn-dim:       rgba(245, 158, 11, 0.08);
+  --c-warn-border:    rgba(245, 158, 11, 0.2);
+
+  --c-danger:         #ef4444;
+  --c-danger-dim:     rgba(239, 68, 68, 0.08);
+  --c-danger-border:  rgba(239, 68, 68, 0.2);
+
+  /* ── Tailwind bridge vars (RGB triplets — supports opacity modifiers) ──── */
+  /* Existing components use bg-surface, text-text-primary, border-border etc. */
+  --background:     245 245 247;
+  --surface:        255 255 255;
+  --elevated:       250 250 252;
+  --border:         214 214 216;   /* ≈ rgba(0,0,0,0.07) over #F5F5F7 */
+  --border-subtle:  222 222 224;
+  --text-primary:   28 28 30;
+  --text-secondary: 82 82 85;
+  --text-tertiary:  152 152 155;
+  --accent:         124 58 237;
+  --green:          16 185 129;
+  --red:            239 68 68;
+  --amber:          245 158 11;
+
+  /* ── Warm neutral scale — light mode (RGB triplets) ─────────────────────── */
+  --color-neutral-50:  249 249 251;
+  --color-neutral-100: 244 244 242;
+  --color-neutral-200: 228 228 226;
+  --color-neutral-300: 204 204 202;
+  --color-neutral-400: 156 156 154;
+  --color-neutral-500: 108 108 106;
+  --color-neutral-600: 82 82 80;
+  --color-neutral-700: 58 58 56;
+  --color-neutral-800: 42 42 40;
+  --color-neutral-900: 28 28 26;
+  --color-neutral-950: 17 17 16;
 }
 
+/* ── Dark mode ────────────────────────────────────────────────────────────── */
 .dark {
-  /* Warm charcoal — desk lamp, not cold OLED */
-  --background:    14 12 10;
-  --surface:       22 20 17;      /* warmer than before */
-  --elevated:      30 27 23;
-  --border:        44 40 34;
-  --border-subtle: 35 31 26;
-  --text-primary:  238 234 228;
-  --text-secondary:148 142 132;
-  --text-tertiary: 90 85 77;
+  /* Accent — lighter violet for dark mode legibility */
+  --c-accent:        #A78BFA;
+  --c-accent-dim:    rgba(167, 139, 250, 0.08);
+  --c-accent-border: rgba(167, 139, 250, 0.15);
 
-  --green:   34 197 94;
-  --red:     239 68 68;
-  --amber:   245 158 11;
+  --c-btn-bg:     linear-gradient(180deg, #6D28D9 0%, #5B21B6 100%);
+  --c-btn-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 4px 16px rgba(0, 0, 0, 0.5);
+
+  --c-surface:         rgba(255, 255, 255, 0.04);
+  --c-surface-raised:  rgba(255, 255, 255, 0.07);
+  --c-surface-overlay: rgba(26, 26, 24, 0.98);
+
+  --c-border:        rgba(255, 255, 255, 0.10);
+  --c-border-subtle: rgba(255, 255, 255, 0.06);
+
+  --c-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+  --c-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.6), 0 1px 4px rgba(0, 0, 0, 0.5);
+
+  --c-navbar:        rgba(17, 17, 16, 0.88);
+  --c-navbar-shadow: 0 4px 24px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 255, 255, 0.06);
+
+  --c-icon-hover: rgba(255, 255, 255, 0.07);
+
+  --c-glass-bg:     rgba(0, 0, 0, 0.28);
+  --c-glass-border: rgba(255, 255, 255, 0.06);
+  --c-glass-shadow:
+    inset 0 1px 4px rgba(0, 0, 0, 0.45),
+    0 1px 0 rgba(255, 255, 255, 0.04);
+
+  --c-kbd-bg:     rgba(255, 255, 255, 0.07);
+  --c-kbd-border: rgba(255, 255, 255, 0.14);
+  --c-kbd-text:   rgba(255, 255, 255, 0.35);
+
+  --c-success:        #34d399;
+  --c-success-dim:    rgba(52, 211, 153, 0.12);
+  --c-success-border: rgba(52, 211, 153, 0.25);
+
+  --c-warn:           #fbbf24;
+  --c-warn-dim:       rgba(251, 191, 36, 0.12);
+  --c-warn-border:    rgba(251, 191, 36, 0.25);
+
+  --c-danger:         #f87171;
+  --c-danger-dim:     rgba(248, 113, 113, 0.12);
+  --c-danger-border:  rgba(248, 113, 113, 0.25);
+
+  /* ── Tailwind bridge vars (dark mode) ────────────────────────────────────── */
+  --background:     17 17 16;
+  --surface:        26 26 24;
+  --elevated:       34 34 32;
+  --border:         44 44 42;
+  --border-subtle:  34 34 32;
+  --text-primary:   237 237 232;
+  --text-secondary: 148 148 144;
+  --text-tertiary:  90 90 87;
+  --accent:         124 58 237;
+  --green:          52 211 153;
+  --red:            248 113 113;
+  --amber:          251 191 36;
+
+  /* ── Warm neutral scale — dark mode (RGB triplets) ────────────────────────
+     Scale inverts: 50 = darkest (background), 950 = lightest (near-white).  */
+  --color-neutral-50:  17 17 16;
+  --color-neutral-100: 20 20 18;
+  --color-neutral-200: 28 28 26;
+  --color-neutral-300: 42 42 40;
+  --color-neutral-400: 66 66 64;
+  --color-neutral-500: 98 98 96;
+  --color-neutral-600: 130 130 128;
+  --color-neutral-700: 164 164 160;
+  --color-neutral-800: 198 198 194;
+  --color-neutral-900: 232 232 228;
+  --color-neutral-950: 244 244 242;
 }
 
-/* ── Reset ─────────────────────────────────────────────────────────────── */
+/* ── Reset ──────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html {
+/* ── Base ────────────────────────────────────────────────────────────────── */
+body {
+  background-color: #F5F5F7;
+  color: #1C1C1E;
+  font-family: var(--font-geist-sans, system-ui, -apple-system, sans-serif);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
-/* ── Atmospheric depth — felt, not seen ────────────────────────────────── */
-body {
-  background-color: rgb(var(--background));
-  background-image: radial-gradient(
-    ellipse 100% 40% at 50% 0%,
-    rgb(255 252 248 / 0.4),
-    transparent 65%
-  );
-  color: rgb(var(--text-primary));
-  font-family: var(--font-geist-sans, system-ui, -apple-system, sans-serif);
-}
-
 .dark body {
-  background-image: radial-gradient(
-    ellipse 100% 40% at 50% 0%,
-    rgb(26 22 18 / 0.55),
-    transparent 65%
-  );
+  background-color: #111110;
+  color: #EDEDE8;
 }
 
-/* ── Scrollbar ─────────────────────────────────────────────────────────── */
-::-webkit-scrollbar       { width: 4px; height: 4px; }
+::selection       { background: rgba(0, 0, 0, 0.08); }
+.dark ::selection { background: rgba(232, 232, 228, 0.15); }
+
+/* ── Atmospheric depth — felt, not seen ─────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 90% 50% at 50% -8%,  rgba(0, 0, 0, 0.018) 0%, transparent 65%),
+    radial-gradient(ellipse 60% 40% at 90% 110%, rgba(0, 0, 0, 0.010) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dark body::before {
+  background:
+    radial-gradient(ellipse 80% 55% at 50% 38%, rgba(255, 255, 255, 0.022) 0%, transparent 62%),
+    radial-gradient(ellipse 45% 35% at 82% 85%,  rgba(255, 255, 255, 0.008) 0%, transparent 55%);
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgb(var(--border)); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.1); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.18); }
 
-/* ── Selection ─────────────────────────────────────────────────────────── */
-::selection { background: rgb(var(--accent) / 0.2); }
+.dark ::-webkit-scrollbar-thumb       { background: rgba(255, 255, 255, 0.1); }
+.dark ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.18); }
 
-/* ── Focus ring ────────────────────────────────────────────────────────── */
+/* ── Focus ring ─────────────────────────────────────────────────────────── */
 :focus-visible {
   outline: 1.5px solid rgb(var(--accent));
   outline-offset: 2px;
   border-radius: 4px;
 }
 
-/* ── Theme transition — smooth dark/light switch ───────────────────────── */
+/* ── Theme transition — smooth dark/light switch ────────────────────────── */
 /* Scoped to html/body only — applying to * causes staggered flicker */
 html, body {
   transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+@layer components {
+  /* Primary button — gradient fill with lift shadow, product accent */
+  .btn-primary {
+    background: var(--c-btn-bg);
+    box-shadow: var(--c-btn-shadow);
+    color: white;
+  }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-primary:active { transform: scale(0.97); }
+  .btn-primary:disabled { opacity: 0.5; pointer-events: none; }
 }
 
 @layer utilities {

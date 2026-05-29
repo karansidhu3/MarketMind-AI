@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { motion } from 'framer-motion'
 import { Bell, BellOff, X } from 'lucide-react'
 import { formatDateShort, cn } from '@/lib/utils'
 import { createAlert, deleteAlert } from '@/lib/api'
 import { useCompany } from '@/contexts/CompanyContext'
+import { spring } from '@/lib/motion'
 import type { CompanyRadarItem, CompanyAlert } from '@/lib/types'
 
 const NEW_WITHIN_DAYS = 7
@@ -91,19 +93,26 @@ function RadarSparkline({ counts }: { counts: number[] }) {
   const [lx, ly] = lastPt.split(',').map(parseFloat)
 
   return (
-    <svg width={W} height={H} className={color} style={{ overflow: 'visible' }}>
-      <title>{`4-week: ${counts.join(', ')} docs/week`}</title>
-      <polyline
-        points={pts}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={surge ? 2 : 1.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        opacity={0.85}
-      />
-      <circle cx={lx} cy={ly} r={surge ? 3 : 2.5} fill="currentColor" />
-    </svg>
+    <motion.div
+      className="origin-left"
+      initial={{ scaleX: 0 }}
+      animate={{ scaleX: 1 }}
+      transition={{ ...spring.gentle, delay: 0.05 }}
+    >
+      <svg width={W} height={H} className={color} style={{ overflow: 'visible' }}>
+        <title>{`4-week: ${counts.join(', ')} docs/week`}</title>
+        <polyline
+          points={pts}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={surge ? 2 : 1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity={0.85}
+        />
+        <circle cx={lx} cy={ly} r={surge ? 3 : 2.5} fill="currentColor" />
+      </svg>
+    </motion.div>
   )
 }
 

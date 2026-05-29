@@ -8,6 +8,7 @@ import Link from 'next/link'
 import AppShell from '@/components/layout/AppShell'
 import SignalCard from '@/components/feed/SignalCard'
 import CompanyRadar from '@/components/feed/CompanyRadar'
+import { SectionLabel } from '@/components/SectionLabel'
 import { getFeed, getFeedDates, getCompanyRadar, regenerateFeed, getAlerts, streamFeedExplainSummary, streamThesisExplain, streamUnifiedExplain, getPortfolioFeedSignals, getWatchlist, unwatchCompany } from '@/lib/api'
 import { formatDate, greet, timeAgo, cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
@@ -172,7 +173,7 @@ function FeedHero({
             feed.summary ? (
               <p className="text-text-secondary text-sm leading-relaxed">{feed.summary}</p>
             ) : (
-              <p className="text-text-tertiary text-sm italic">
+              <p className="text-text-tertiary text-sm">
                 No summary available — click Regenerate to synthesise today&apos;s signals.
               </p>
             )
@@ -280,7 +281,7 @@ function ExplainCard({ signal }: { signal: ThesisSignal }) {
 
       {/* Plain English narrative — streams in with blinking cursor */}
       {error ? (
-        <p className="text-text-tertiary text-xs italic">{error}</p>
+        <p className="text-text-tertiary text-xs">{error}</p>
       ) : streaming && !narrative ? (
         <div className="space-y-1.5">
           <Skeleton className="h-3.5 w-full" />
@@ -361,7 +362,7 @@ function UnifiedExplainBlock({ feedDate, signals }: { feedDate: string; signals:
 
       {/* Editorial narrative — no chrome, text on background */}
       {error ? (
-        <p className="text-text-tertiary text-sm italic">{error}</p>
+        <p className="text-text-tertiary text-sm">{error}</p>
       ) : (
         <div className="space-y-4">
           {paras.map((para, i) => (
@@ -972,7 +973,7 @@ export default function FeedPage() {
                 {/* Portfolio gaps with activity today */}
                 {portfolioGaps.length > 0 && (
                   <section className="pt-6">
-                    <p className="text-text-tertiary text-[11px] mb-3 px-1">Active today</p>
+                    <SectionLabel className="mb-3 px-1">Active today</SectionLabel>
                     <div>
                       {portfolioGaps.map(gap => (
                         <GapSignalRow key={gap.normalised_name} gap={gap} />
@@ -984,7 +985,7 @@ export default function FeedPage() {
                 {/* New companies */}
                 {feed.new_companies.length > 0 && (
                   <section className="pt-6">
-                    <p className="text-text-tertiary text-[11px] mb-3 px-1">New on radar</p>
+                    <SectionLabel className="mb-3 px-1">New on radar</SectionLabel>
                     <div>
                       {feed.new_companies.map((co, i) => (
                         <div
@@ -1014,12 +1015,12 @@ export default function FeedPage() {
 
               {/* ── Right: watchlist + radar ─────────────────────── */}
               <div className="flex-[3] min-w-0 w-full">
-                <div className="lg:sticky lg:top-[76px] space-y-5">
+                <div className="lg:sticky lg:top-20 space-y-5">
 
                   {/* Watchlist — only shown when non-empty */}
                   {watchlist.length > 0 && (
                     <div>
-                      <p className="text-text-tertiary text-[11px] mb-2 px-1">Watching</p>
+                      <SectionLabel className="mb-2 px-1">Watching</SectionLabel>
                       <div className="bg-surface border border-border rounded-xl overflow-hidden">
                         {watchlist.map(w => (
                           <WatchlistRow
@@ -1034,7 +1035,7 @@ export default function FeedPage() {
 
                   {/* Company Radar */}
                   <div>
-                    <p className="text-text-tertiary text-[11px] mb-2 px-1">Company radar</p>
+                    <SectionLabel className="mb-2 px-1">Company radar</SectionLabel>
                     <div className="bg-surface border border-border rounded-xl">
                       <CompanyRadar companies={radar.slice(0, 10)} initialAlerts={alerts} />
                     </div>

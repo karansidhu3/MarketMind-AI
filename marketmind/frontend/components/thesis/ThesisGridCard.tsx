@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { getConfidenceHistory } from '@/lib/api'
 import { formatConfidence, cn } from '@/lib/utils'
+import { spring } from '@/lib/motion'
 import type { ThesisOut, ConfidenceSnapshot } from '@/lib/types'
 
 // ── Full-width responsive sparkline ──────────────────────────────────────────
@@ -27,24 +29,31 @@ function MiniSparkline({ points, trend }: { points: number[]; trend: 'up' | 'dow
   const color = trend === 'up' ? 'var(--green)' : trend === 'down' ? 'var(--red)' : 'var(--text-tertiary)'
 
   return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="overflow-visible">
-      <polyline
-        points={coords.join(' ')}
-        fill="none"
-        stroke={`rgb(${color})`}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        opacity={0.75}
-      />
-      <circle
-        cx={parseFloat(last[0])}
-        cy={parseFloat(last[1])}
-        r={2}
-        fill={`rgb(${color})`}
-        opacity={0.9}
-      />
-    </svg>
+    <motion.div
+      className="origin-left"
+      initial={{ scaleX: 0 }}
+      animate={{ scaleX: 1 }}
+      transition={{ ...spring.gentle, delay: 0.1 }}
+    >
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="overflow-visible">
+        <polyline
+          points={coords.join(' ')}
+          fill="none"
+          stroke={`rgb(${color})`}
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity={0.75}
+        />
+        <circle
+          cx={parseFloat(last[0])}
+          cy={parseFloat(last[1])}
+          r={2}
+          fill={`rgb(${color})`}
+          opacity={0.9}
+        />
+      </svg>
+    </motion.div>
   )
 }
 
@@ -100,7 +109,7 @@ export default function ThesisGridCard({ thesis }: { thesis: ThesisOut }) {
       href={`/thesis/${thesis.id}`}
       className={cn(
         'group flex flex-col bg-surface border border-border rounded-2xl p-5',
-        'hover:border-accent/30 hover:shadow-sm transition-all duration-150',
+        'hover:border-accent/30 hover:shadow-sm transition-all duration-150 active:scale-[0.98]',
         !hasEvidence && 'opacity-70'
       )}
     >
@@ -129,7 +138,7 @@ export default function ThesisGridCard({ thesis }: { thesis: ThesisOut }) {
             {points.length >= 5
               ? <MiniSparkline points={points} trend={trend} />
               : <div className="w-20 h-7 flex items-center">
-                  <span className="text-[10px] text-text-tertiary italic">building history…</span>
+                  <span className="text-[10px] text-text-tertiary">building history…</span>
                 </div>
             }
           </div>
@@ -165,7 +174,7 @@ export default function ThesisGridCard({ thesis }: { thesis: ThesisOut }) {
           </div>
         </>
       ) : (
-        <p className="text-text-tertiary text-[11px] italic mt-auto pt-4">
+        <p className="text-text-tertiary text-[11px] mt-auto pt-4">
           No signals yet — click to run evaluation
         </p>
       )}

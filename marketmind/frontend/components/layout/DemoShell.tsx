@@ -24,7 +24,7 @@ export default function DemoShell({
     <CompanyProvider>
       <div className="min-h-screen bg-background">
         <DemoHeader showBadge={showBadge} />
-        <main className="pt-14 min-h-screen">
+        <main className="pt-20 min-h-screen">
           {children}
         </main>
         <CompanyPanel demoMode />
@@ -39,16 +39,14 @@ function DemoHeader({ showBadge }: { showBadge: boolean }) {
   useEffect(() => setMounted(true), [])
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-14 select-none">
-      {/* Frosted glass layer */}
-      <div className="absolute inset-0 bg-surface/85 backdrop-blur-xl border-b border-border/50" />
-      {/* Hairline accent */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent" />
-
-      <div className="relative max-w-[1400px] mx-auto h-full px-4 sm:px-6 flex items-center gap-4">
+    <header
+      className="fixed top-3 left-4 right-4 z-50 select-none bg-surface/85 backdrop-blur-xl border border-border/50 rounded-2xl"
+      style={{ boxShadow: 'var(--c-navbar-shadow)' }}
+    >
+      <div className="max-w-[1400px] mx-auto h-12 px-4 sm:px-5 flex items-center gap-4">
 
         {/* Logo */}
-        <Logo size={22} showWordmark />
+        <Logo size={20} showWordmark />
 
         {/* Demo badge (optional) */}
         {showBadge && (
@@ -98,7 +96,7 @@ function DemoHeader({ showBadge }: { showBadge: boolean }) {
           {/* Sign in CTA */}
           <Link
             href="/login"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-accent text-white hover:bg-accent/90 transition-colors"
+            className="btn-primary flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium active:scale-[0.97] transition-transform"
           >
             Sign in for live data
             <ExternalLink size={11} />

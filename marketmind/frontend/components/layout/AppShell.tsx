@@ -25,7 +25,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <CompanyProvider>
       <div className="min-h-screen bg-background">
         <Header />
-        <main className="pt-14 min-h-screen">
+        <main className="pt-20 min-h-screen">
           {children}
         </main>
         <CompanyPanel />

@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { Plus, RefreshCw, AlertCircle, X } from 'lucide-react'
 import AppShell from '@/components/layout/AppShell'
 import ThesisGridCard from '@/components/thesis/ThesisGridCard'
+import { SectionLabel } from '@/components/SectionLabel'
 import { getTheses, createThesis } from '@/lib/api'
 import type { ThesisOut } from '@/lib/types'
 
@@ -69,7 +70,7 @@ export default function ThesisPage() {
           </div>
           <button
             onClick={() => setShowNew(true)}
-            className="flex items-center gap-1.5 text-sm text-white bg-accent px-3.5 py-2 rounded-lg hover:opacity-90 transition-opacity"
+            className="btn-primary flex items-center gap-1.5 text-sm px-3.5 py-2 rounded-lg"
           >
             <Plus size={14} strokeWidth={2.5} />
             New Theme
@@ -122,7 +123,7 @@ export default function ThesisPage() {
                 <button
                   type="submit"
                   disabled={creating}
-                  className="px-4 py-2 text-sm text-white bg-accent rounded-lg hover:opacity-90 disabled:opacity-50 transition-opacity"
+                  className="btn-primary px-4 py-2 text-sm rounded-lg"
                 >
                   {creating ? 'Creating…' : 'Create'}
                 </button>
@@ -149,7 +150,7 @@ export default function ThesisPage() {
         {/* System theses — 2-column grid */}
         {!loading && !error && system.length > 0 && (
           <section className="mb-8">
-            <p className="text-text-tertiary text-[11px] mb-4 px-1">System themes</p>
+            <SectionLabel className="mb-4 px-1">System themes</SectionLabel>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {system.map((t, i) => (
                 <motion.div
@@ -169,7 +170,7 @@ export default function ThesisPage() {
         {/* Custom theses — 2-column grid */}
         {!loading && !error && custom.length > 0 && (
           <section>
-            <p className="text-text-tertiary text-[11px] mb-4 px-1">Custom themes</p>
+            <SectionLabel className="mb-4 px-1">Custom themes</SectionLabel>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {custom.map((t, i) => (
                 <motion.div

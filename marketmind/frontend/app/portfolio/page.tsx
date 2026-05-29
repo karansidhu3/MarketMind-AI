@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import AppShell from '@/components/layout/AppShell'
 import TickerSearch from '@/components/portfolio/TickerSearch'
+import { SectionLabel } from '@/components/SectionLabel'
 import { getHoldings, addHolding, updateHolding, deleteHolding, getPortfolioAlignment } from '@/lib/api'
 import { formatConfidence, cn } from '@/lib/utils'
 import { useCompany } from '@/contexts/CompanyContext'
@@ -240,7 +241,7 @@ function HoldingForm({ initial, onSave, onCancel }: HoldingFormProps) {
         <button
           type="submit"
           disabled={saving}
-          className="flex items-center gap-1.5 bg-accent text-white px-4 py-2 rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="btn-primary flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold"
         >
           <Check size={12} />
           {saving ? 'Saving…' : initial ? 'Update' : 'Add holding'}
@@ -503,7 +504,7 @@ export default function PortfolioPage() {
             {/* ── Left: Holdings ── always visible, proper cards ── */}
             <div className="flex-[4] min-w-0">
               <div className="flex items-center justify-between mb-3 px-1">
-                <p className="text-text-tertiary text-[11px]">Positions</p>
+                <SectionLabel>Positions</SectionLabel>
                 <span className="text-text-tertiary text-[11px] tabular-nums">{holdings.length}</span>
               </div>
 
@@ -524,7 +525,7 @@ export default function PortfolioPage() {
                   </p>
                   <button
                     onClick={() => setShowAdd(true)}
-                    className="bg-accent text-white px-4 py-2 rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity"
+                    className="btn-primary px-4 py-2 rounded-lg text-xs font-semibold"
                   >
                     Add first holding
                   </button>
@@ -651,7 +652,7 @@ export default function PortfolioPage() {
                   {/* Thesis exposure grid */}
                   {alignment.theses.length > 0 && (
                     <div>
-                      <p className="text-text-tertiary text-[11px] mb-3 px-1">Theme exposure</p>
+                      <SectionLabel className="mb-3 px-1">Theme exposure</SectionLabel>
                       <div className="grid grid-cols-2 gap-3">
                         {alignment.theses.map(e => (
                           <ExposureCard key={e.thesis_id} exposure={e} />

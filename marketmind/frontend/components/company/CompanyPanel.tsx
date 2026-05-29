@@ -1,11 +1,14 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { X, ExternalLink, Building2, ArrowUpRight, Bookmark, BookmarkCheck } from 'lucide-react'
 import Link from 'next/link'
 import { useCompany } from '@/contexts/CompanyContext'
 import { getCompany, getWatchlist, watchCompany, unwatchCompany } from '@/lib/api'
 import { cn, formatDateShort } from '@/lib/utils'
+import { spring } from '@/lib/motion'
+import { SectionLabel } from '@/components/SectionLabel'
 import type { CompanyDetail, CompanyEvidenceItem, CompanyThesisBreakdown, WatchedCompany } from '@/lib/types'
 
 // ── Verdict ───────────────────────────────────────────────────────────────────
@@ -211,15 +214,15 @@ export default function CompanyPanel({ demoMode = false }: { demoMode?: boolean 
   // Fetch company data + watchlist status whenever selected changes
   useEffect(() => {
     if (!selectedCompany) {
-      setData(null)
-      setError(null)
-      setWatchEntry(null)
+      // Preserve data during exit animation — cleared when next company loads
       return
     }
     if (demoMode) return
     let cancelled = false
     setLoading(true)
     setError(null)
+    setData(null)
+    setWatchEntry(null)
     setActiveTab('overview')
     Promise.all([
       getCompany(selectedCompany),
@@ -269,24 +272,29 @@ export default function CompanyPanel({ demoMode = false }: { demoMode?: boolean 
   return (
     <>
       {/* Backdrop */}
-      <div
-        className={cn(
-          'fixed inset-0 z-40 bg-background/60 backdrop-blur-sm transition-opacity duration-300',
-          isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, transition: { duration: 0.15 } }}
+            className="fixed inset-0 z-40 bg-background/60 backdrop-blur-sm"
+            onClick={closeCompany}
+          />
         )}
-        onClick={closeCompany}
-      />
+      </AnimatePresence>
 
       {/* Panel */}
-      <div
-        ref={panelRef}
-        className={cn(
-          'fixed top-0 right-0 bottom-0 z-50 w-[420px] max-w-[95vw]',
-          'bg-surface border-l border-border shadow-2xl',
-          'flex flex-col transition-transform duration-300 ease-out',
-          isOpen ? 'translate-x-0' : 'translate-x-full'
-        )}
-      >
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            ref={panelRef}
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%', transition: { duration: 0.2, ease: 'easeIn' } }}
+            transition={spring.standard}
+            className="fixed top-0 right-0 bottom-0 z-50 w-[420px] max-w-[95vw] bg-surface border-l border-border shadow-2xl flex flex-col"
+          >
         {/* ── Header ── */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-border shrink-0">
           <div className="flex-1 min-w-0">
@@ -419,9 +427,7 @@ export default function CompanyPanel({ demoMode = false }: { demoMode?: boolean 
               {/* Thesis exposure */}
               {data.thesis_breakdown.length > 0 && (
                 <div>
-                  <p className="text-text-tertiary text-[10px] uppercase tracking-wider font-semibold mb-1">
-                    Thesis exposure
-                  </p>
+                  <SectionLabel className="mb-2">Thesis exposure</SectionLabel>
                   <div>
                     {data.thesis_breakdown.map(td => (
                       <ThesisCard key={td.thesis_id} td={td} />
@@ -434,9 +440,7 @@ export default function CompanyPanel({ demoMode = false }: { demoMode?: boolean 
               {data.evidence.length > 0 && (
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-text-tertiary text-[10px] uppercase tracking-wider font-semibold">
-                      Recent signals
-                    </h3>
+                    <SectionLabel>Recent signals</SectionLabel>
                     <button
                       onClick={() => setActiveTab('evidence')}
                       className="text-accent text-[10px] hover:underline"
@@ -456,9 +460,7 @@ export default function CompanyPanel({ demoMode = false }: { demoMode?: boolean 
 
           {!loading && !error && data && activeTab === 'evidence' && (
             <div className="p-5">
-              <h3 className="text-text-tertiary text-[10px] uppercase tracking-wider font-semibold mb-3">
-                {data.evidence.length} evidence records
-              </h3>
+              <SectionLabel className="mb-3">{data.evidence.length} evidence records</SectionLabel>
               <div>
                 {data.evidence.map(ev => (
                   <EvidenceRow key={ev.id} ev={ev} />
@@ -470,7 +472,9 @@ export default function CompanyPanel({ demoMode = false }: { demoMode?: boolean 
             </div>
           )}
         </div>
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   )
 }
