@@ -30,9 +30,6 @@ export default function Header() {
       {/* Frosted glass layer */}
       <div className="absolute inset-0 bg-surface/85 backdrop-blur-xl border-b border-border/50" />
 
-      {/* Hairline accent at very top */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent" />
-
       <div className="relative max-w-[1400px] mx-auto h-full px-4 sm:px-6 flex items-center gap-4 sm:gap-6">
 
         {/* ── Logo ── */}

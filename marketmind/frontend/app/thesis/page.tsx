@@ -149,16 +149,14 @@ export default function ThesisPage() {
         {/* System theses — 2-column grid */}
         {!loading && !error && system.length > 0 && (
           <section className="mb-8">
-            <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest mb-4 px-1">
-              System Themes
-            </h2>
+            <p className="text-text-tertiary text-[11px] mb-4 px-1">System themes</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {system.map((t, i) => (
                 <motion.div
                   key={t.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: i * 0.07 }}
+                  transition={{ type: "spring", stiffness: 280, damping: 26, delay: i * 0.05 }}
                   className={system.length % 2 === 1 && i === system.length - 1 ? 'sm:col-span-2 sm:max-w-[calc(50%-8px)]' : ''}
                 >
                   <ThesisGridCard thesis={t} />
@@ -171,16 +169,14 @@ export default function ThesisPage() {
         {/* Custom theses — 2-column grid */}
         {!loading && !error && custom.length > 0 && (
           <section>
-            <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest mb-4 px-1">
-              Custom Themes
-            </h2>
+            <p className="text-text-tertiary text-[11px] mb-4 px-1">Custom themes</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {custom.map((t, i) => (
                 <motion.div
                   key={t.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: i * 0.07 }}
+                  transition={{ type: "spring", stiffness: 280, damping: 26, delay: i * 0.05 }}
                   className={custom.length % 2 === 1 && i === custom.length - 1 ? 'sm:col-span-2 sm:max-w-[calc(50%-8px)]' : ''}
                 >
                   <ThesisGridCard thesis={t} />

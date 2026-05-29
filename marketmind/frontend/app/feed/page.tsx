@@ -22,23 +22,15 @@ function Skeleton({ className, style }: { className?: string; style?: React.CSSP
 
 function HeroSkeleton() {
   return (
-    <div className="bg-surface border border-border rounded-2xl p-6 mb-8">
-      <div className="flex items-start gap-3 mb-5">
-        <Skeleton className="h-8 w-8 rounded-lg shrink-0" />
-        <div className="flex-1 space-y-2 pt-0.5">
-          <Skeleton className="h-4 w-44" />
-          <Skeleton className="h-3 w-28" />
-        </div>
+    <div className="mb-6 sm:mb-8">
+      <div className="flex items-center justify-between mb-4">
+        <Skeleton className="h-3 w-28" />
+        <Skeleton className="h-7 w-36 rounded-lg" />
       </div>
-      <div className="space-y-2 mb-5">
-        <Skeleton className="h-3.5 w-full" />
-        <Skeleton className="h-3.5 w-[95%]" />
-        <Skeleton className="h-3.5 w-4/5" />
-      </div>
-      <div className="flex gap-2">
-        {[80, 72, 88, 96].map((w, i) => (
-          <Skeleton key={i} className="h-7 rounded-full" style={{ width: w }} />
-        ))}
+      <div className="space-y-2.5">
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-[95%]" />
+        <Skeleton className="h-4 w-4/5" />
       </div>
     </div>
   )
@@ -142,32 +134,21 @@ function FeedHero({
   return (
     <div className="mb-6 sm:mb-8">
 
-        {/* ── Row 1: header ──────────────────────────────────────────── */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className={cn(
-            'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
-            explainMode ? 'bg-green/10' : 'bg-accent/10'
-          )}>
-            {explainMode ? <BookOpen size={14} className="text-green" /> : <Sparkles size={14} className="text-accent" />}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-text-primary text-sm font-semibold leading-tight">
-              Intelligence Brief
-            </p>
-            <p className="text-text-tertiary text-xs mt-0.5 flex items-center gap-1.5">
-              {formatDate(feed.feed_date)}
-              {isHistorical && (
-                <span className="text-amber/80 bg-amber/10 px-1.5 py-0.5 rounded-full text-[10px] font-medium">archived</span>
-              )}
-            </p>
-          </div>
+        {/* ── Row 1: date + mode toggle ──────────────────────────────── */}
+        <div className="flex items-center justify-between mb-5">
+          <p className="text-text-tertiary text-xs">
+            {formatDate(feed.feed_date)}
+            {isHistorical && (
+              <span className="text-amber/80 bg-amber/10 px-1.5 py-0.5 rounded-full text-[10px] font-medium ml-1.5">archived</span>
+            )}
+          </p>
           {!isHistorical && (
-            <div className="flex items-center bg-elevated border border-border/80 rounded-lg p-0.5 gap-0.5 shrink-0">
+            <div className="flex items-center bg-elevated border border-border/60 rounded-lg p-0.5 gap-0.5 shrink-0">
               <button
                 onClick={() => onToggleMode(false)}
                 className={cn(
                   'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-150',
-                  !explainMode ? 'bg-surface text-text-primary shadow-sm border border-border/50' : 'text-text-tertiary hover:text-text-secondary'
+                  !explainMode ? 'bg-surface text-text-primary shadow-sm border border-border/40' : 'text-text-tertiary hover:text-text-secondary'
                 )}
               >
                 <BarChart2 size={10} /> Data
@@ -176,7 +157,7 @@ function FeedHero({
                 onClick={() => onToggleMode(true)}
                 className={cn(
                   'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-150',
-                  explainMode ? 'bg-surface text-text-primary shadow-sm border border-border/50' : 'text-text-tertiary hover:text-text-secondary'
+                  explainMode ? 'bg-surface text-text-primary shadow-sm border border-border/40' : 'text-text-tertiary hover:text-text-secondary'
                 )}
               >
                 <BookOpen size={10} /> Explain
@@ -354,57 +335,39 @@ function UnifiedExplainBlock({ feedDate, signals }: { feedDate: string; signals:
 
   if (streaming && !narrative) {
     return (
-      <div className="bg-surface border border-border rounded-xl p-6">
-        <div className="flex items-center gap-2.5 mb-4">
-          <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center">
-            <Layers size={13} className="text-accent" />
-          </div>
-          <div className="space-y-1.5 flex-1">
-            <Skeleton className="h-3.5 w-40" />
-            <Skeleton className="h-3 w-24" />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <Skeleton className="h-3.5 w-full" />
-          <Skeleton className="h-3.5 w-[95%]" />
-          <Skeleton className="h-3.5 w-[88%]" />
-          <Skeleton className="h-3.5 w-full" />
-          <Skeleton className="h-3.5 w-4/5" />
+      <div className="py-1">
+        <Skeleton className="h-2.5 w-24 mb-5" />
+        <div className="space-y-3">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-[93%]" />
+          <Skeleton className="h-4 w-4/5" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-[88%]" />
         </div>
       </div>
     )
   }
 
-  return (
-    <div className="bg-surface border border-border rounded-xl p-6">
-      {/* Header */}
-      <div className="flex items-start gap-2.5 mb-4">
-        <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center shrink-0 mt-0.5">
-          <Layers size={13} className="text-accent" />
-        </div>
-        <div>
-          <p className="text-text-primary text-sm font-semibold leading-tight">Cross-theme analysis</p>
-          <p className="text-text-tertiary text-xs mt-0.5">
-            {signals.length} theme{signals.length !== 1 ? 's' : ''}
-            {risingThemes.length > 0 && (
-              <> · <span className="text-green">{risingThemes.length} rising</span></>
-            )}
-            {fallingThemes.length > 0 && (
-              <> · <span className="text-red">{fallingThemes.length} fading</span></>
-            )}
-          </p>
-        </div>
-      </div>
+  const paras = narrative.split('\n\n').filter(p => p.trim())
 
-      {/* Narrative */}
+  return (
+    <div className="py-1">
+      {/* Quiet metadata — whisper, not header */}
+      <p className="text-text-tertiary text-[11px] mb-5">
+        {signals.length} theme{signals.length !== 1 ? 's' : ''}
+        {risingThemes.length > 0 && <span className="text-green ml-1.5">· {risingThemes.length} rising</span>}
+        {fallingThemes.length > 0 && <span className="text-red ml-1.5">· {fallingThemes.length} fading</span>}
+      </p>
+
+      {/* Editorial narrative — no chrome, text on background */}
       {error ? (
         <p className="text-text-tertiary text-sm italic">{error}</p>
       ) : (
-        <div className="space-y-3">
-          {narrative.split('\n\n').filter(p => p.trim()).map((para, i) => (
-            <p key={i} className="text-text-secondary text-sm leading-relaxed">
+        <div className="space-y-4">
+          {paras.map((para, i) => (
+            <p key={i} className="text-text-secondary text-[15px] leading-relaxed">
               {para.trim()}
-              {streaming && i === narrative.split('\n\n').filter(p => p.trim()).length - 1 && (
+              {streaming && i === paras.length - 1 && (
                 <span className="inline-block w-[2px] h-[0.9em] bg-text-secondary ml-[2px] align-middle animate-pulse" />
               )}
             </p>
@@ -412,8 +375,8 @@ function UnifiedExplainBlock({ feedDate, signals }: { feedDate: string; signals:
         </div>
       )}
 
-      {/* Footer */}
-      <div className="mt-4 pt-3 border-t border-border/40 flex items-center gap-3 flex-wrap">
+      {/* Theme tags — unframed, quiet */}
+      <div className="mt-6 flex items-center gap-2 flex-wrap">
         {signals.map(s => (
           <Link
             key={s.thesis_id}
@@ -422,7 +385,7 @@ function UnifiedExplainBlock({ feedDate, signals }: { feedDate: string; signals:
               'text-[11px] px-2 py-0.5 rounded-full border transition-colors hover:opacity-80',
               s.momentum === 'rising'  ? 'text-green border-green/30 bg-green/5' :
               s.momentum === 'falling' ? 'text-red border-red/30 bg-red/5' :
-                                        'text-text-tertiary border-border bg-elevated'
+                                        'text-text-tertiary border-border/60 bg-elevated/60'
             )}
           >
             {s.thesis_name.split(' ').slice(0, 2).join(' ')}
@@ -440,7 +403,7 @@ function GapSignalRow({ gap }: { gap: FeedGapSignal }) {
   return (
     <button
       onClick={() => openCompany(gap.normalised_name)}
-      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-surface border border-border hover:bg-elevated hover:border-accent/20 transition-all text-left group"
+      className="w-full flex items-center gap-3 px-1 py-2.5 border-b border-border/50 last:border-0 hover:text-accent transition-colors text-left group"
     >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
@@ -933,9 +896,9 @@ export default function FeedPage() {
           <>
             {/* Hero — key on generated_at so streaming resets after regeneration */}
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
+              transition={{ type: "spring", stiffness: 300, damping: 28 }}
             >
               <FeedHero key={feed.generated_at} feed={feed} explainMode={explainMode} onToggleMode={setExplainMode} isHistorical={isHistorical} />
             </motion.div>
@@ -943,9 +906,9 @@ export default function FeedPage() {
             {/* "What to watch today" — one actionable sentence, derived from data */}
             {!isHistorical && (
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.35, delay: 0.15 }}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: "spring", stiffness: 300, damping: 28, delay: 0.08 }}
               >
                 <WatchCallout feed={feed} gaps={portfolioGaps} radarItems={radar} />
               </motion.div>
@@ -992,9 +955,9 @@ export default function FeedPage() {
                     feed.thesis_signals.map((signal, i) => (
                       <motion.div
                         key={signal.thesis_id}
-                        initial={{ opacity: 0, y: 8 }}
+                        initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: i * 0.08 }}
+                        transition={{ type: "spring", stiffness: 280, damping: 26, delay: i * 0.06 }}
                       >
                         <SignalCard
                           signal={signal}
@@ -1009,14 +972,8 @@ export default function FeedPage() {
                 {/* Portfolio gaps with activity today */}
                 {portfolioGaps.length > 0 && (
                   <section className="pt-6">
-                    <div className="flex items-center gap-1.5 mb-3 px-1">
-                      <BriefcaseBusiness size={11} className="text-text-tertiary" />
-                      <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest">
-                        Portfolio Gaps · Active Today
-                      </h2>
-                      <Tooltip content="Companies on the radar that you don't hold, with new signals since today's ingestion." />
-                    </div>
-                    <div className="space-y-2">
+                    <p className="text-text-tertiary text-[11px] mb-3 px-1">Active today</p>
+                    <div>
                       {portfolioGaps.map(gap => (
                         <GapSignalRow key={gap.normalised_name} gap={gap} />
                       ))}
@@ -1026,37 +983,28 @@ export default function FeedPage() {
 
                 {/* New companies */}
                 {feed.new_companies.length > 0 && (
-                  <section className="pt-4">
-                    <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest mb-2 px-1">
-                      New on Radar
-                    </h2>
-                    <div className="space-y-2">
+                  <section className="pt-6">
+                    <p className="text-text-tertiary text-[11px] mb-3 px-1">New on radar</p>
+                    <div>
                       {feed.new_companies.map((co, i) => (
                         <div
                           key={i}
-                          className="bg-surface border border-border rounded-xl px-4 py-3 animate-fade-in"
+                          className="flex items-start gap-3 px-1 py-2.5 border-b border-border/50 last:border-0"
                         >
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <NewCompanyName name={co.company_name} normalisedName={companyNameMap[co.company_name]} />
-                            {co.ticker && (
-                              <span className="text-accent text-xs font-mono">{co.ticker}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <NewCompanyName name={co.company_name} normalisedName={companyNameMap[co.company_name]} />
+                              {co.ticker && (
+                                <span className="text-accent text-xs font-mono">{co.ticker}</span>
+                              )}
+                            </div>
+                            {co.context && (
+                              <p className="text-text-secondary text-xs leading-relaxed line-clamp-2">
+                                {co.context}
+                              </p>
                             )}
-                            <span className="ml-auto text-green text-xs bg-green/10 px-2 py-0.5 rounded-full font-medium">
-                              New
-                            </span>
                           </div>
-                          {co.context && (
-                            <p className="text-text-secondary text-xs leading-relaxed line-clamp-2 mb-2">
-                              {co.context}
-                            </p>
-                          )}
-                          <div className="flex flex-wrap gap-1.5">
-                            {co.thesis_names.map(t => (
-                              <span key={t} className="text-xs text-text-tertiary bg-elevated px-2 py-0.5 rounded-md">
-                                {t}
-                              </span>
-                            ))}
-                          </div>
+                          <span className="text-green text-[10px] bg-green/10 px-1.5 py-0.5 rounded-full font-medium shrink-0 mt-0.5">New</span>
                         </div>
                       ))}
                     </div>
@@ -1071,12 +1019,7 @@ export default function FeedPage() {
                   {/* Watchlist — only shown when non-empty */}
                   {watchlist.length > 0 && (
                     <div>
-                      <div className="flex items-center gap-1.5 mb-2 px-1">
-                        <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest">
-                          Watching
-                        </h2>
-                        <span className="text-text-tertiary/60 text-xs">({watchlist.length})</span>
-                      </div>
+                      <p className="text-text-tertiary text-[11px] mb-2 px-1">Watching</p>
                       <div className="bg-surface border border-border rounded-xl overflow-hidden">
                         {watchlist.map(w => (
                           <WatchlistRow
@@ -1091,12 +1034,7 @@ export default function FeedPage() {
 
                   {/* Company Radar */}
                   <div>
-                    <div className="flex items-center gap-1.5 mb-2 px-1">
-                      <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest">
-                        Company Radar
-                      </h2>
-                      <Tooltip content="Sorted by week-over-week acceleration. A company going 0→5 this week ranks higher than one steady at 20. Surge badge = 2× or more growth." />
-                    </div>
+                    <p className="text-text-tertiary text-[11px] mb-2 px-1">Company radar</p>
                     <div className="bg-surface border border-border rounded-xl">
                       <CompanyRadar companies={radar.slice(0, 10)} initialAlerts={alerts} />
                     </div>

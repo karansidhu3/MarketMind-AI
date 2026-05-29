@@ -53,7 +53,7 @@ function FeaturedGap({ gap }: { gap: GapCompany }) {
     >
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
-          <p className="text-text-tertiary text-[10px] font-semibold uppercase tracking-widest mb-1">Top Gap Signal</p>
+          <p className="text-text-tertiary text-[10px] mb-1">Gap signal</p>
           <div className="flex items-baseline gap-2">
             <span className="text-text-primary text-lg font-bold group-hover:text-accent transition-colors">
               {gap.company_name}
@@ -306,9 +306,7 @@ function ExposureCard({ exposure }: { exposure: ThesisExposure }) {
             </span>
           ))}
         </div>
-      ) : (
-        <p className="text-text-tertiary text-[11px] italic">No exposure yet.</p>
-      )}
+      ) : null}
     </div>
   )
 }
@@ -461,39 +459,18 @@ export default function PortfolioPage() {
           </button>
         </div>
 
-        {/* ── Stats strip ── */}
+        {/* ── Stats strip — inline, no cards ── */}
         {!loading && alignment && (
-          <div className="grid grid-cols-4 gap-3 mb-6">
+          <div className="flex items-start gap-10 mb-8 pb-5 border-b border-border/50">
             {[
-              {
-                label: 'Positions',
-                value: String(alignment.total_holdings),
-                sub: 'tracked',
-                color: 'text-text-primary',
-              },
-              {
-                label: 'Theme Coverage',
-                value: `${coveragePct}%`,
-                sub: 'of tracked themes',
-                color: coveragePct >= 30 ? 'text-green' : coveragePct >= 10 ? 'text-amber' : 'text-text-secondary',
-              },
-              {
-                label: 'Rising Themes',
-                value: String(alignment.theses.filter(t => t.momentum === 'rising').length),
-                sub: `of ${alignment.theses.length} themes`,
-                color: 'text-accent',
-              },
-              {
-                label: 'Gap Signals',
-                value: String(alignment.gaps.length),
-                sub: alignment.gaps.length > 0 ? 'companies not held' : 'none found',
-                color: alignment.gaps.length > 0 ? 'text-amber' : 'text-green',
-              },
-            ].map(({ label, value, sub, color }) => (
-              <div key={label} className="bg-surface border border-border rounded-xl px-4 py-3">
-                <p className="text-text-tertiary text-[11px] uppercase tracking-widest mb-1">{label}</p>
-                <p className={`text-2xl font-bold tabular-nums leading-none mb-0.5 ${color}`}>{value}</p>
-                <p className="text-text-tertiary text-[11px]">{sub}</p>
+              { label: 'positions', value: String(alignment.total_holdings), color: 'text-text-primary' },
+              { label: 'theme coverage', value: `${coveragePct}%`, color: coveragePct >= 30 ? 'text-green' : coveragePct >= 10 ? 'text-amber' : 'text-text-secondary' },
+              { label: 'rising themes', value: String(alignment.theses.filter(t => t.momentum === 'rising').length), color: 'text-accent' },
+              { label: 'gap signals', value: String(alignment.gaps.length), color: alignment.gaps.length > 0 ? 'text-amber' : 'text-text-secondary' },
+            ].map(({ label, value, color }) => (
+              <div key={label}>
+                <p className={cn('text-2xl font-serif-display leading-none tabular-nums', color)}>{value}</p>
+                <p className="text-text-tertiary text-[11px] mt-1">{label}</p>
               </div>
             ))}
           </div>
@@ -526,10 +503,8 @@ export default function PortfolioPage() {
             {/* ── Left: Holdings ── always visible, proper cards ── */}
             <div className="flex-[4] min-w-0">
               <div className="flex items-center justify-between mb-3 px-1">
-                <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest">
-                  Positions
-                </h2>
-                <span className="text-text-tertiary text-xs tabular-nums">{holdings.length}</span>
+                <p className="text-text-tertiary text-[11px]">Positions</p>
+                <span className="text-text-tertiary text-[11px] tabular-nums">{holdings.length}</span>
               </div>
 
               {showAdd && (
@@ -622,7 +597,7 @@ export default function PortfolioPage() {
                               {theses.length > 1 && <span className="text-text-tertiary"> +{theses.length - 1}</span>}
                             </p>
                           ) : (
-                            <p className="text-text-tertiary text-[11px] italic mb-3">No theme coverage</p>
+                            <div className="mb-3" />
                           )}
 
                           {/* Row 4: position stats */}
@@ -653,30 +628,22 @@ export default function PortfolioPage() {
             {/* ── Right: Intelligence — narrative + exposure + gaps ── */}
             <div className="flex-[6] min-w-0 space-y-5">
 
-              {/* Narrative card — pull-quote treatment */}
-              <div className="relative bg-surface border border-border rounded-2xl overflow-hidden">
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent/60 rounded-l-2xl" />
-                <div
-                  aria-hidden
-                  className="absolute -top-16 -right-16 w-48 h-48 rounded-full pointer-events-none"
-                  style={{ background: 'radial-gradient(circle, rgb(var(--accent) / 0.05), transparent 70%)' }}
-                />
-                <div className="relative pl-6 pr-5 py-5">
-                  <p className="text-text-primary text-xl font-semibold leading-snug mb-3">
-                    {narrative || 'Add holdings to see how your portfolio aligns with your tracked themes.'}
+              {/* Narrative — editorial pull quote, no card */}
+              <div className="border-l-2 border-accent/35 pl-5 py-1 mb-1">
+                <p className="text-text-primary text-xl font-serif-display leading-relaxed mb-2">
+                  {narrative || 'Add holdings to see how your portfolio aligns with your tracked themes.'}
+                </p>
+                {alignment && (
+                  <p className="text-text-tertiary text-xs">
+                    <span className={cn(
+                      'tabular-nums mr-1',
+                      coveragePct >= 30 ? 'text-green' : coveragePct >= 10 ? 'text-amber' : 'text-text-secondary'
+                    )}>
+                      {coveragePct}% theme coverage
+                    </span>
+                    · {alignment.total_holdings} position{alignment.total_holdings !== 1 ? 's' : ''}
                   </p>
-                  {alignment && (
-                    <p className="text-text-tertiary text-xs">
-                      <span className={cn(
-                        'font-semibold tabular-nums mr-1',
-                        coveragePct >= 30 ? 'text-green' : coveragePct >= 10 ? 'text-amber' : 'text-text-secondary'
-                      )}>
-                        {coveragePct}% theme coverage
-                      </span>
-                      · {alignment.total_holdings} position{alignment.total_holdings !== 1 ? 's' : ''}
-                    </p>
-                  )}
-                </div>
+                )}
               </div>
 
               {alignment && (
@@ -684,9 +651,7 @@ export default function PortfolioPage() {
                   {/* Thesis exposure grid */}
                   {alignment.theses.length > 0 && (
                     <div>
-                      <h2 className="text-text-tertiary text-xs font-medium uppercase tracking-widest mb-3 px-1">
-                        Theme Exposure
-                      </h2>
+                      <p className="text-text-tertiary text-[11px] mb-3 px-1">Theme exposure</p>
                       <div className="grid grid-cols-2 gap-3">
                         {alignment.theses.map(e => (
                           <ExposureCard key={e.thesis_id} exposure={e} />
@@ -710,13 +675,7 @@ export default function PortfolioPage() {
                   )}
 
                   {alignment.gaps.length === 0 && alignment.theses.length > 0 && (
-                    <div className="bg-surface border border-green/20 rounded-xl py-8 px-6 text-center">
-                      <div className="w-8 h-8 rounded-full bg-green/10 flex items-center justify-center mx-auto mb-2">
-                        <Check size={14} className="text-green" />
-                      </div>
-                      <p className="text-text-primary text-sm font-medium">No significant gaps found</p>
-                      <p className="text-text-tertiary text-xs mt-1">Your holdings cover the companies currently on the radar.</p>
-                    </div>
+                    <p className="text-text-tertiary text-sm py-4">No significant gaps — your holdings cover the active radar.</p>
                   )}
                 </>
               )}

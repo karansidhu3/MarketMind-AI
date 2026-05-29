@@ -4,17 +4,17 @@
 
 /* ── Color tokens (RGB triplets — supports Tailwind opacity modifiers) ── */
 :root {
-  /* Light mode — warm paper tone, reads like a research document */
+  /* Light mode — warm paper, not clinical white */
   --background:    248 246 242;
-  --surface:       255 255 255;
-  --elevated:      242 240 236;
-  --border:        222 218 212;
-  --border-subtle: 235 232 227;
+  --surface:       244 241 236;   /* warm off-white — was pure 255 255 255 */
+  --elevated:      237 233 227;
+  --border:        214 209 201;
+  --border-subtle: 226 222 215;
   --text-primary:  15 12 8;
   --text-secondary:75 70 62;
   --text-tertiary: 148 142 132;
 
-  /* Accent colors — same in both modes */
+  /* Accent — same across modes */
   --accent:  124 58 237;
   --green:   22 163 74;
   --red:     220 38 38;
@@ -24,15 +24,14 @@
 .dark {
   /* Warm charcoal — desk lamp, not cold OLED */
   --background:    14 12 10;
-  --surface:       21 19 16;
+  --surface:       22 20 17;      /* warmer than before */
   --elevated:      30 27 23;
   --border:        44 40 34;
-  --border-subtle: 30 27 23;
+  --border-subtle: 35 31 26;
   --text-primary:  238 234 228;
   --text-secondary:148 142 132;
   --text-tertiary: 90 85 77;
 
-  /* Brighter semantic colors — need more contrast on dark bg */
   --green:   34 197 94;
   --red:     239 68 68;
   --amber:   245 158 11;
@@ -47,10 +46,24 @@ html {
   text-rendering: optimizeLegibility;
 }
 
+/* ── Atmospheric depth — felt, not seen ────────────────────────────────── */
 body {
   background-color: rgb(var(--background));
+  background-image: radial-gradient(
+    ellipse 100% 40% at 50% 0%,
+    rgb(255 252 248 / 0.4),
+    transparent 65%
+  );
   color: rgb(var(--text-primary));
   font-family: var(--font-geist-sans, system-ui, -apple-system, sans-serif);
+}
+
+.dark body {
+  background-image: radial-gradient(
+    ellipse 100% 40% at 50% 0%,
+    rgb(26 22 18 / 0.55),
+    transparent 65%
+  );
 }
 
 /* ── Scrollbar ─────────────────────────────────────────────────────────── */
