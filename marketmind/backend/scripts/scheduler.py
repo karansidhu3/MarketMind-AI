@@ -190,10 +190,10 @@ async def main() -> None:
                 continue
 
             # ── Wait for next scheduled slot ─────────────────────────────────
-            # Loop back immediately after a run completes so we re-check the
-            # date. If a run spanned midnight, today's date has changed and we
-            # need to run again for the new day rather than waiting until
-            # tomorrow's scheduled slot.
+            # Poll every 60 seconds instead of one long sleep — asyncio.sleep()
+            # with multi-hour durations is unreliable in Docker for Mac (the
+            # event loop can stall and never wake up). Short sleeps keep the
+            # loop responsive and ensure we don't miss the scheduled window.
             next_run = _next_scheduled()
             next_run_pt = next_run.astimezone(PT)
             wait_seconds = (next_run - datetime.now(timezone.utc)).total_seconds()
@@ -203,7 +203,8 @@ async def main() -> None:
                 next_run.strftime("%H:%M"),
                 wait_seconds / 60,
             )
-            await asyncio.sleep(wait_seconds)
+            while datetime.now(timezone.utc) < next_run:
+                await asyncio.sleep(60)
             # After waking, loop back to the top — _already_ran_today() checks
             # the current date, so if we slept past midnight a catch-up run
             # fires immediately.
