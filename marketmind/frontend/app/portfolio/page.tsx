@@ -450,7 +450,7 @@ export default function PortfolioPage() {
 
         {/* ── Page header ── */}
         <div className="flex items-center justify-between mb-5">
-          <h1 className="text-text-primary font-semibold text-base leading-tight">Portfolio</h1>
+          <h1 className="text-text-primary font-serif-display text-3xl leading-tight">Portfolio</h1>
           <button
             onClick={handleRefresh}
             disabled={loading || refreshing}

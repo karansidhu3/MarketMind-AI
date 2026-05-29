@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
+import { motion } from 'framer-motion'
 import { RefreshCw, AlertCircle, Sparkles, Zap, TrendingUp, TrendingDown, Minus, BookOpen, BarChart2, Bell, ChevronLeft, ChevronRight, Calendar, Layers, BriefcaseBusiness, Eye, X } from 'lucide-react'
 import { Tooltip } from '@/components/ui/Tooltip'
 import Link from 'next/link'
@@ -139,15 +140,7 @@ function FeedHero({
   }, [explainMode])
 
   return (
-    <div className="relative bg-surface border border-border rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 overflow-hidden">
-      {/* Decorative glow */}
-      <div
-        aria-hidden
-        className="absolute -top-20 -right-20 w-64 h-64 rounded-full pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgb(var(--accent) / 0.06), transparent 70%)' }}
-      />
-
-      <div className="relative">
+    <div className="mb-6 sm:mb-8">
 
         {/* ── Row 1: header ──────────────────────────────────────────── */}
         <div className="flex items-center gap-3 mb-4">
@@ -163,12 +156,9 @@ function FeedHero({
             </p>
             <p className="text-text-tertiary text-xs mt-0.5 flex items-center gap-1.5">
               {formatDate(feed.feed_date)}
-              {isHistorical
-                ? <span className="text-amber/80 bg-amber/10 px-1.5 py-0.5 rounded-full text-[10px] font-medium">archived</span>
-                : feed.from_cache
-                  ? <span className="opacity-60">· cached</span>
-                  : <span className="text-green">· live</span>
-              }
+              {isHistorical && (
+                <span className="text-amber/80 bg-amber/10 px-1.5 py-0.5 rounded-full text-[10px] font-medium">archived</span>
+              )}
             </p>
           </div>
           {!isHistorical && (
@@ -221,7 +211,6 @@ function FeedHero({
           )}
         </div>
 
-      </div>
     </div>
   )
 }
@@ -325,14 +314,11 @@ function ExplainCard({ signal }: { signal: ThesisSignal }) {
         </p>
       )}
 
-      {/* Footer: signal count + cache indicator */}
-      <div className="mt-3 flex items-center gap-2">
+      {/* Footer: signal count */}
+      <div className="mt-3">
         <span className="text-text-tertiary text-[11px]">
           {signal.new_evidence_count} new signal{signal.new_evidence_count !== 1 ? 's' : ''} today
         </span>
-        {fromCache && (
-          <span className="text-text-tertiary text-[11px] opacity-60">· cached</span>
-        )}
       </div>
     </Link>
   )
@@ -858,10 +844,10 @@ export default function FeedPage() {
         {/* ── Page header row ───────────────────────────────────── */}
         <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
           <div>
-            <p className="text-text-primary font-semibold text-base leading-tight">
+            <h1 className="text-text-primary font-serif-display text-3xl leading-tight">
               {isHistorical ? 'Historical Feed' : greet()}
-            </p>
-            <p className="text-text-tertiary text-xs mt-0.5">
+            </h1>
+            <p className="text-text-tertiary text-xs mt-1">
               {isHistorical ? 'You\'re viewing a past feed snapshot.' : 'Your thesis intelligence, updated daily.'}
             </p>
           </div>
@@ -946,11 +932,23 @@ export default function FeedPage() {
         {!loading && !error && feed && (
           <>
             {/* Hero — key on generated_at so streaming resets after regeneration */}
-            <FeedHero key={feed.generated_at} feed={feed} explainMode={explainMode} onToggleMode={setExplainMode} isHistorical={isHistorical} />
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              <FeedHero key={feed.generated_at} feed={feed} explainMode={explainMode} onToggleMode={setExplainMode} isHistorical={isHistorical} />
+            </motion.div>
 
             {/* "What to watch today" — one actionable sentence, derived from data */}
             {!isHistorical && (
-              <WatchCallout feed={feed} gaps={portfolioGaps} radarItems={radar} />
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.35, delay: 0.15 }}
+              >
+                <WatchCallout feed={feed} gaps={portfolioGaps} radarItems={radar} />
+              </motion.div>
             )}
 
             <div className="flex flex-col lg:flex-row gap-6 items-start">
@@ -992,12 +990,18 @@ export default function FeedPage() {
                   ) : (
                     /* Data mode: lead story (featured) + secondary signal cards */
                     feed.thesis_signals.map((signal, i) => (
-                      <SignalCard
+                      <motion.div
                         key={signal.thesis_id}
-                        signal={signal}
-                        featured={i === 0}
-                        companyNameMap={companyNameMap}
-                      />
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: i * 0.08 }}
+                      >
+                        <SignalCard
+                          signal={signal}
+                          featured={i === 0}
+                          companyNameMap={companyNameMap}
+                        />
+                      </motion.div>
                     ))
                   )}
                 </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { motion } from 'framer-motion'
 import { Plus, RefreshCw, AlertCircle, X } from 'lucide-react'
 import AppShell from '@/components/layout/AppShell'
 import ThesisGridCard from '@/components/thesis/ThesisGridCard'
@@ -61,7 +62,7 @@ export default function ThesisPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-text-primary text-2xl font-semibold tracking-tight">Investment Themes</h1>
+            <h1 className="text-text-primary font-serif-display text-3xl">Investment Themes</h1>
             <p className="text-text-tertiary text-sm mt-0.5">
               Themes you track — scored daily against SEC filings and news.
             </p>
@@ -152,7 +153,17 @@ export default function ThesisPage() {
               System Themes
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {system.map(t => <ThesisGridCard key={t.id} thesis={t} />)}
+              {system.map((t, i) => (
+                <motion.div
+                  key={t.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: i * 0.07 }}
+                  className={system.length % 2 === 1 && i === system.length - 1 ? 'sm:col-span-2 sm:max-w-[calc(50%-8px)]' : ''}
+                >
+                  <ThesisGridCard thesis={t} />
+                </motion.div>
+              ))}
             </div>
           </section>
         )}
@@ -164,7 +175,17 @@ export default function ThesisPage() {
               Custom Themes
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {custom.map(t => <ThesisGridCard key={t.id} thesis={t} />)}
+              {custom.map((t, i) => (
+                <motion.div
+                  key={t.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: i * 0.07 }}
+                  className={custom.length % 2 === 1 && i === custom.length - 1 ? 'sm:col-span-2 sm:max-w-[calc(50%-8px)]' : ''}
+                >
+                  <ThesisGridCard thesis={t} />
+                </motion.div>
+              ))}
             </div>
           </section>
         )}
