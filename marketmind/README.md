@@ -2,7 +2,7 @@
 
 A persistent investment intelligence platform that tracks how companies and theses evolve across SEC filings and financial news — running entirely on local infrastructure.
 
-**[Live Demo →](http://localhost:3001/demo)**
+**[Live Demo →](https://market-mind-ai-pied.vercel.app/demo)**
 
 ---
 
@@ -161,8 +161,8 @@ ollama pull nomic-embed-text
 ### Setup
 
 ```bash
-git clone https://github.com/yourusername/marketmind.git
-cd marketmind
+git clone https://github.com/karansidhu3/MarketMind-AI.git
+cd MarketMind-AI/marketmind
 ```
 
 Copy the environment file and configure:
