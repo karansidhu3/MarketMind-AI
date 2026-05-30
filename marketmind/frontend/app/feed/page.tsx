@@ -1,14 +1,15 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
-import { motion } from 'framer-motion'
-import { RefreshCw, AlertCircle, Eye, Zap } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { RefreshCw, AlertCircle, Eye } from 'lucide-react'
 import Link from 'next/link'
 import AppShell from '@/components/layout/AppShell'
 import CompanyRadar from '@/components/feed/CompanyRadar'
 import { SectionLabel } from '@/components/SectionLabel'
 import { getFeed, getCompanyRadar, regenerateFeed, getAlerts, streamUnifiedExplain } from '@/lib/api'
 import { formatDate, greet, timeAgo, cn } from '@/lib/utils'
+import { spring } from '@/lib/motion'
 import { useToast } from '@/components/ui/Toast'
 import type { FeedResponse, CompanyRadarItem, ThesisSignal, CompanyAlert } from '@/lib/types'
 
@@ -108,16 +109,24 @@ function UnifiedExplainBlock({ feedDate, signals }: { feedDate: string; signals:
       {error ? (
         <p className="text-text-tertiary text-sm">{error}</p>
       ) : (
-        <div className="space-y-4">
-          {paras.map((para, i) => (
-            <p key={i} className="text-text-secondary text-[15px] leading-relaxed">
-              {para.trim()}
-              {streaming && i === paras.length - 1 && (
-                <span className="inline-block w-[2px] h-[0.9em] bg-text-secondary ml-[2px] align-middle animate-pulse" />
-              )}
-            </p>
-          ))}
-        </div>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key="narrative"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={spring.gentle}
+            className="space-y-4"
+          >
+            {paras.map((para, i) => (
+              <p key={i} className="text-text-secondary text-[15px] leading-relaxed">
+                {para.trim()}
+                {streaming && i === paras.length - 1 && (
+                  <span className="inline-block w-[2px] h-[0.9em] bg-text-secondary ml-[2px] align-middle animate-pulse" />
+                )}
+              </p>
+            ))}
+          </motion.div>
+        </AnimatePresence>
       )}
 
       <div className="mt-6 flex items-center gap-2 flex-wrap">
@@ -197,15 +206,9 @@ function WatchCallout({ feed, radarItems }: { feed: FeedResponse; radarItems: Co
 
 function EmptySignals() {
   return (
-    <div className="py-14 px-8 text-center">
-      <div className="w-10 h-10 rounded-xl bg-elevated flex items-center justify-center mx-auto mb-3">
-        <Zap size={18} className="text-text-tertiary" />
-      </div>
-      <p className="text-text-primary text-sm font-medium mb-1.5">Nothing new today</p>
-      <p className="text-text-tertiary text-xs leading-relaxed max-w-[260px] mx-auto">
-        No documents matched your theses since midnight. Check back after the next ingestion run.
-      </p>
-    </div>
+    <p className="text-text-tertiary text-sm py-10">
+      No new signals today — check back after the next ingestion run.
+    </p>
   )
 }
 

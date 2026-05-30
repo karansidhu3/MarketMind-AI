@@ -273,8 +273,11 @@ export default function CompanyRadar({ companies, initialAlerts = [] }: CompanyR
         const verdict = getVerdictBadge(c.weekly_counts, c.doc_count, c.first_seen)
 
         return (
-          <div
+          <motion.div
             key={i}
+            initial={{ opacity: 0, x: -4 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ ...spring.gentle, delay: i * 0.025 }}
             className={cn(
               'relative group flex items-center gap-2.5 px-3 py-2.5 border-b border-border/60 last:border-0 hover:bg-elevated/50 transition-colors',
               verdict?.label.includes('Accelerating') && 'bg-accent/[0.02]'
@@ -385,7 +388,7 @@ export default function CompanyRadar({ companies, initialAlerts = [] }: CompanyR
                 )}
               </div>
             </div>
-          </div>
+          </motion.div>
         )
       })}
       </div>{/* end scroll container */}

@@ -1,8 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { motion } from 'framer-motion'
 import {
-  Plus, Trash2, RefreshCw, AlertCircle, BriefcaseBusiness,
+  Plus, Trash2, RefreshCw, AlertCircle,
   TrendingUp, TrendingDown, Minus, ChevronRight, X, Check, Pencil,
 } from 'lucide-react'
 import AppShell from '@/components/layout/AppShell'
@@ -10,6 +11,7 @@ import TickerSearch from '@/components/portfolio/TickerSearch'
 import { SectionLabel } from '@/components/SectionLabel'
 import { getHoldings, addHolding, updateHolding, deleteHolding, getPortfolioAlignment } from '@/lib/api'
 import { formatConfidence, cn } from '@/lib/utils'
+import { spring } from '@/lib/motion'
 import { useCompany } from '@/contexts/CompanyContext'
 import type { HoldingOut, PortfolioAlignment, ThesisExposure, GapCompany } from '@/lib/types'
 
@@ -351,55 +353,73 @@ export default function PortfolioPage() {
           {loading ? (
             <IntelligenceSkeleton />
           ) : (
-            <div className="max-w-3xl">
+            <motion.div
+              key="intelligence-content"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={spring.gentle}
+              className="max-w-3xl"
+            >
 
-              {/* Narrative — editorial pull quote */}
-              <div className="border-l-2 border-accent/35 pl-5 py-1 mb-10">
-                <p className="text-text-primary text-xl font-serif-display leading-relaxed mb-2">
-                  {narrative || 'Add holdings to see how your portfolio aligns with your tracked themes.'}
-                </p>
-                {alignment && alignment.total_holdings > 0 && (
-                  <p className="text-text-tertiary text-xs">
-                    <span className={cn(
-                      'tabular-nums mr-1',
-                      coveragePct >= 30 ? 'text-green' : coveragePct >= 10 ? 'text-amber' : 'text-text-secondary'
-                    )}>
-                      {coveragePct}% theme coverage
-                    </span>
-                    · {alignment.total_holdings} position{alignment.total_holdings !== 1 ? 's' : ''}
+              {/* First-run: no holdings yet */}
+              {(!alignment || alignment.total_holdings === 0) ? (
+                <div className="py-4">
+                  <p className="text-text-secondary text-base leading-relaxed mb-6 max-w-md">
+                    Connect your holdings to see which investment themes you&apos;re exposed to — and where your portfolio has gaps.
                   </p>
-                )}
-              </div>
-
-              {/* No holdings yet */}
-              {(!alignment || alignment.total_holdings === 0) && (
-                <p className="text-text-tertiary text-sm">
-                  <button onClick={() => setMode('configure')} className="text-accent hover:underline transition-colors">
-                    Configure your holdings
+                  <button
+                    onClick={() => setMode('configure')}
+                    className="btn-primary px-5 py-2.5 rounded-xl text-sm font-semibold"
+                  >
+                    Set up holdings
                   </button>
-                  {' '}to see alignment data.
-                </p>
-              )}
-
-              {/* Gap signals — flat ranked list */}
-              {alignment && alignment.gaps.length > 0 && (
-                <div>
-                  <SectionLabel className="mb-3">Gap signals</SectionLabel>
-                  <div className="bg-surface border border-border rounded-xl overflow-hidden">
-                    {alignment.gaps.slice(0, 6).map((gap, i) => (
-                      <GapRow key={gap.company_name} gap={gap} rank={i + 1} />
-                    ))}
-                  </div>
                 </div>
+              ) : (
+                <>
+                  {/* Narrative — editorial pull quote */}
+                  <div className="border-l-2 border-accent/35 pl-5 py-1 mb-10">
+                    <p className="text-text-primary text-xl font-serif-display leading-relaxed mb-2">
+                      {narrative}
+                    </p>
+                    <p className="text-text-tertiary text-xs">
+                      <span className={cn(
+                        'tabular-nums mr-1',
+                        coveragePct >= 30 ? 'text-green' : coveragePct >= 10 ? 'text-amber' : 'text-text-secondary'
+                      )}>
+                        {coveragePct}% theme coverage
+                      </span>
+                      · {alignment.total_holdings} position{alignment.total_holdings !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+
+                  {/* Gap signals — flat ranked list with stagger */}
+                  {alignment.gaps.length > 0 && (
+                    <div>
+                      <SectionLabel className="mb-3">Gap signals</SectionLabel>
+                      <div className="bg-surface border border-border rounded-xl overflow-hidden">
+                        {alignment.gaps.slice(0, 6).map((gap, i) => (
+                          <motion.div
+                            key={gap.company_name}
+                            initial={{ opacity: 0, x: -4 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ ...spring.gentle, delay: i * 0.04 }}
+                          >
+                            <GapRow gap={gap} rank={i + 1} />
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {alignment.gaps.length === 0 && alignment.theses.length > 0 && (
+                    <p className="text-text-tertiary text-sm">
+                      No significant gaps — your holdings cover the active radar.
+                    </p>
+                  )}
+                </>
               )}
 
-              {alignment && alignment.gaps.length === 0 && alignment.theses.length > 0 && (
-                <p className="text-text-tertiary text-sm">
-                  No significant gaps — your holdings cover the active radar.
-                </p>
-              )}
-
-            </div>
+            </motion.div>
           )}
         </div>
       </AppShell>
@@ -429,7 +449,13 @@ export default function PortfolioPage() {
           </div>
         )}
 
-        <div className="max-w-xl">
+        <motion.div
+          key="configure-content"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={spring.gentle}
+          className="max-w-xl"
+        >
 
           {showAdd && (
             <div className="mb-4">
@@ -438,14 +464,8 @@ export default function PortfolioPage() {
           )}
 
           {holdings.length === 0 && !showAdd ? (
-            <div className="bg-surface border border-border rounded-xl py-12 px-6 text-center">
-              <div className="w-10 h-10 rounded-xl bg-elevated flex items-center justify-center mx-auto mb-3">
-                <BriefcaseBusiness size={18} className="text-text-tertiary" />
-              </div>
-              <p className="text-text-primary text-sm font-medium mb-1">No holdings yet</p>
-              <p className="text-text-tertiary text-xs leading-relaxed max-w-[200px] mx-auto mb-4">
-                Add your positions to see theme alignment.
-              </p>
+            <div className="py-4">
+              <p className="text-text-tertiary text-sm mb-5">No holdings yet.</p>
               <button
                 onClick={() => setShowAdd(true)}
                 className="btn-primary px-4 py-2 rounded-lg text-xs font-semibold"
@@ -534,7 +554,7 @@ export default function PortfolioPage() {
             </div>
           )}
 
-        </div>
+        </motion.div>
       </div>
     </AppShell>
   )
