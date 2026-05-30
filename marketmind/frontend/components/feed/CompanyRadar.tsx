@@ -341,7 +341,7 @@ export default function CompanyRadar({ companies, initialAlerts = [] }: CompanyR
                   <span className="text-text-tertiary text-[10px] font-normal ml-0.5">d</span>
                 </div>
                 <div className="text-text-tertiary text-[10px] tabular-nums">
-                  {formatDateShort(c.last_seen)}
+                  {freshly ? formatDateShort(c.last_seen) : `since ${formatDateShort(c.first_seen)}`}
                 </div>
               </div>
 

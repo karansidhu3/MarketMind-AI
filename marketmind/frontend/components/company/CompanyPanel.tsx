@@ -2,8 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, ExternalLink, Building2, ArrowUpRight } from 'lucide-react'
-import Link from 'next/link'
+import { X, ExternalLink } from 'lucide-react'
 import { useCompany } from '@/contexts/CompanyContext'
 import { getCompany } from '@/lib/api'
 import { cn, formatDateShort } from '@/lib/utils'
@@ -201,7 +200,13 @@ function EvidenceRow({ ev }: { ev: CompanyEvidenceItem }) {
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-export default function CompanyPanel({ demoMode = false }: { demoMode?: boolean }) {
+export default function CompanyPanel({
+  demoMode = false,
+  demoCompanyData,
+}: {
+  demoMode?: boolean
+  demoCompanyData?: Record<string, CompanyDetail>
+}) {
   const { selectedCompany, closeCompany } = useCompany()
   const [data, setData]       = useState<CompanyDetail | null>(null)
   const [loading, setLoading] = useState(false)
@@ -214,7 +219,15 @@ export default function CompanyPanel({ demoMode = false }: { demoMode?: boolean 
       // Preserve data during exit animation — cleared when next company loads
       return
     }
-    if (demoMode) return
+
+    // Demo mode: use static data if available, skip API call
+    if (demoMode) {
+      const staticData = demoCompanyData?.[selectedCompany] ?? null
+      setData(staticData)
+      setLoading(false)
+      return
+    }
+
     let cancelled = false
     setLoading(true)
     setError(null)
@@ -227,7 +240,7 @@ export default function CompanyPanel({ demoMode = false }: { demoMode?: boolean 
       if (!cancelled) { setError(e.message); setLoading(false) }
     })
     return () => { cancelled = true }
-  }, [selectedCompany, demoMode])
+  }, [selectedCompany, demoMode, demoCompanyData])
 
   // Close on Escape
   useEffect(() => {
@@ -308,31 +321,6 @@ export default function CompanyPanel({ demoMode = false }: { demoMode?: boolean 
 
         {/* ── Body ── */}
         <div className="flex-1 overflow-y-auto">
-          {/* Demo mode: no API call — prompt to sign in */}
-          {demoMode && selectedCompany && (
-            <div className="flex flex-col items-center justify-center h-full px-8 text-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center">
-                <Building2 size={22} className="text-accent" />
-              </div>
-              <div>
-                <p className="text-text-primary text-sm font-semibold mb-1">
-                  {selectedCompany.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                </p>
-                <p className="text-text-tertiary text-xs leading-relaxed">
-                  Company deep-dives show 4-week trajectory, thesis exposure breakdown,
-                  and recent signals. Available with live data.
-                </p>
-              </div>
-              <Link
-                href="/login"
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent text-white text-xs font-medium hover:bg-accent/90 transition-colors"
-              >
-                Sign in for live data
-                <ArrowUpRight size={12} />
-              </Link>
-            </div>
-          )}
-
           {loading && (
             <div className="p-5 space-y-4">
               {[...Array(3)].map((_, i) => (

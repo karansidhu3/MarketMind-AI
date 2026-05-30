@@ -7,6 +7,7 @@ import { Sun, Moon, Zap, ExternalLink } from 'lucide-react'
 import { CompanyProvider } from '@/contexts/CompanyContext'
 import CompanyPanel from '@/components/company/CompanyPanel'
 import Logo from '@/components/ui/Logo'
+import { DEMO_COMPANY_DETAIL } from '@/lib/demo-data'
 
 /**
  * Minimal shell for public routes (/demo, /about) — no auth check.
@@ -27,7 +28,7 @@ export default function DemoShell({
         <main className="pt-20 min-h-screen">
           {children}
         </main>
-        <CompanyPanel demoMode />
+        <CompanyPanel demoMode demoCompanyData={DEMO_COMPANY_DETAIL} />
       </div>
     </CompanyProvider>
   )
