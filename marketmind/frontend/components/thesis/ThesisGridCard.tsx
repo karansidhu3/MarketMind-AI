@@ -13,14 +13,14 @@ import type { ThesisOut, ConfidenceSnapshot } from '@/lib/types'
 function MiniSparkline({ points, trend }: { points: number[]; trend: 'up' | 'down' | 'flat' }) {
   if (points.length < 2) return null
 
-  const W = 80, H = 28
+  const W = 72, H = 24
   const min = Math.min(...points)
   const max = Math.max(...points)
   const range = max - min || 0.01
 
   const coords = points.map((v, i) => {
     const x = (i / (points.length - 1)) * W
-    const y = H - ((v - min) / range) * (H - 6) - 3
+    const y = H - ((v - min) / range) * (H - 4) - 2
     return `${x.toFixed(1)},${y.toFixed(1)}`
   })
 
@@ -56,7 +56,7 @@ function MiniSparkline({ points, trend }: { points: number[]; trend: 'up' | 'dow
   )
 }
 
-// ── Trend calculation ─────────────────────────────────────────────────────────
+// ── Trend ─────────────────────────────────────────────────────────────────────
 
 function calcTrend(history: ConfidenceSnapshot[]): 'up' | 'down' | 'flat' {
   if (history.length < 4) return 'flat'
@@ -68,7 +68,7 @@ function calcTrend(history: ConfidenceSnapshot[]): 'up' | 'down' | 'flat' {
   return 'flat'
 }
 
-// ── Card ──────────────────────────────────────────────────────────────────────
+// ── List row ──────────────────────────────────────────────────────────────────
 
 export default function ThesisGridCard({ thesis }: { thesis: ThesisOut }) {
   const [history, setHistory] = useState<ConfidenceSnapshot[]>([])
@@ -85,28 +85,31 @@ export default function ThesisGridCard({ thesis }: { thesis: ThesisOut }) {
     <Link
       href={`/thesis/${thesis.id}`}
       className={cn(
-        'group flex flex-col bg-surface border border-border rounded-2xl p-5',
-        'hover:border-accent/30 hover:shadow-sm transition-all duration-150 active:scale-[0.98]',
+        'group flex items-center gap-4 py-4 border-b border-border/50 last:border-0',
+        'hover:bg-elevated/40 -mx-3 px-3 rounded-lg transition-colors active:scale-[0.99]',
         !hasEvidence && 'opacity-60'
       )}
     >
-      {/* Name */}
-      <h3 className="text-text-primary font-semibold text-base leading-snug mb-4 group-hover:text-accent transition-colors">
-        {thesis.name}
-      </h3>
+      {/* Name + description */}
+      <div className="flex-1 min-w-0">
+        <h3 className="text-text-primary font-semibold text-base leading-snug group-hover:text-accent transition-colors truncate">
+          {thesis.name}
+        </h3>
+        {thesis.description && (
+          <p className="text-text-tertiary text-xs mt-0.5 line-clamp-1 pr-4">
+            {thesis.description}
+          </p>
+        )}
+      </div>
 
-      {/* Sparkline — the signal */}
-      <div className="mt-auto">
+      {/* Sparkline */}
+      <div className="shrink-0 w-[72px] flex items-center justify-end">
         {hasEvidence && points.length >= 5 ? (
           <MiniSparkline points={points} trend={trend} />
-        ) : hasEvidence ? (
-          <div className="w-20 h-7 flex items-center">
-            <span className="text-[10px] text-text-tertiary">building history…</span>
-          </div>
         ) : (
-          <p className="text-text-tertiary text-[11px] pt-2">
-            No signals yet — click to run evaluation
-          </p>
+          <span className="text-[10px] text-text-tertiary">
+            {hasEvidence ? 'building…' : 'no signals'}
+          </span>
         )}
       </div>
     </Link>

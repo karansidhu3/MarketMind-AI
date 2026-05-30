@@ -298,21 +298,15 @@ export default function FeedPage() {
         {loading && (
           <>
             <HeroSkeleton />
-            <div className="flex flex-col lg:flex-row gap-6 items-start">
-              <div className="flex-[7] min-w-0 w-full">
-                <Skeleton className="h-2.5 w-24 mb-5" />
-                <div className="space-y-3">
-                  {['w-full', 'w-[93%]', 'w-4/5', 'w-full', 'w-[88%]'].map((w, i) => (
-                    <Skeleton key={i} className={`h-4 ${w}`} />
-                  ))}
-                </div>
-              </div>
-              <div className="flex-[3] min-w-0 w-full">
-                <Skeleton className="h-3 w-28 mb-2 ml-1" />
-                <div className="bg-surface border border-border rounded-xl overflow-hidden">
-                  {[...Array(8)].map((_, i) => <RadarRowSkeleton key={i} />)}
-                </div>
-              </div>
+            <Skeleton className="h-2.5 w-24 mb-5" />
+            <div className="space-y-3 mb-12">
+              {['w-full', 'w-[93%]', 'w-4/5', 'w-full', 'w-[88%]'].map((w, i) => (
+                <Skeleton key={i} className={`h-4 ${w}`} />
+              ))}
+            </div>
+            <div className="border-t border-border/40 pt-8">
+              <Skeleton className="h-3 w-28 mb-4" />
+              {[...Array(8)].map((_, i) => <RadarRowSkeleton key={i} />)}
             </div>
           </>
         )}
@@ -346,34 +340,24 @@ export default function FeedPage() {
               <WatchCallout feed={feed} radarItems={radar} />
             </motion.div>
 
-            <div className="flex flex-col lg:flex-row gap-6 items-start">
+            {/* ── Narrative — full width ────────────────────────── */}
+            {feed.thesis_signals.length === 0 ? (
+              <EmptySignals />
+            ) : (
+              <UnifiedExplainBlock
+                key={feed.generated_at}
+                feedDate={feed.feed_date}
+                signals={feed.thesis_signals}
+              />
+            )}
 
-              {/* ── Narrative ─────────────────────────────────────── */}
-              <div className="flex-[7] min-w-0 w-full">
-                {feed.thesis_signals.length === 0 ? (
-                  <EmptySignals />
-                ) : (
-                  <UnifiedExplainBlock
-                    key={feed.generated_at}
-                    feedDate={feed.feed_date}
-                    signals={feed.thesis_signals}
-                  />
-                )}
-              </div>
-
-              {/* ── Radar ─────────────────────────────────────────── */}
-              <div className="flex-[3] min-w-0 w-full">
-                <div className="lg:sticky lg:top-20 space-y-5">
-                  <div>
-                    <SectionLabel className="mb-2 px-1">Company radar</SectionLabel>
-                    <div className="bg-surface border border-border rounded-xl">
-                      <CompanyRadar companies={radar.slice(0, 10)} initialAlerts={alerts} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-            </div>
+            {/* ── Radar — full width, below narrative ───────────── */}
+            {radar.length > 0 && (
+              <section className="mt-10 pt-8 border-t border-border/40">
+                <SectionLabel className="mb-4">Company radar</SectionLabel>
+                <CompanyRadar companies={radar.slice(0, 10)} initialAlerts={alerts} />
+              </section>
+            )}
           </>
         )}
       </div>

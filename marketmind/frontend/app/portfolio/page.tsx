@@ -13,15 +13,15 @@ import { formatConfidence, cn } from '@/lib/utils'
 import { useCompany } from '@/contexts/CompanyContext'
 import type { HoldingOut, PortfolioAlignment, ThesisExposure, GapCompany } from '@/lib/types'
 
-// ── Narrative sentence ────────────────────────────────────────────────────────
+// ── Narrative ─────────────────────────────────────────────────────────────────
 
 function buildNarrative(alignment: PortfolioAlignment): string {
   const { theses, gaps, total_holdings } = alignment
   if (total_holdings === 0 || theses.length === 0) return ''
 
-  const covered     = theses.filter(t => t.held_companies.length > 0)
-  const risingGaps  = theses.filter(t => t.momentum === 'rising' && t.held_companies.length === 0)
-  const topGap      = gaps[0]
+  const covered    = theses.filter(t => t.held_companies.length > 0)
+  const risingGaps = theses.filter(t => t.momentum === 'rising' && t.held_companies.length === 0)
+  const topGap     = gaps[0]
   const parts: string[] = []
 
   if (covered.length > 0) {
@@ -43,233 +43,18 @@ function buildNarrative(alignment: PortfolioAlignment): string {
   return parts.join('. ') + (parts.length ? '.' : '')
 }
 
-// ── Featured gap card ─────────────────────────────────────────────────────────
-
-function FeaturedGap({ gap }: { gap: GapCompany }) {
-  const { openCompany } = useCompany()
-  return (
-    <div
-      onClick={() => gap.normalised_name && openCompany(gap.normalised_name)}
-      className="cursor-pointer bg-surface border border-accent/20 rounded-2xl p-5 hover:border-accent/40 hover:bg-elevated/40 transition-all group"
-    >
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div>
-          <p className="text-text-tertiary text-[10px] mb-1">Gap signal</p>
-          <div className="flex items-baseline gap-2">
-            <span className="text-text-primary text-lg font-bold group-hover:text-accent transition-colors">
-              {gap.company_name}
-            </span>
-            {gap.ticker && (
-              <span className="text-text-tertiary text-sm font-mono">{gap.ticker}</span>
-            )}
-          </div>
-        </div>
-        <ChevronRight size={16} className="text-text-tertiary group-hover:text-accent transition-colors shrink-0 mt-1" />
-      </div>
-
-      <p className="text-text-secondary text-sm leading-relaxed mb-3">
-        {gap.doc_count} independent corpus documents across{' '}
-        {gap.thesis_names.length} theme{gap.thesis_names.length !== 1 ? 's' : ''}.{' '}
-        {gap.thesis_confidence >= 0.6
-          ? 'High-confidence signal. Not yet in your portfolio.'
-          : 'Emerging signal. Not yet in your portfolio.'}
-      </p>
-
-      <div className="flex items-center gap-2 flex-wrap">
-        {gap.thesis_names.slice(0, 3).map(t => (
-          <span key={t} className="text-[11px] text-text-tertiary bg-elevated border border-border/60 px-2 py-0.5 rounded-md">
-            {t}
-          </span>
-        ))}
-        <span className="ml-auto text-accent text-xs font-semibold">
-          {gap.doc_count} docs · {Math.round(gap.thesis_confidence * 100)}% conf
-        </span>
-      </div>
-    </div>
-  )
-}
-
-// ── Skeleton ──────────────────────────────────────────────────────────────────
-
-function Skeleton({ className }: { className?: string }) {
-  return <div className={cn('bg-border/50 rounded animate-pulse', className)} />
-}
-
-// ── Add / edit holding form ───────────────────────────────────────────────────
-
-interface HoldingFormProps {
-  initial?: HoldingOut
-  onSave: (data: { ticker: string; company_name: string; shares: number; cost_basis?: number }) => Promise<void>
-  onCancel: () => void
-}
-
-function HoldingForm({ initial, onSave, onCancel }: HoldingFormProps) {
-  const [ticker,      setTicker]      = useState(initial?.ticker ?? '')
-  const [companyName, setCompanyName] = useState(initial?.company_name ?? '')
-  const [shares,      setShares]      = useState(initial?.shares.toString() ?? '')
-  const [costBasis,   setCostBasis]   = useState(initial?.cost_basis?.toString() ?? '')
-  const [saving,      setSaving]      = useState(false)
-  const [error,       setError]       = useState('')
-
-  // Whether the user has already picked a ticker (hides the fallback manual inputs)
-  const tickerPicked = !!ticker
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!ticker.trim()) { setError('Select or type a ticker.'); return }
-    if (!companyName.trim()) { setError('Company name is required.'); return }
-    const sharesNum = parseFloat(shares)
-    if (isNaN(sharesNum) || sharesNum <= 0) {
-      setError('Shares must be a positive number.')
-      return
-    }
-    setSaving(true)
-    setError('')
-    try {
-      await onSave({
-        ticker: ticker.trim().toUpperCase(),
-        company_name: companyName.trim(),
-        shares: sharesNum,
-        cost_basis: costBasis ? parseFloat(costBasis) : undefined,
-      })
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to save.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="bg-elevated border border-border rounded-xl p-4 space-y-3">
-
-      {/* ── Ticker / company search ── */}
-      {initial ? (
-        /* Edit mode: ticker is locked, only shares + cost basis change */
-        <TickerSearch lockedTicker={initial.ticker} onSelect={() => {}} />
-      ) : tickerPicked ? (
-        /* Selection made: show chip + clear button */
-        <div>
-          <label className="text-text-tertiary text-xs mb-1 block">Ticker *</label>
-          <div className="flex items-center gap-2 px-3 py-2 bg-surface border border-accent/40 rounded-lg">
-            <span className="text-accent text-sm font-mono font-semibold">{ticker}</span>
-            <span className="text-text-secondary text-xs flex-1 truncate">{companyName}</span>
-            <button
-              type="button"
-              onClick={() => { setTicker(''); setCompanyName('') }}
-              className="text-text-tertiary hover:text-text-secondary transition-colors ml-auto"
-              title="Change selection"
-            >
-              <X size={13} />
-            </button>
-          </div>
-        </div>
-      ) : (
-        /* No selection yet: show search */
-        <div className="space-y-2">
-          <TickerSearch
-            onSelect={entry => {
-              setTicker(entry.ticker)
-              setCompanyName(entry.name)
-            }}
-          />
-          {/* Fallback: manual entry if ticker not in the bundled list */}
-          <details className="group">
-            <summary className="text-text-tertiary text-[11px] cursor-pointer hover:text-text-secondary transition-colors list-none flex items-center gap-1">
-              <span className="group-open:rotate-90 inline-block transition-transform">›</span>
-              Not in the list? Enter manually
-            </summary>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-text-tertiary text-xs mb-1 block">Ticker</label>
-                <input
-                  value={ticker}
-                  onChange={e => setTicker(e.target.value.toUpperCase())}
-                  placeholder="ACME"
-                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent font-mono uppercase"
-                />
-              </div>
-              <div>
-                <label className="text-text-tertiary text-xs mb-1 block">Company name</label>
-                <input
-                  value={companyName}
-                  onChange={e => setCompanyName(e.target.value)}
-                  placeholder="Acme Corporation"
-                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent"
-                />
-              </div>
-            </div>
-          </details>
-        </div>
-      )}
-
-      {/* ── Shares + cost basis ── */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-text-tertiary text-xs mb-1 block">Shares *</label>
-          <input
-            type="number"
-            value={shares}
-            onChange={e => setShares(e.target.value)}
-            placeholder="100"
-            min="0.001"
-            step="1"
-            required
-            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent"
-          />
-        </div>
-        <div>
-          <label className="text-text-tertiary text-xs mb-1 block">Cost basis / share (optional)</label>
-          <input
-            type="number"
-            value={costBasis}
-            onChange={e => setCostBasis(e.target.value)}
-            placeholder="e.g. 480.00"
-            min="0"
-            step="any"
-            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent"
-          />
-        </div>
-      </div>
-
-      {error && (
-        <p className="text-red text-xs flex items-center gap-1.5">
-          <AlertCircle size={11} /> {error}
-        </p>
-      )}
-
-      <div className="flex gap-2 pt-1">
-        <button
-          type="submit"
-          disabled={saving}
-          className="btn-primary flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold"
-        >
-          <Check size={12} />
-          {saving ? 'Saving…' : initial ? 'Update' : 'Add holding'}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-3 py-2 rounded-lg text-xs text-text-tertiary hover:text-text-secondary hover:bg-border/40 transition-colors"
-        >
-          Cancel
-        </button>
-      </div>
-    </form>
-  )
-}
-
-// ── Gap company row ───────────────────────────────────────────────────────────
+// ── Gap row ───────────────────────────────────────────────────────────────────
 
 function GapRow({ gap, rank }: { gap: GapCompany; rank: number }) {
-  // GapRow renders inside AppShell → CompanyProvider, so the hook resolves correctly here
   const { openCompany } = useCompany()
   const clickable = !!gap.normalised_name
 
   return (
     <div
       className={cn(
-        "relative group flex items-center gap-3 px-4 py-3 border-b border-border/60 last:border-0 hover:bg-elevated/50 transition-colors",
-        clickable ? "cursor-pointer" : ""
+        'relative group flex items-center gap-3 px-4 py-3 border-b border-border/60 last:border-0',
+        'hover:bg-elevated/50 transition-colors',
+        clickable ? 'cursor-pointer' : ''
       )}
       onClick={() => clickable && openCompany(gap.normalised_name)}
     >
@@ -279,8 +64,8 @@ function GapRow({ gap, rank }: { gap: GapCompany; rank: number }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-1.5">
           <span className={cn(
-            "text-text-primary text-xs font-medium truncate",
-            clickable ? "group-hover:text-accent transition-colors" : ""
+            'text-text-primary text-sm font-medium truncate',
+            clickable ? 'group-hover:text-accent transition-colors' : ''
           )}>
             {gap.company_name}
           </span>
@@ -310,6 +95,149 @@ function GapRow({ gap, rank }: { gap: GapCompany; rank: number }) {
   )
 }
 
+// ── Skeleton ──────────────────────────────────────────────────────────────────
+
+function Skeleton({ className }: { className?: string }) {
+  return <div className={cn('bg-border/50 rounded animate-pulse', className)} />
+}
+
+function IntelligenceSkeleton() {
+  return (
+    <div className="max-w-3xl">
+      <div className="border-l-2 border-border/30 pl-5 py-1 mb-10">
+        <Skeleton className="h-6 w-full mb-2" />
+        <Skeleton className="h-6 w-4/5 mb-3" />
+        <Skeleton className="h-3 w-40" />
+      </div>
+      <Skeleton className="h-3 w-24 mb-4" />
+      <div className="bg-surface border border-border rounded-xl overflow-hidden">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="flex items-center gap-3 px-4 py-3 border-b border-border/60 last:border-0">
+            <Skeleton className="h-3 w-4 shrink-0" />
+            <div className="flex-1 space-y-1.5">
+              <Skeleton className="h-3 w-32" />
+              <Skeleton className="h-2.5 w-24" />
+            </div>
+            <Skeleton className="h-3 w-10" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Holding form ──────────────────────────────────────────────────────────────
+
+interface HoldingFormProps {
+  initial?: HoldingOut
+  onSave: (data: { ticker: string; company_name: string; shares: number; cost_basis?: number }) => Promise<void>
+  onCancel: () => void
+}
+
+function HoldingForm({ initial, onSave, onCancel }: HoldingFormProps) {
+  const [ticker,      setTicker]      = useState(initial?.ticker ?? '')
+  const [companyName, setCompanyName] = useState(initial?.company_name ?? '')
+  const [shares,      setShares]      = useState(initial?.shares.toString() ?? '')
+  const [costBasis,   setCostBasis]   = useState(initial?.cost_basis?.toString() ?? '')
+  const [saving,      setSaving]      = useState(false)
+  const [error,       setError]       = useState('')
+
+  const tickerPicked = !!ticker
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!ticker.trim()) { setError('Select or type a ticker.'); return }
+    if (!companyName.trim()) { setError('Company name is required.'); return }
+    const sharesNum = parseFloat(shares)
+    if (isNaN(sharesNum) || sharesNum <= 0) { setError('Shares must be a positive number.'); return }
+    setSaving(true)
+    setError('')
+    try {
+      await onSave({
+        ticker: ticker.trim().toUpperCase(),
+        company_name: companyName.trim(),
+        shares: sharesNum,
+        cost_basis: costBasis ? parseFloat(costBasis) : undefined,
+      })
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to save.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-elevated border border-border rounded-xl p-4 space-y-3">
+      {initial ? (
+        <TickerSearch lockedTicker={initial.ticker} onSelect={() => {}} />
+      ) : tickerPicked ? (
+        <div>
+          <label className="text-text-tertiary text-xs mb-1 block">Ticker *</label>
+          <div className="flex items-center gap-2 px-3 py-2 bg-surface border border-accent/40 rounded-lg">
+            <span className="text-accent text-sm font-mono font-semibold">{ticker}</span>
+            <span className="text-text-secondary text-xs flex-1 truncate">{companyName}</span>
+            <button type="button" onClick={() => { setTicker(''); setCompanyName('') }}
+              className="text-text-tertiary hover:text-text-secondary transition-colors ml-auto">
+              <X size={13} />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <TickerSearch onSelect={entry => { setTicker(entry.ticker); setCompanyName(entry.name) }} />
+          <details className="group">
+            <summary className="text-text-tertiary text-[11px] cursor-pointer hover:text-text-secondary transition-colors list-none flex items-center gap-1">
+              <span className="group-open:rotate-90 inline-block transition-transform">›</span>
+              Not in the list? Enter manually
+            </summary>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-text-tertiary text-xs mb-1 block">Ticker</label>
+                <input value={ticker} onChange={e => setTicker(e.target.value.toUpperCase())} placeholder="ACME"
+                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent font-mono uppercase" />
+              </div>
+              <div>
+                <label className="text-text-tertiary text-xs mb-1 block">Company name</label>
+                <input value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="Acme Corporation"
+                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent" />
+              </div>
+            </div>
+          </details>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-text-tertiary text-xs mb-1 block">Shares *</label>
+          <input type="number" value={shares} onChange={e => setShares(e.target.value)} placeholder="100"
+            min="0.001" step="1" required
+            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent" />
+        </div>
+        <div>
+          <label className="text-text-tertiary text-xs mb-1 block">Cost basis / share (optional)</label>
+          <input type="number" value={costBasis} onChange={e => setCostBasis(e.target.value)} placeholder="e.g. 480.00"
+            min="0" step="any"
+            className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent" />
+        </div>
+      </div>
+
+      {error && <p className="text-red text-xs flex items-center gap-1.5"><AlertCircle size={11} /> {error}</p>}
+
+      <div className="flex gap-2 pt-1">
+        <button type="submit" disabled={saving}
+          className="btn-primary flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold">
+          <Check size={12} />
+          {saving ? 'Saving…' : initial ? 'Update' : 'Add holding'}
+        </button>
+        <button type="button" onClick={onCancel}
+          className="px-3 py-2 rounded-lg text-xs text-text-tertiary hover:text-text-secondary hover:bg-border/40 transition-colors">
+          Cancel
+        </button>
+      </div>
+    </form>
+  )
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function PortfolioPage() {
@@ -317,10 +245,11 @@ export default function PortfolioPage() {
   const [alignment,  setAlignment]  = useState<PortfolioAlignment | null>(null)
   const [loading,    setLoading]    = useState(true)
   const [error,      setError]      = useState('')
-  const [showAdd,        setShowAdd]        = useState(false)
-  const [editingId,      setEditingId]      = useState<string | null>(null)
-  const [deleting,       setDeleting]       = useState<string | null>(null)
-  const [refreshing,     setRefreshing]     = useState(false)
+  const [showAdd,    setShowAdd]    = useState(false)
+  const [editingId,  setEditingId]  = useState<string | null>(null)
+  const [deleting,   setDeleting]   = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+  const [mode,       setMode]       = useState<'intelligence' | 'configure'>('intelligence')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -352,15 +281,12 @@ export default function PortfolioPage() {
 
   async function handleDelete(id: string) {
     setDeleting(id)
-    // Optimistically remove immediately so the row disappears without waiting
     setHoldings(prev => prev.filter(h => h.id !== id))
     try {
       await deleteHolding(id)
-      // Silently refresh alignment without triggering the loading skeleton
       const a = await getPortfolioAlignment()
       setAlignment(a)
     } catch (e: unknown) {
-      // On failure restore the full state
       setError(e instanceof Error ? e.message : 'Failed to remove holding.')
       await load()
     } finally {
@@ -376,10 +302,9 @@ export default function PortfolioPage() {
   const coveragePct = alignment ? Math.round(alignment.overall_coverage * 100) : 0
   const narrative   = alignment ? buildNarrative(alignment) : ''
 
-  // ticker → theses that list it as a held company
   const tickerTheses = useMemo(() => {
-    if (!alignment) return {} as Record<string, import('@/lib/types').ThesisExposure[]>
-    const map: Record<string, import('@/lib/types').ThesisExposure[]> = {}
+    if (!alignment) return {} as Record<string, ThesisExposure[]>
+    const map: Record<string, ThesisExposure[]> = {}
     for (const thesis of alignment.theses) {
       for (const ticker of thesis.held_companies) {
         if (!map[ticker]) map[ticker] = []
@@ -389,182 +314,51 @@ export default function PortfolioPage() {
     return map
   }, [alignment])
 
-  return (
-    <AppShell>
-      <div className="max-w-[1400px] mx-auto px-8 py-8">
+  // ── Intelligence mode ─────────────────────────────────────────────────────
 
-        {/* ── Page header ── */}
-        <div className="flex items-center justify-between mb-5">
-          <h1 className="text-text-primary font-serif-display text-3xl leading-tight">Portfolio</h1>
-          <button
-            onClick={handleRefresh}
-            disabled={loading || refreshing}
-            className="flex items-center gap-1.5 text-xs text-text-tertiary hover:text-text-secondary px-3 py-1.5 rounded-lg border border-border hover:bg-elevated transition-all disabled:opacity-40"
-          >
-            <RefreshCw size={12} className={refreshing ? 'animate-spin' : ''} />
-            <span className="hidden sm:inline">Refresh</span>
-          </button>
-        </div>
+  if (mode === 'intelligence') {
+    return (
+      <AppShell>
+        <div className="max-w-[1400px] mx-auto px-8 py-8">
 
-
-        {error && (
-          <div className="flex items-center gap-2 text-red text-sm bg-red/5 border border-red/20 rounded-xl px-4 py-3 mb-6">
-            <AlertCircle size={14} /> {error}
-          </div>
-        )}
-
-        {loading ? (
-          /* ── Skeleton ── */
-          <div className="flex gap-6 items-start">
-            <div className="flex-[4] space-y-3">
-              <Skeleton className="h-5 w-32 mb-2" />
-              {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}
-            </div>
-            <div className="flex-[6] space-y-4">
-              <Skeleton className="h-20 w-full rounded-2xl" />
-              <div className="grid grid-cols-2 gap-3">
-                {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
-              </div>
-              <Skeleton className="h-28 w-full rounded-2xl" />
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8">
+            <h1 className="text-text-primary font-serif-display text-3xl leading-tight">Portfolio</h1>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={handleRefresh}
+                disabled={loading || refreshing}
+                className="flex items-center gap-1.5 text-xs text-text-tertiary hover:text-text-secondary px-3 py-1.5 rounded-lg border border-border hover:bg-elevated transition-all disabled:opacity-40 active:scale-[0.97]"
+              >
+                <RefreshCw size={12} className={refreshing ? 'animate-spin' : ''} />
+                <span className="hidden sm:inline">Refresh</span>
+              </button>
+              <button
+                onClick={() => setMode('configure')}
+                className="text-xs text-text-tertiary hover:text-text-secondary transition-colors"
+              >
+                Holdings →
+              </button>
             </div>
           </div>
-        ) : (
-          <div className="flex gap-6 items-start">
 
-            {/* ── Left: Holdings ── always visible, proper cards ── */}
-            <div className="flex-[4] min-w-0">
-              <div className="flex items-center justify-between mb-3 px-1">
-                <SectionLabel>Positions</SectionLabel>
-                <span className="text-text-tertiary text-[11px] tabular-nums">{holdings.length}</span>
-              </div>
-
-              {showAdd && (
-                <div className="mb-3">
-                  <HoldingForm onSave={handleAdd} onCancel={() => setShowAdd(false)} />
-                </div>
-              )}
-
-              {holdings.length === 0 && !showAdd ? (
-                <div className="bg-surface border border-border rounded-xl py-12 px-6 text-center">
-                  <div className="w-10 h-10 rounded-xl bg-elevated flex items-center justify-center mx-auto mb-3">
-                    <BriefcaseBusiness size={18} className="text-text-tertiary" />
-                  </div>
-                  <p className="text-text-primary text-sm font-medium mb-1">No positions yet</p>
-                  <p className="text-text-tertiary text-xs leading-relaxed max-w-[200px] mx-auto mb-4">
-                    Add holdings to see which themes you&apos;re exposed to.
-                  </p>
-                  <button
-                    onClick={() => setShowAdd(true)}
-                    className="btn-primary px-4 py-2 rounded-lg text-xs font-semibold"
-                  >
-                    Add first holding
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {holdings.map(h => {
-                    const theses = tickerTheses[h.ticker] ?? []
-                    const docCount = alignment?.held_company_docs?.[h.ticker] ?? 0
-                    const primary = theses[0]
-                    const mom = primary?.momentum ?? 'flat'
-                    const MomIcon = mom === 'rising' ? TrendingUp : mom === 'falling' ? TrendingDown : Minus
-                    const momColor = mom === 'rising' ? 'text-green' : mom === 'falling' ? 'text-red' : 'text-text-tertiary'
-
-                    return editingId === h.id ? (
-                      <div key={h.id}>
-                        <HoldingForm
-                          initial={h}
-                          onSave={async (data) => handleUpdate(h.id, { shares: data.shares, cost_basis: data.cost_basis })}
-                          onCancel={() => setEditingId(null)}
-                        />
-                      </div>
-                    ) : (
-                      <div
-                        key={h.id}
-                        className="group relative bg-surface border border-border rounded-xl overflow-hidden hover:border-accent/30 hover:shadow-sm transition-all"
-                      >
-                        {/* Top accent bar — momentum color */}
-                        <div className={cn(
-                          'h-0.5 w-full',
-                          mom === 'rising' ? 'bg-green/50' : mom === 'falling' ? 'bg-red/40' : 'bg-border'
-                        )} />
-
-                        <div className="p-4">
-                          {/* Row 1: ticker + momentum badge + actions */}
-                          <div className="flex items-center justify-between gap-2 mb-1">
-                            <span className="text-accent font-mono font-bold text-base leading-none tracking-tight">
-                              {h.ticker}
-                            </span>
-                            <div className="flex items-center gap-1.5">
-                              {primary && (
-                                <span className={cn(
-                                  'flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md shrink-0',
-                                  mom === 'rising' ? 'text-green bg-green/10' :
-                                  mom === 'falling' ? 'text-red bg-red/10' :
-                                  'text-text-tertiary bg-elevated'
-                                )}>
-                                  <MomIcon size={8} />
-                                  {mom === 'rising' ? 'Rising' : mom === 'falling' ? 'Falling' : 'Flat'}
-                                </span>
-                              )}
-                              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => setEditingId(h.id)} className="p-1.5 rounded-lg text-text-tertiary hover:text-text-secondary hover:bg-elevated" title="Edit">
-                                  <Pencil size={11} />
-                                </button>
-                                <button onClick={() => handleDelete(h.id)} disabled={deleting === h.id} className="p-1.5 rounded-lg text-text-tertiary hover:text-red hover:bg-red/5 disabled:opacity-50" title="Remove">
-                                  {deleting === h.id ? <RefreshCw size={11} className="animate-spin" /> : <Trash2 size={11} />}
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Row 2: company name */}
-                          <p className="text-text-secondary text-xs truncate mb-3">{h.company_name}</p>
-
-                          {/* Row 3: thesis signal */}
-                          {primary ? (
-                            <p className={cn('text-[11px] truncate mb-3', momColor)}>
-                              {primary.thesis_name.split(' ').slice(0, 3).join(' ')}
-                              {theses.length > 1 && <span className="text-text-tertiary"> +{theses.length - 1}</span>}
-                            </p>
-                          ) : (
-                            <div className="mb-3" />
-                          )}
-
-                          {/* Row 4: position stats */}
-                          <div className="flex items-center gap-2 text-[11px] text-text-tertiary tabular-nums pt-2.5 border-t border-border/40">
-                            <span>{h.shares.toLocaleString()} sh</span>
-                            {h.cost_basis && <span>· ${h.cost_basis.toFixed(2)}</span>}
-                            {docCount > 0 && (
-                              <span className="ml-auto text-accent font-semibold">{docCount} docs</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-
-                  {!showAdd && (
-                    <button
-                      onClick={() => setShowAdd(true)}
-                      className="flex items-center gap-1.5 w-full justify-center text-xs text-text-tertiary hover:text-text-secondary border border-dashed border-border hover:border-border/80 rounded-xl py-3 transition-colors"
-                    >
-                      <Plus size={12} /> Add holding
-                    </button>
-                  )}
-                </div>
-              )}
+          {error && (
+            <div className="flex items-center gap-2 text-red text-sm bg-red/5 border border-red/20 rounded-xl px-4 py-3 mb-6">
+              <AlertCircle size={14} /> {error}
             </div>
+          )}
 
-            {/* ── Right: Intelligence — narrative + exposure + gaps ── */}
-            <div className="flex-[6] min-w-0 space-y-5">
+          {loading ? (
+            <IntelligenceSkeleton />
+          ) : (
+            <div className="max-w-3xl">
 
-              {/* Narrative — editorial pull quote, no card */}
-              <div className="border-l-2 border-accent/35 pl-5 py-1 mb-1">
+              {/* Narrative — editorial pull quote */}
+              <div className="border-l-2 border-accent/35 pl-5 py-1 mb-10">
                 <p className="text-text-primary text-xl font-serif-display leading-relaxed mb-2">
                   {narrative || 'Add holdings to see how your portfolio aligns with your tracked themes.'}
                 </p>
-                {alignment && (
+                {alignment && alignment.total_holdings > 0 && (
                   <p className="text-text-tertiary text-xs">
                     <span className={cn(
                       'tabular-nums mr-1',
@@ -577,37 +371,170 @@ export default function PortfolioPage() {
                 )}
               </div>
 
-              {alignment && (
-                <>
-                  {/* Gap signals */}
-                  {alignment.gaps.length > 0 && (
-                    <div className="space-y-3">
-                      <FeaturedGap gap={alignment.gaps[0]} />
-                      {alignment.gaps.length > 1 && (
-                        <div className="bg-surface border border-border rounded-xl">
-                          {alignment.gaps.slice(1, 4).map((gap, i) => (
-                            <GapRow key={`${gap.company_name}-${i}`} gap={gap} rank={i + 2} />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {alignment.gaps.length === 0 && alignment.theses.length > 0 && (
-                    <p className="text-text-tertiary text-sm py-4">No significant gaps — your holdings cover the active radar.</p>
-                  )}
-                </>
+              {/* No holdings yet */}
+              {(!alignment || alignment.total_holdings === 0) && (
+                <p className="text-text-tertiary text-sm">
+                  <button onClick={() => setMode('configure')} className="text-accent hover:underline transition-colors">
+                    Configure your holdings
+                  </button>
+                  {' '}to see alignment data.
+                </p>
               )}
 
-              {!alignment && (
-                <div className="bg-surface border border-border rounded-xl py-12 px-6 text-center">
-                  <p className="text-text-tertiary text-sm">Add holdings to see alignment data.</p>
+              {/* Gap signals — flat ranked list */}
+              {alignment && alignment.gaps.length > 0 && (
+                <div>
+                  <SectionLabel className="mb-3">Gap signals</SectionLabel>
+                  <div className="bg-surface border border-border rounded-xl overflow-hidden">
+                    {alignment.gaps.slice(0, 6).map((gap, i) => (
+                      <GapRow key={gap.company_name} gap={gap} rank={i + 1} />
+                    ))}
+                  </div>
                 </div>
               )}
 
+              {alignment && alignment.gaps.length === 0 && alignment.theses.length > 0 && (
+                <p className="text-text-tertiary text-sm">
+                  No significant gaps — your holdings cover the active radar.
+                </p>
+              )}
+
             </div>
+          )}
+        </div>
+      </AppShell>
+    )
+  }
+
+  // ── Configure mode ────────────────────────────────────────────────────────
+
+  return (
+    <AppShell>
+      <div className="max-w-[1400px] mx-auto px-8 py-8">
+
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-8">
+          <button
+            onClick={() => setMode('intelligence')}
+            className="text-xs text-text-tertiary hover:text-text-secondary transition-colors active:scale-[0.97]"
+          >
+            ← Portfolio
+          </button>
+          <h1 className="text-text-primary font-serif-display text-3xl leading-tight">Holdings</h1>
+        </div>
+
+        {error && (
+          <div className="flex items-center gap-2 text-red text-sm bg-red/5 border border-red/20 rounded-xl px-4 py-3 mb-6">
+            <AlertCircle size={14} /> {error}
           </div>
         )}
+
+        <div className="max-w-xl">
+
+          {showAdd && (
+            <div className="mb-4">
+              <HoldingForm onSave={handleAdd} onCancel={() => setShowAdd(false)} />
+            </div>
+          )}
+
+          {holdings.length === 0 && !showAdd ? (
+            <div className="bg-surface border border-border rounded-xl py-12 px-6 text-center">
+              <div className="w-10 h-10 rounded-xl bg-elevated flex items-center justify-center mx-auto mb-3">
+                <BriefcaseBusiness size={18} className="text-text-tertiary" />
+              </div>
+              <p className="text-text-primary text-sm font-medium mb-1">No holdings yet</p>
+              <p className="text-text-tertiary text-xs leading-relaxed max-w-[200px] mx-auto mb-4">
+                Add your positions to see theme alignment.
+              </p>
+              <button
+                onClick={() => setShowAdd(true)}
+                className="btn-primary px-4 py-2 rounded-lg text-xs font-semibold"
+              >
+                Add first holding
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {holdings.map(h => {
+                const theses  = tickerTheses[h.ticker] ?? []
+                const primary = theses[0]
+                const mom     = primary?.momentum ?? 'flat'
+                const MomIcon = mom === 'rising' ? TrendingUp : mom === 'falling' ? TrendingDown : Minus
+                const momColor = mom === 'rising' ? 'text-green' : mom === 'falling' ? 'text-red' : 'text-text-tertiary'
+                const docCount = alignment?.held_company_docs?.[h.ticker] ?? 0
+
+                return editingId === h.id ? (
+                  <div key={h.id}>
+                    <HoldingForm
+                      initial={h}
+                      onSave={async (data) => handleUpdate(h.id, { shares: data.shares, cost_basis: data.cost_basis })}
+                      onCancel={() => setEditingId(null)}
+                    />
+                  </div>
+                ) : (
+                  <div
+                    key={h.id}
+                    className="group relative bg-surface border border-border rounded-xl overflow-hidden hover:border-accent/30 hover:shadow-sm transition-all"
+                  >
+                    <div className={cn('h-0.5 w-full', mom === 'rising' ? 'bg-green/50' : mom === 'falling' ? 'bg-red/40' : 'bg-border')} />
+                    <div className="p-4">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-accent font-mono font-bold text-base leading-none tracking-tight">
+                          {h.ticker}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          {primary && (
+                            <span className={cn(
+                              'flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md shrink-0',
+                              mom === 'rising' ? 'text-green bg-green/10' :
+                              mom === 'falling' ? 'text-red bg-red/10' :
+                              'text-text-tertiary bg-elevated'
+                            )}>
+                              <MomIcon size={8} />
+                              {mom === 'rising' ? 'Rising' : mom === 'falling' ? 'Falling' : 'Flat'}
+                            </span>
+                          )}
+                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => setEditingId(h.id)} className="p-1.5 rounded-lg text-text-tertiary hover:text-text-secondary hover:bg-elevated" title="Edit">
+                              <Pencil size={11} />
+                            </button>
+                            <button onClick={() => handleDelete(h.id)} disabled={deleting === h.id} className="p-1.5 rounded-lg text-text-tertiary hover:text-red hover:bg-red/5 disabled:opacity-50" title="Remove">
+                              {deleting === h.id ? <RefreshCw size={11} className="animate-spin" /> : <Trash2 size={11} />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-text-secondary text-xs truncate mb-3">{h.company_name}</p>
+                      {primary ? (
+                        <p className={cn('text-[11px] truncate mb-3', momColor)}>
+                          {primary.thesis_name.split(' ').slice(0, 3).join(' ')}
+                          {theses.length > 1 && <span className="text-text-tertiary"> +{theses.length - 1}</span>}
+                        </p>
+                      ) : (
+                        <div className="mb-3" />
+                      )}
+                      <div className="flex items-center gap-2 text-[11px] text-text-tertiary tabular-nums pt-2.5 border-t border-border/40">
+                        <span>{h.shares.toLocaleString()} sh</span>
+                        {h.cost_basis && <span>· ${h.cost_basis.toFixed(2)}</span>}
+                        {docCount > 0 && <span className="ml-auto text-accent font-semibold">{docCount} docs</span>}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+
+              {!showAdd && (
+                <button
+                  onClick={() => setShowAdd(true)}
+                  className="flex items-center gap-1.5 w-full justify-center text-xs text-text-tertiary hover:text-text-secondary border border-dashed border-border hover:border-border/80 rounded-xl py-3 transition-colors"
+                >
+                  <Plus size={12} /> Add holding
+                </button>
+              )}
+            </div>
+          )}
+
+        </div>
       </div>
     </AppShell>
   )
