@@ -5,7 +5,6 @@ import { motion } from 'framer-motion'
 import { Plus, RefreshCw, AlertCircle, X } from 'lucide-react'
 import AppShell from '@/components/layout/AppShell'
 import ThesisGridCard from '@/components/thesis/ThesisGridCard'
-import { SectionLabel } from '@/components/SectionLabel'
 import { getTheses, createThesis } from '@/lib/api'
 import type { ThesisOut } from '@/lib/types'
 
@@ -52,9 +51,6 @@ export default function ThesisPage() {
       setCreating(false)
     }
   }
-
-  const system  = theses.filter(t => t.is_system)
-  const custom  = theses.filter(t => !t.is_system)
 
   return (
     <AppShell>
@@ -147,38 +143,17 @@ export default function ThesisPage() {
           </div>
         )}
 
-        {/* System theses — 2-column grid */}
-        {!loading && !error && system.length > 0 && (
-          <section className="mb-8">
-            <SectionLabel className="mb-4 px-1">System themes</SectionLabel>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {system.map((t, i) => (
-                <motion.div
-                  key={t.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ type: "spring", stiffness: 280, damping: 26, delay: i * 0.05 }}
-                  className={system.length % 2 === 1 && i === system.length - 1 ? 'sm:col-span-2 sm:max-w-[calc(50%-8px)]' : ''}
-                >
-                  <ThesisGridCard thesis={t} />
-                </motion.div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Custom theses — 2-column grid */}
-        {!loading && !error && custom.length > 0 && (
+        {/* All theses — single ranked grid, no taxonomy labels */}
+        {!loading && !error && theses.length > 0 && (
           <section>
-            <SectionLabel className="mb-4 px-1">Custom themes</SectionLabel>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {custom.map((t, i) => (
+              {theses.map((t, i) => (
                 <motion.div
                   key={t.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ type: "spring", stiffness: 280, damping: 26, delay: i * 0.05 }}
-                  className={custom.length % 2 === 1 && i === custom.length - 1 ? 'sm:col-span-2 sm:max-w-[calc(50%-8px)]' : ''}
+                  className={theses.length % 2 === 1 && i === theses.length - 1 ? 'sm:col-span-2 sm:max-w-[calc(50%-8px)]' : ''}
                 >
                   <ThesisGridCard thesis={t} />
                 </motion.div>

@@ -258,60 +258,6 @@ function HoldingForm({ initial, onSave, onCancel }: HoldingFormProps) {
   )
 }
 
-// ── Thesis exposure card ──────────────────────────────────────────────────────
-
-function ExposureCard({ exposure }: { exposure: ThesisExposure }) {
-  const pct = Math.round(exposure.coverage_pct * 100)
-  const hasHoldings = exposure.held_companies.length > 0
-  const MomIcon = exposure.momentum === 'rising' ? TrendingUp : exposure.momentum === 'falling' ? TrendingDown : Minus
-  const momColor = exposure.momentum === 'rising' ? 'text-green' : exposure.momentum === 'falling' ? 'text-red' : 'text-text-tertiary'
-
-  return (
-    <div className="bg-surface border border-border rounded-xl p-4 hover:border-border/80 transition-colors">
-      {/* Thesis name — most important, reads first */}
-      <p className="text-text-primary text-sm font-semibold leading-snug truncate mb-1">
-        {exposure.thesis_name}
-      </p>
-
-      {/* Momentum label — health before numbers */}
-      <span className={cn('inline-flex items-center gap-1 text-[11px] mb-3', momColor)}>
-        <MomIcon size={9} />
-        <span className="capitalize">{exposure.momentum}</span>
-      </span>
-
-      {/* Coverage bar — taller, more visible */}
-      <div className="h-2 bg-border/40 rounded-full overflow-hidden mb-2">
-        <div
-          className={cn(
-            'h-full rounded-full transition-all duration-500',
-            pct >= 30 ? 'bg-green/70' : pct >= 10 ? 'bg-amber/70' : 'bg-border'
-          )}
-          style={{ width: `${Math.max(pct, 2)}%` }}
-        />
-      </div>
-
-      {/* Numbers — tertiary, supporting */}
-      <p className="text-text-tertiary text-[11px] tabular-nums mb-3">
-        <span className={cn('font-semibold', pct >= 30 ? 'text-green' : pct >= 10 ? 'text-amber' : 'text-text-tertiary')}>
-          {pct}%
-        </span>
-        {' covered · '}{formatConfidence(exposure.confidence)} conf · {exposure.total_companies} co.
-      </p>
-
-      {/* Holdings in this thesis */}
-      {hasHoldings ? (
-        <div className="flex flex-wrap gap-1.5">
-          {exposure.held_companies.map(ticker => (
-            <span key={ticker} className="text-[11px] font-mono text-accent bg-accent/8 border border-accent/15 px-2 py-0.5 rounded-md font-medium">
-              {ticker}
-            </span>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
 // ── Gap company row ───────────────────────────────────────────────────────────
 
 function GapRow({ gap, rank }: { gap: GapCompany; rank: number }) {
@@ -460,22 +406,6 @@ export default function PortfolioPage() {
           </button>
         </div>
 
-        {/* ── Stats strip — inline, no cards ── */}
-        {!loading && alignment && (
-          <div className="flex items-start gap-10 mb-8 pb-5 border-b border-border/50">
-            {[
-              { label: 'positions', value: String(alignment.total_holdings), color: 'text-text-primary' },
-              { label: 'theme coverage', value: `${coveragePct}%`, color: coveragePct >= 30 ? 'text-green' : coveragePct >= 10 ? 'text-amber' : 'text-text-secondary' },
-              { label: 'rising themes', value: String(alignment.theses.filter(t => t.momentum === 'rising').length), color: 'text-accent' },
-              { label: 'gap signals', value: String(alignment.gaps.length), color: alignment.gaps.length > 0 ? 'text-amber' : 'text-text-secondary' },
-            ].map(({ label, value, color }) => (
-              <div key={label}>
-                <p className={cn('text-2xl font-serif-display leading-none tabular-nums', color)}>{value}</p>
-                <p className="text-text-tertiary text-[11px] mt-1">{label}</p>
-              </div>
-            ))}
-          </div>
-        )}
 
         {error && (
           <div className="flex items-center gap-2 text-red text-sm bg-red/5 border border-red/20 rounded-xl px-4 py-3 mb-6">
@@ -649,18 +579,6 @@ export default function PortfolioPage() {
 
               {alignment && (
                 <>
-                  {/* Thesis exposure grid */}
-                  {alignment.theses.length > 0 && (
-                    <div>
-                      <SectionLabel className="mb-3 px-1">Theme exposure</SectionLabel>
-                      <div className="grid grid-cols-2 gap-3">
-                        {alignment.theses.map(e => (
-                          <ExposureCard key={e.thesis_id} exposure={e} />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
                   {/* Gap signals */}
                   {alignment.gaps.length > 0 && (
                     <div className="space-y-3">
