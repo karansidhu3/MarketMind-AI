@@ -47,6 +47,7 @@ class ThesisOut(BaseModel):
     supporting_count: int = 0
     opposing_count: int = 0
     confidence: float = 0.0
+    weekly_delta: float = 0.0   # 7-day change in confidence (recent 7d avg − prior 7d avg)
 
     model_config = {"from_attributes": True}
 

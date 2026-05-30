@@ -7,6 +7,7 @@ import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import Logo from '@/components/ui/Logo'
+import { getAlerts } from '@/lib/api'
 
 const NAV = [
   { href: '/feed',      icon: Zap,                label: 'Feed'      },
@@ -18,7 +19,16 @@ export default function Header() {
   const path = usePathname()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  const [hasAlert, setHasAlert] = useState(false)
+
   useEffect(() => setMounted(true), [])
+
+  // Fetch alert state once on mount — badge clears when user visits Feed
+  useEffect(() => {
+    getAlerts()
+      .then(alerts => setHasAlert(alerts.some(a => a.triggered)))
+      .catch(() => {})
+  }, [])
 
   function signOut() {
     localStorage.removeItem('mm_token')
@@ -44,13 +54,15 @@ export default function Header() {
         {/* ── Navigation ── */}
         <nav className="flex items-center gap-0.5 sm:gap-1">
           {NAV.map(({ href, icon: Icon, label }) => {
-            const active = path === href || path.startsWith(href + '/')
+            const active    = path === href || path.startsWith(href + '/')
+            const showBadge = href === '/feed' && hasAlert && !active
             return (
               <Link
                 key={href}
                 href={href}
+                onClick={() => { if (href === '/feed') setHasAlert(false) }}
                 className={cn(
-                  'flex items-center gap-1.5 rounded-lg transition-all duration-150 active:scale-[0.95]',
+                  'relative flex items-center gap-1.5 rounded-lg transition-all duration-150 active:scale-[0.95]',
                   'px-2 py-1.5 sm:px-3 sm:py-1.5',
                   'text-xs font-medium',
                   active
@@ -59,7 +71,12 @@ export default function Header() {
                 )}
                 title={label}
               >
-                <Icon size={13} strokeWidth={active ? 2.25 : 1.75} />
+                <span className="relative">
+                  <Icon size={13} strokeWidth={active ? 2.25 : 1.75} />
+                  {showBadge && (
+                    <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-amber" />
+                  )}
+                </span>
                 <span className="hidden sm:inline">{label}</span>
               </Link>
             )

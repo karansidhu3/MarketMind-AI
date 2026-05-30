@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.db.models import CompanySignal, Evidence, Thesis
+from app.db.models import CompanySignal, ConfidenceSnapshot, Evidence, Thesis
 from app.ingestion.normalise import is_same_company, normalise, pick_canonical
 from app.thesis.decay import weighted_confidence
 from app.ingestion.schema import Document
@@ -468,6 +468,31 @@ class ThesisService:
 
         confidence, supporting, opposing, total = weighted_confidence(all_evidence)
 
+        # Weekly delta: recent 7d avg confidence vs. prior 7d avg confidence
+        today = date.today()
+        cutoff_14 = today - timedelta(days=14)
+        recent_cutoff = today - timedelta(days=7)
+        snaps = (
+            await session.execute(
+                select(ConfidenceSnapshot)
+                .where(
+                    ConfidenceSnapshot.thesis_id == thesis.id,
+                    ConfidenceSnapshot.snapshot_date >= cutoff_14,
+                )
+                .order_by(ConfidenceSnapshot.snapshot_date)
+            )
+        ).scalars().all()
+
+        recent_vals = [s.confidence for s in snaps if s.snapshot_date >= recent_cutoff]
+        prior_vals  = [s.confidence for s in snaps if s.snapshot_date < recent_cutoff]
+        if recent_vals and prior_vals:
+            weekly_delta = round(
+                sum(recent_vals) / len(recent_vals) - sum(prior_vals) / len(prior_vals),
+                4,
+            )
+        else:
+            weekly_delta = 0.0
+
         return ThesisOut(
             id=thesis.id,
             name=thesis.name,
@@ -481,4 +506,5 @@ class ThesisService:
             supporting_count=supporting,
             opposing_count=opposing,
             confidence=confidence,
+            weekly_delta=weekly_delta,
         )

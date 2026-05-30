@@ -302,8 +302,33 @@ class PortfolioService:
                 thesis_confidence=round(best_conf, 3),
             ))
 
-        # Rank gaps: most relevant first (doc_count × confidence)
-        gaps.sort(key=lambda g: g.doc_count * g.thesis_confidence, reverse=True)
+        # Rank gaps by urgency: doc_count × thesis_count × recency_weight
+        # thesis_count: number of independent theses the company appears in (breadth)
+        # recency_weight: how recently the company was seen in new signals (freshness)
+        now_dt = datetime.now(timezone.utc)
+        company_last_seen: dict[str, datetime] = {}
+        for norm, sigs in sig_groups.items():
+            latest = max(
+                (s.last_seen.replace(tzinfo=timezone.utc) if s.last_seen.tzinfo is None else s.last_seen)
+                for s in sigs
+            )
+            company_last_seen[norm] = latest
+
+        def _urgency(g: GapCompany) -> float:
+            thesis_count = len(company_theses.get(g.normalised_name, set()))
+            ls = company_last_seen.get(g.normalised_name, now_dt)
+            days_since = max((now_dt - ls).days, 0)
+            if days_since <= 7:
+                recency = 1.0
+            elif days_since <= 30:
+                recency = 0.6
+            elif days_since <= 90:
+                recency = 0.3
+            else:
+                recency = 0.1
+            return g.doc_count * max(thesis_count, 1) * recency
+
+        gaps.sort(key=_urgency, reverse=True)
         gaps = gaps[:_MAX_GAPS]
 
         return PortfolioAlignment(

@@ -67,6 +67,7 @@ export interface ThesisOut {
   supporting_count: number
   opposing_count: number
   confidence: number
+  weekly_delta: number   // 7-day change in confidence (recent 7d avg − prior 7d avg)
 }
 
 export interface EvidenceOut {

@@ -2,14 +2,14 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, ExternalLink, Building2, ArrowUpRight, Bookmark, BookmarkCheck } from 'lucide-react'
+import { X, ExternalLink, Building2, ArrowUpRight } from 'lucide-react'
 import Link from 'next/link'
 import { useCompany } from '@/contexts/CompanyContext'
-import { getCompany, getWatchlist, watchCompany, unwatchCompany } from '@/lib/api'
+import { getCompany } from '@/lib/api'
 import { cn, formatDateShort } from '@/lib/utils'
 import { spring } from '@/lib/motion'
 import { SectionLabel } from '@/components/SectionLabel'
-import type { CompanyDetail, CompanyEvidenceItem, CompanyThesisBreakdown, WatchedCompany } from '@/lib/types'
+import type { CompanyDetail, CompanyEvidenceItem, CompanyThesisBreakdown } from '@/lib/types'
 
 // ── Verdict ───────────────────────────────────────────────────────────────────
 
@@ -203,15 +203,12 @@ function EvidenceRow({ ev }: { ev: CompanyEvidenceItem }) {
 
 export default function CompanyPanel({ demoMode = false }: { demoMode?: boolean }) {
   const { selectedCompany, closeCompany } = useCompany()
-  const [data, setData]             = useState<CompanyDetail | null>(null)
-  const [loading, setLoading]       = useState(false)
-  const [error, setError]           = useState<string | null>(null)
-  const panelRef                    = useRef<HTMLDivElement>(null)
-  const [activeTab, setActiveTab]   = useState<'overview' | 'evidence'>('overview')
-  const [watchEntry, setWatchEntry] = useState<WatchedCompany | null>(null)
-  const [watching, setWatching]     = useState(false)   // toggle in-flight
+  const [data, setData]       = useState<CompanyDetail | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError]     = useState<string | null>(null)
+  const panelRef              = useRef<HTMLDivElement>(null)
 
-  // Fetch company data + watchlist status whenever selected changes
+  // Fetch company data whenever selected changes
   useEffect(() => {
     if (!selectedCompany) {
       // Preserve data during exit animation — cleared when next company loads
@@ -222,41 +219,15 @@ export default function CompanyPanel({ demoMode = false }: { demoMode?: boolean 
     setLoading(true)
     setError(null)
     setData(null)
-    setWatchEntry(null)
-    setActiveTab('overview')
-    Promise.all([
-      getCompany(selectedCompany),
-      getWatchlist(),
-    ]).then(([d, wl]) => {
+    getCompany(selectedCompany).then(d => {
       if (cancelled) return
       setData(d)
-      setWatchEntry(wl.find(w => w.normalised_name === selectedCompany) ?? null)
       setLoading(false)
     }).catch(e => {
       if (!cancelled) { setError(e.message); setLoading(false) }
     })
     return () => { cancelled = true }
   }, [selectedCompany, demoMode])
-
-  async function handleToggleWatch() {
-    if (!data || !selectedCompany || watching) return
-    setWatching(true)
-    try {
-      if (watchEntry) {
-        await unwatchCompany(watchEntry.id)
-        setWatchEntry(null)
-      } else {
-        const entry = await watchCompany({
-          normalised_name: selectedCompany,
-          display_name: data.display_name,
-          ticker: data.ticker,
-        })
-        setWatchEntry(entry)
-      }
-    } finally {
-      setWatching(false)
-    }
-  }
 
   // Close on Escape
   useEffect(() => {
@@ -327,52 +298,12 @@ export default function CompanyPanel({ demoMode = false }: { demoMode?: boolean 
               <div className="h-4 w-40 bg-elevated rounded" />
             )}
           </div>
-          {/* Watch / unwatch — only shown when we have real data */}
-          {data && !demoMode && (
-            <button
-              onClick={handleToggleWatch}
-              disabled={watching}
-              title={watchEntry ? 'Remove from watchlist' : 'Add to watchlist'}
-              className={cn(
-                'p-2 rounded-lg transition-all duration-150 shrink-0 disabled:opacity-50',
-                watchEntry
-                  ? 'text-accent bg-accent/10 hover:bg-accent/15'
-                  : 'text-text-tertiary hover:text-accent hover:bg-elevated'
-              )}
-            >
-              {watchEntry
-                ? <BookmarkCheck size={15} />
-                : <Bookmark size={15} />
-              }
-            </button>
-          )}
           <button
             onClick={closeCompany}
             className="p-2 rounded-lg text-text-tertiary hover:text-text-secondary hover:bg-elevated transition-colors shrink-0"
           >
             <X size={15} />
           </button>
-        </div>
-
-        {/* ── Tabs ── */}
-        <div className="flex gap-0 border-b border-border shrink-0">
-          {(['overview', 'evidence'] as const).map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={cn(
-                'flex-1 py-2.5 text-xs font-medium capitalize transition-colors duration-150',
-                activeTab === tab
-                  ? 'text-text-primary border-b-2 border-accent -mb-px'
-                  : 'text-text-tertiary hover:text-text-secondary'
-              )}
-            >
-              {tab}
-              {tab === 'evidence' && data && (
-                <span className="ml-1 text-[10px] text-text-tertiary">({data.evidence.length})</span>
-              )}
-            </button>
-          ))}
         </div>
 
         {/* ── Body ── */}
@@ -389,7 +320,7 @@ export default function CompanyPanel({ demoMode = false }: { demoMode?: boolean 
                 </p>
                 <p className="text-text-tertiary text-xs leading-relaxed">
                   Company deep-dives show 4-week trajectory, thesis exposure breakdown,
-                  and the full evidence trail. Available with live data.
+                  and recent signals. Available with live data.
                 </p>
               </div>
               <Link
@@ -404,7 +335,7 @@ export default function CompanyPanel({ demoMode = false }: { demoMode?: boolean 
 
           {loading && (
             <div className="p-5 space-y-4">
-              {[...Array(4)].map((_, i) => (
+              {[...Array(3)].map((_, i) => (
                 <div key={i} className="h-16 bg-elevated rounded-xl animate-pulse" />
               ))}
             </div>
@@ -416,7 +347,7 @@ export default function CompanyPanel({ demoMode = false }: { demoMode?: boolean 
             </div>
           )}
 
-          {!loading && !error && data && activeTab === 'overview' && (
+          {!loading && !error && data && (
             <div className="p-5 space-y-5">
               {/* ── Verdict — system speaks first ── */}
               <VerdictCard data={data} />
@@ -436,38 +367,16 @@ export default function CompanyPanel({ demoMode = false }: { demoMode?: boolean 
                 </div>
               )}
 
-              {/* Top evidence preview (first 3) */}
+              {/* Recent signals — top 3 only */}
               {data.evidence.length > 0 && (
                 <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <SectionLabel>Recent signals</SectionLabel>
-                    <button
-                      onClick={() => setActiveTab('evidence')}
-                      className="text-accent text-[10px] hover:underline"
-                    >
-                      View all {data.evidence.length} →
-                    </button>
-                  </div>
+                  <SectionLabel className="mb-3">Recent signals</SectionLabel>
                   <div>
                     {data.evidence.slice(0, 3).map(ev => (
                       <EvidenceRow key={ev.id} ev={ev} />
                     ))}
                   </div>
                 </div>
-              )}
-            </div>
-          )}
-
-          {!loading && !error && data && activeTab === 'evidence' && (
-            <div className="p-5">
-              <SectionLabel className="mb-3">{data.evidence.length} evidence records</SectionLabel>
-              <div>
-                {data.evidence.map(ev => (
-                  <EvidenceRow key={ev.id} ev={ev} />
-                ))}
-              </div>
-              {data.evidence.length === 0 && (
-                <p className="text-text-tertiary text-xs text-center py-8">No evidence records yet</p>
               )}
             </div>
           )}

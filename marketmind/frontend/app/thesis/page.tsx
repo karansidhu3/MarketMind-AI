@@ -26,8 +26,14 @@ export default function ThesisPage() {
     setError('')
     try {
       const data = await getTheses()
-      // Rank by evidence count — most active thesis first
-      setTheses([...data].sort((a, b) => b.evidence_count - a.evidence_count))
+      // Rank by weekly momentum first, then by total activity
+      setTheses([...data].sort((a, b) => {
+        // Primary: weekly_delta descending (fastest-rising themes surface first)
+        const deltaDiff = (b.weekly_delta ?? 0) - (a.weekly_delta ?? 0)
+        if (Math.abs(deltaDiff) > 0.005) return deltaDiff
+        // Secondary: evidence count (most active thesis)
+        return b.evidence_count - a.evidence_count
+      }))
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load.')
     } finally {
@@ -62,7 +68,7 @@ export default function ThesisPage() {
         <div className="mb-8">
           <h1 className="text-text-primary font-serif-display text-3xl">Investment Themes</h1>
           <p className="text-text-tertiary text-sm mt-0.5">
-            Ranked by activity. Click any theme to investigate.
+            Ranked by momentum. Click any theme to investigate.
           </p>
         </div>
 
