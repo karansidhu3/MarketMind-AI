@@ -58,9 +58,10 @@ Everything runs locally. Zero API costs.
 
 Three primary surfaces — **Feed / Themes / Portfolio**:
 
-**Feed** — daily briefing. Thesis signals ranked by confidence, company radar
-(acceleration-first), Explain narrative (SSE streaming, pre-warmed post-ingestion).
-Defaults to Explain mode. Timeline scrubber reveals historical dates.
+**Feed** — daily briefing. Company radar is the hero — visible above the fold
+immediately. Cross-theme Explain narrative (SSE streaming, pre-warmed post-ingestion)
+below the radar. Watch callout shows trajectory numbers (`4 → 8 → 11 → 23`) for
+the top accelerating company. Timeline scrubber reveals historical dates.
 
 **Themes** — 2-column grid of thesis cards with 14-day confidence sparklines and
 health badges. Thesis detail: evidence list, opposing signals, language delta,
@@ -70,9 +71,12 @@ corpus search tab, re-evaluate button.
 exposure gap detection, momentum narrative per holding.
 
 **Company panel** — global slide-out drawer (ADR-027) accessible from any company
-name across all surfaces. Shows trajectory, thesis breakdown, evidence list.
+name across all surfaces. Shows verdict card, 128px 4-week trajectory bar chart,
+thesis breakdown, 3 recent evidence excerpts.
 
-**Demo** — `/demo` route, no auth, static sample data. Public-facing.
+**Demo** — `/demo` (feed) and `/demo/portfolio` routes, no auth, static sample data.
+Public-facing. Company panel fully unlocked with static CompanyDetail for 15
+companies. Portfolio gap detection shows "Not held" signals with sparklines.
 
 ---
 

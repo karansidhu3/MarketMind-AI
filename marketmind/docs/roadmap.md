@@ -294,23 +294,44 @@ claims are buried. The system should speak first; data is evidence, not headline
   3 Redis cache keys after ingestion instead of broken HTTP call to backend.
   Feed regenerates on next page load without manual Regenerate click. (ADR-029)
 
+**Post product-review overhaul (Phases 1–3, 2026-05-31)**:
+
+- **Phase 1** — Demo moat visible: company panel unlocked in demo with 15 companies
+  of static CompanyDetail data (`lib/demo-data.ts`); radar moved above the fold on
+  `/demo`; demo notice banner removed; "since [date]" in radar rows makes corpus
+  memory visible without explanatory copy.
+
+- **Phase 2** — "You don't hold it": new `/demo/portfolio` route with pull quote
+  narrative, 4 gap rows with mini sparklines + "Not held" badge, holdings section.
+  Watch callout updated to show actual weekly trajectory numbers (`4 → 8 → 11 → 23`
+  in accent monospace). Feed / Portfolio / About nav in DemoShell. `DEMO_HOLDINGS`
+  and `DEMO_GAPS` added to `app/demo/data.ts`.
+
+- **Phase 3** — Live app hierarchy: `/feed` restructured — radar above the fold,
+  narrative moved below. `TrajectoryChart` 56px → 128px with per-bar spring
+  animations and "4-WEEK TRAJECTORY" section label. `WatchCallout` refactored to
+  render actual `weekly_counts` in accent monospace. Panel header bug fixed in demo
+  mode (now shows `display_name + ticker` from loaded data, not raw normalised string).
+
+- README screenshots retaken (dark mode, Playwright) to reflect current state.
+
 ### Remaining
 
 - **Information hierarchy pass** — SignalCard highlight as hero text (`text-sm`
-  leading-relaxed, dark), confidence number secondary. Feed hero always expanded.
-  Company panel reads like a short report. Radar de-emphasises raw numbers.
+  leading-relaxed, dark), confidence number secondary. Radar de-emphasises raw
+  numbers. (TrajectoryChart and WatchCallout addressed in Phase 3; SignalCard
+  and radar numbers still pending.)
 
 - **Aesthetic: Intelligence Room** — amber/gold `#D4A843` accent replacing violet
   for signal/alert moments. DM Serif Display or Playfair for headline claims.
-  Corpus pulse indicator bottom of every page ("847 docs · updated 6h ago").
+  Corpus pulse indicator ("847 docs · updated 6h ago").
 
-- **Framer Motion** — page transitions (180ms fade+8px), card stagger (40ms delay),
-  sparkline draw animation, bar fill 0→width, number count-up, panel spring,
-  signal emergence pulse.
+- **Framer Motion** — page transitions (180ms fade+8px), card stagger (40ms
+  delay), sparkline draw animation, bar fill 0→width, number count-up, signal
+  emergence pulse. (Panel spring and trajectory bar spring done in Phase 3.)
 
 - **Portfolio theme coverage zones** — visual field replacing holdings table;
-  holdings as chips inside each theme zone; gaps as empty zones. Holdings detail
-  collapsed behind "Your positions (N)".
+  holdings as chips inside each theme zone; gaps as empty zones.
 
 ### Cuts (original plan, recorded for completeness)
 
