@@ -107,30 +107,35 @@ function TrajectoryChart({ counts }: { counts: number[] }) {
   const labels = ['3w ago', '2w ago', '1w ago', 'This wk']
 
   return (
-    <div className="flex items-end gap-1.5 h-14">
-      {counts.map((v, i) => {
-        const pct = (v / max) * 100
-        const isLatest = i === counts.length - 1
-        const prev = counts[i - 1] ?? 0
-        const rising = v > prev
-        return (
-          <div key={i} className="flex-1 flex flex-col items-center gap-1">
-            <span className="text-[9px] text-text-tertiary tabular-nums">{v}</span>
-            <div className="w-full relative flex items-end" style={{ height: '36px' }}>
-              <div
-                className={cn(
-                  'w-full rounded-sm transition-all duration-500',
-                  isLatest
-                    ? rising ? 'bg-green/60' : v === prev ? 'bg-accent/40' : 'bg-red/40'
-                    : 'bg-border/60'
-                )}
-                style={{ height: `${Math.max(pct, 4)}%` }}
-              />
+    <div>
+      <SectionLabel className="mb-3">4-week trajectory</SectionLabel>
+      <div className="flex items-end gap-2 h-32">
+        {counts.map((v, i) => {
+          const pct = (v / max) * 100
+          const isLatest = i === counts.length - 1
+          const prev = counts[i - 1] ?? 0
+          const rising = v > prev
+          return (
+            <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+              <span className="text-[10px] text-text-tertiary tabular-nums font-medium">{v}</span>
+              <div className="w-full relative flex items-end" style={{ height: '88px' }}>
+                <motion.div
+                  className={cn(
+                    'w-full rounded-md',
+                    isLatest
+                      ? rising ? 'bg-green/60' : v === prev ? 'bg-accent/40' : 'bg-red/40'
+                      : 'bg-border/50'
+                  )}
+                  initial={{ height: 0 }}
+                  animate={{ height: `${Math.max(pct, 3)}%` }}
+                  transition={{ ...spring.gentle, delay: i * 0.06 }}
+                />
+              </div>
+              <span className="text-[9px] text-text-tertiary/70 truncate w-full text-center">{labels[i]}</span>
             </div>
-            <span className="text-[8px] text-text-tertiary/70 truncate w-full text-center">{labels[i]}</span>
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -287,10 +292,6 @@ export default function CompanyPanel({
                 <div className="h-4 w-36 bg-elevated rounded animate-pulse" />
                 <div className="h-3 w-20 bg-elevated rounded animate-pulse" />
               </div>
-            ) : demoMode && selectedCompany ? (
-              <h2 className="text-text-primary font-semibold text-base leading-tight truncate capitalize">
-                {selectedCompany.replace(/-/g, ' ')}
-              </h2>
             ) : data ? (
               <>
                 <div className="flex items-center gap-2">

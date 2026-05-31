@@ -151,13 +151,19 @@ function UnifiedExplainBlock({ feedDate, signals }: { feedDate: string; signals:
 
 // ── "What to watch today" callout ─────────────────────────────────────────────
 
-function buildWatchSentence(
+type WatchData =
+  | { type: 'acceleration'; companyName: string; weeklyCounts: number[]; thesisCount: number }
+  | { type: 'thesis_rising'; thesisName: string; newEvidenceCount: number; confidence: number }
+  | { type: 'thesis_active'; thesisName: string; newEvidenceCount: number }
+  | null
+
+function buildWatchData(
   signals: ThesisSignal[],
   radarItems: CompanyRadarItem[],
-): string | null {
+): WatchData {
   if (signals.length === 0) return null
 
-  // Accelerating radar company (2× week-over-week growth with prior history)
+  // Accelerating radar company — 2× week-over-week with prior history
   const accelRadar = radarItems
     .map(c => {
       const latest = c.weekly_counts[c.weekly_counts.length - 1] ?? 0
@@ -167,37 +173,62 @@ function buildWatchSentence(
     .filter(({ latest, prev, ratio }) => ratio >= 2 && latest >= 2 && prev > 0)
     .sort((a, b) => b.ratio - a.ratio)[0]
 
-  // Most-rising thesis
   const risingTop = [...signals]
     .filter(s => s.momentum === 'rising')
     .sort((a, b) => b.new_evidence_count - a.new_evidence_count)[0]
 
-  // Most-active thesis
   const topSignal = [...signals].sort((a, b) => b.new_evidence_count - a.new_evidence_count)[0]
 
   if (accelRadar) {
-    const { c, latest, prev } = accelRadar
-    const label = `${Math.round(latest / prev)}×`
-    const tp = c.thesis_names.length === 1 ? 'theme' : 'themes'
-    return `${c.company_name} is accelerating — activity up ${label} this week across ${c.thesis_names.length} ${tp}.`
+    return {
+      type: 'acceleration',
+      companyName: accelRadar.c.company_name,
+      weeklyCounts: accelRadar.c.weekly_counts,
+      thesisCount: accelRadar.c.thesis_names.length,
+    }
   }
   if (risingTop && risingTop.new_evidence_count >= 3) {
-    const pct = Math.round(risingTop.confidence * 100)
-    return `${risingTop.thesis_name} is gaining strength — ${risingTop.new_evidence_count} new signals today, ${pct}% support rate.`
+    return {
+      type: 'thesis_rising',
+      thesisName: risingTop.thesis_name,
+      newEvidenceCount: risingTop.new_evidence_count,
+      confidence: risingTop.confidence,
+    }
   }
   if (topSignal && topSignal.new_evidence_count >= 2) {
-    return `${topSignal.thesis_name} is most active today — ${topSignal.new_evidence_count} new signals.`
+    return {
+      type: 'thesis_active',
+      thesisName: topSignal.thesis_name,
+      newEvidenceCount: topSignal.new_evidence_count,
+    }
   }
   return null
 }
 
 function WatchCallout({ feed, radarItems }: { feed: FeedResponse; radarItems: CompanyRadarItem[] }) {
-  const sentence = buildWatchSentence(feed.thesis_signals, radarItems)
-  if (!sentence) return null
+  const data = buildWatchData(feed.thesis_signals, radarItems)
+  if (!data) return null
+
+  const tp = data.type === 'acceleration'
+    ? (data.thesisCount === 1 ? 'theme' : 'themes')
+    : ''
+
   return (
     <div className="flex items-center gap-3 px-4 py-3 mb-5 rounded-xl border border-accent/25 bg-accent/[0.06]">
       <Eye size={13} className="text-accent shrink-0" />
-      <p className="text-text-primary text-sm font-medium flex-1">{sentence}</p>
+      <p className="text-text-primary text-sm font-medium flex-1">
+        {data.type === 'acceleration' ? (
+          <>
+            {data.companyName} —{' '}
+            <span className="font-mono text-accent">{data.weeklyCounts.join(' → ')}</span>
+            {' '}docs over {data.weeklyCounts.length} weeks. Accelerating across {data.thesisCount} investment {tp}.
+          </>
+        ) : data.type === 'thesis_rising' ? (
+          `${data.thesisName} is gaining strength — ${data.newEvidenceCount} new signals today, ${Math.round(data.confidence * 100)}% support rate.`
+        ) : (
+          `${data.thesisName} is most active today — ${data.newEvidenceCount} new signals.`
+        )}
+      </p>
     </div>
   )
 }
@@ -301,15 +332,17 @@ export default function FeedPage() {
         {loading && (
           <>
             <HeroSkeleton />
-            <Skeleton className="h-2.5 w-24 mb-5" />
-            <div className="space-y-3 mb-12">
-              {['w-full', 'w-[93%]', 'w-4/5', 'w-full', 'w-[88%]'].map((w, i) => (
-                <Skeleton key={i} className={`h-4 ${w}`} />
-              ))}
-            </div>
-            <div className="border-t border-border/40 pt-8">
-              <Skeleton className="h-3 w-28 mb-4" />
-              {[...Array(8)].map((_, i) => <RadarRowSkeleton key={i} />)}
+            {/* Radar skeleton first */}
+            <Skeleton className="h-3 w-28 mb-4" />
+            {[...Array(8)].map((_, i) => <RadarRowSkeleton key={i} />)}
+            {/* Narrative skeleton below */}
+            <div className="border-t border-border/40 pt-8 mt-10">
+              <Skeleton className="h-2.5 w-24 mb-5" />
+              <div className="space-y-3">
+                {['w-full', 'w-[93%]', 'w-4/5', 'w-full', 'w-[88%]'].map((w, i) => (
+                  <Skeleton key={i} className={`h-4 ${w}`} />
+                ))}
+              </div>
             </div>
           </>
         )}
@@ -343,22 +376,28 @@ export default function FeedPage() {
               <WatchCallout feed={feed} radarItems={radar} />
             </motion.div>
 
-            {/* ── Narrative — full width ────────────────────────── */}
+            {/* ── Radar — hero, above the fold ─────────────────── */}
+            {radar.length > 0 && (
+              <motion.section
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ ...spring.gentle, delay: 0.1 }}
+              >
+                <SectionLabel className="mb-4">Company radar</SectionLabel>
+                <CompanyRadar companies={radar.slice(0, 10)} initialAlerts={alerts} />
+              </motion.section>
+            )}
+
+            {/* ── Narrative — cross-theme analysis, below radar ─── */}
             {feed.thesis_signals.length === 0 ? (
               <EmptySignals />
             ) : (
-              <UnifiedExplainBlock
-                key={feed.generated_at}
-                feedDate={feed.feed_date}
-                signals={feed.thesis_signals}
-              />
-            )}
-
-            {/* ── Radar — full width, below narrative ───────────── */}
-            {radar.length > 0 && (
               <section className="mt-10 pt-8 border-t border-border/40">
-                <SectionLabel className="mb-4">Company radar</SectionLabel>
-                <CompanyRadar companies={radar.slice(0, 10)} initialAlerts={alerts} />
+                <UnifiedExplainBlock
+                  key={feed.generated_at}
+                  feedDate={feed.feed_date}
+                  signals={feed.thesis_signals}
+                />
               </section>
             )}
           </>
