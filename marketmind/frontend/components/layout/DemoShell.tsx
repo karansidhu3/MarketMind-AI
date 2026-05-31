@@ -60,7 +60,10 @@ function DemoHeader({ showBadge }: { showBadge: boolean }) {
         {/* Nav links */}
         <div className="flex items-center gap-1 ml-1">
           <Link href="/demo" className="text-xs text-text-tertiary hover:text-text-secondary px-2.5 py-1.5 rounded-lg hover:bg-elevated/70 transition-colors">
-            Demo
+            Feed
+          </Link>
+          <Link href="/demo/portfolio" className="text-xs text-text-tertiary hover:text-text-secondary px-2.5 py-1.5 rounded-lg hover:bg-elevated/70 transition-colors">
+            Portfolio
           </Link>
           <Link href="/about" className="text-xs text-text-tertiary hover:text-text-secondary px-2.5 py-1.5 rounded-lg hover:bg-elevated/70 transition-colors">
             About

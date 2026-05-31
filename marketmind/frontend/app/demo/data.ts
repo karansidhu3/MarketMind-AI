@@ -282,6 +282,89 @@ export const DEMO_RADAR: CompanyRadarItem[] = [
   },
 ]
 
+// ── Portfolio demo data ───────────────────────────────────────────────────────
+
+export interface DemoHolding {
+  ticker: string
+  company_name: string
+  thesis_names: string[]
+  doc_count: number
+  momentum: 'rising' | 'flat' | 'falling'
+}
+
+export interface DemoGap {
+  company_name: string
+  ticker: string
+  normalised_name: string
+  thesis_names: string[]
+  doc_count: number
+  weekly_counts: number[]
+}
+
+/** Simulated holdings — what the demo user "holds" */
+export const DEMO_HOLDINGS: DemoHolding[] = [
+  {
+    ticker: 'NVDA',
+    company_name: 'NVIDIA',
+    thesis_names: ['AI Infrastructure Bottlenecks', 'Semiconductor Supply Chain Stress'],
+    doc_count: 19,
+    momentum: 'rising',
+  },
+  {
+    ticker: 'ETN',
+    company_name: 'Eaton Corporation',
+    thesis_names: ['Energy Grid Modernisation', 'Data Center Physical Infrastructure'],
+    doc_count: 14,
+    momentum: 'rising',
+  },
+  {
+    ticker: 'LMT',
+    company_name: 'Lockheed Martin',
+    thesis_names: ['Defense Production Ramp'],
+    doc_count: 9,
+    momentum: 'flat',
+  },
+]
+
+/**
+ * Companies with strong corpus signals that the demo user doesn't hold.
+ * Sorted by urgency: doc_count × thesis_count × recency (all current).
+ */
+export const DEMO_GAPS: DemoGap[] = [
+  {
+    company_name: 'Vertiv Holdings',
+    ticker: 'VRT',
+    normalised_name: 'vertiv holdings',
+    thesis_names: ['AI Infrastructure Bottlenecks', 'Data Center Physical Infrastructure'],
+    doc_count: 23,
+    weekly_counts: [4, 8, 11, 23],
+  },
+  {
+    company_name: 'Advanced Micro Devices',
+    ticker: 'AMD',
+    normalised_name: 'advanced micro devices',
+    thesis_names: ['AI Infrastructure Bottlenecks', 'Semiconductor Supply Chain Stress'],
+    doc_count: 12,
+    weekly_counts: [3, 6, 9, 12],
+  },
+  {
+    company_name: 'Applied Materials',
+    ticker: 'AMAT',
+    normalised_name: 'applied materials',
+    thesis_names: ['Semiconductor Supply Chain Stress'],
+    doc_count: 16,
+    weekly_counts: [5, 7, 11, 16],
+  },
+  {
+    company_name: 'Super Micro Computer',
+    ticker: 'SMCI',
+    normalised_name: 'super micro computer',
+    thesis_names: ['AI Infrastructure Bottlenecks'],
+    doc_count: 13,
+    weekly_counts: [2, 5, 9, 13],
+  },
+]
+
 /**
  * Narrative text shown in Explain mode per thesis (pre-rendered, no streaming needed).
  */

@@ -43,7 +43,9 @@ export default function DemoPage() {
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-accent/25 bg-accent/[0.06]">
             <Eye size={13} className="text-accent shrink-0" />
             <p className="text-text-primary text-sm font-medium flex-1">
-              Vertiv Holdings is accelerating — activity up 2× this week across 2 investment themes.
+              Vertiv Holdings —{' '}
+              <span className="font-mono text-accent">4 → 8 → 11 → 23</span>
+              {' '}docs over 4 weeks. Accelerating across AI Infrastructure and Data Center themes.
             </p>
           </div>
         </motion.div>
