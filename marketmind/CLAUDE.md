@@ -7,31 +7,47 @@ Sprint history lives in `docs/roadmap.md`. Full ADR detail in `docs/decisions.md
 
 ## What this product is
 
-MarketMind is a **persistent investment intelligence platform** that runs entirely
-locally (no paid APIs). Core goal: surface unknown companies and track investment
-thesis confidence **before signals become mainstream** — not after.
+MarketMind is a **corpus memory platform** that tracks how often independent
+companies cite each other in primary legal disclosures over time. It runs
+entirely locally (no paid APIs).
 
-Key differentiator from a one-shot LLM query: **memory across time**. A company
-appearing in 2 filings in March → 8 in April → 19 in May is a signal no search
-can surface. MarketMind ingests SEC filings and news daily, scores them against
-tracked theses, and builds a compounding corpus.
+**The primary intelligence primitive is ICR — Independent Citation Rate:**
+how many structurally independent companies referenced an entity in primary
+SEC filings (8-K, 10-Q, 10-K) this week, versus prior weeks. A company cited
+by 9 independent supply chain companies in one week is a different category of
+signal from one mentioned 9 times in one document.
 
-**Daily use case:** 2-minute morning check. What changed in thesis trajectories.
-Which unknown companies are accelerating. How that maps to the portfolio.
+**The moat is temporal:** A company going from 0 → 2 → 9 independent citations
+over 8 weeks is a signal no search engine, terminal, or LLM can surface. It
+requires a system that has been running and accumulating. That trajectory —
+when it started, how fast it grew, which independent companies are driving it —
+is what this product produces.
 
-**Portfolio goal:** Link holdings so MarketMind can surface alignment gaps —
-"Power Grid thesis rising, you have minimal exposure; Powell Industries has
-appeared in 12 independent filings and you don't hold it."
+**Daily use case:** Open the Signal Map. See which company trajectories have
+inflected since yesterday. Check which accelerating trajectories you don't hold.
+
+**Portfolio goal:** Surface trajectory gaps — companies with accelerating ICR
+in your investment contexts that you have no position in.
+
+**⚠️ Rebuild in progress (as of 2026-06-01):** The product is being rebuilt
+around ICR as the primary metric. See `docs/roadmap.md` (Phase 0 + Sprints 12–15)
+and ADR-031 through ADR-037. Confidence scores are being removed. The Feed and
+Themes surfaces are being replaced by the Signal Map. Company Panel is being
+replaced by full `/companies/[name]` pages.
 
 ---
 
 ## What NOT to build
 
+- Confidence scores — inflates toward 70–80% by construction, misleads (ADR-031)
+- Momentum labels from evidence volume — volume ≠ direction (see ICR instead)
 - Supply chain extraction — LLM errors compound as false positives (ADR-024)
 - Insider transaction clustering — commodity signal, no differentiation (ADR-025)
-- Buy/sell recommendations — thesis alignment framing only (ADR-023)
+- Buy/sell recommendations — trajectory framing only (ADR-023)
 - Gamification, streaks, usage counts, rankings, cost visibility
-- New ingestion sources without checking C-001 — relevance > volume
+- Generic EDGAR fire hose — dominated by targeted connector, adds noise (ADR-033)
+- Yahoo Finance, MarketWatch, Seeking Alpha, The Register, Ars Technica — removed (ADR-033)
+- New ingestion sources without adding to ADR-033 — quality over volume
 - Keyword edits that silently re-score historical evidence (C-009)
 - Alembic migrations without user awareness — schema changes affect existing data
 
@@ -56,27 +72,35 @@ Everything runs locally. Zero API costs.
 
 ## Information architecture
 
-Three primary surfaces — **Feed / Themes / Portfolio**:
+**⚠️ Target architecture (Sprints 12–15). Current code still uses old surfaces.**
+See `docs/roadmap.md` for migration sequence. Old surfaces remain live until
+Sprint 15 deprecation.
 
-**Feed** — daily briefing. Company radar is the hero — visible above the fold
-immediately. Cross-theme Explain narrative (SSE streaming, pre-warmed post-ingestion)
-below the radar. Watch callout shows trajectory numbers (`4 → 8 → 11 → 23`) for
-the top accelerating company. Timeline scrubber reveals historical dates.
+Three surfaces — **Signals / Companies / Portfolio**:
 
-**Themes** — 2-column grid of thesis cards with 14-day confidence sparklines and
-health badges. Thesis detail: evidence list, opposing signals, language delta,
-corpus search tab, re-evaluate button.
+**Signals** (`/signals`) — the Signal Map. Primary surface. Companies ranked by
+ICR acceleration (week-over-week slope, not absolute count). Each row: 12-week
+ICR sparkline, independent citation count this week + delta, first appeared date,
+top primary filing excerpt. Filter chips for signal contexts. LLM narrative
+available behind "Analysis" toggle — never auto-expanded.
 
-**Portfolio** — holdings with ticker autocomplete, thesis alignment scores,
-exposure gap detection, momentum narrative per holding.
+**Companies** (`/companies/[name]`) — full company page. Full ICR history since
+first_seen. Citation sources (which companies filed documents citing this entity).
+Signal context membership (independent citation count per context). Portfolio
+status (held / not held). No confidence score. No verdict card.
 
-**Company panel** — global slide-out drawer (ADR-027) accessible from any company
-name across all surfaces. Shows verdict card, 128px 4-week trajectory bar chart,
-thesis breakdown, 3 recent evidence excerpts.
+**Portfolio** (`/portfolio`) — two sections: trajectory gaps (accelerating
+companies you don't hold, ranked by ICR acceleration) + holdings (your positions
+with 12-week ICR sparklines showing whether the underlying thesis is gaining
+or losing independent confirmation).
 
-**Demo** — `/demo` (feed) and `/demo/portfolio` routes, no auth, static sample data.
-Public-facing. Company panel fully unlocked with static CompanyDetail for 15
-companies. Portfolio gap detection shows "Not held" signals with sparklines.
+**Demo** — `/demo` (signal map with static data) and `/demo/portfolio`.
+Public-facing. No auth. Company panel (current) will be replaced by company
+page during Sprint 14 migration.
+
+**Currently live (pre-rebuild):** Feed / Themes / Portfolio with company
+slide-out panel. These surfaces remain functional during the rebuild and are
+removed in Sprint 15.
 
 ---
 
@@ -85,18 +109,22 @@ companies. Portfolio gap detection shows "Not held" signals with sparklines.
 Daily at 6am PT via scheduler container. Compute runs on remote PC (RTX 3060,
 12GB VRAM) via `OLLAMA_URL` in `.env`. Scheduler polls Ollama until ready before
 starting (`_wait_for_ollama()`). After ingestion, calls `POST /feed/regenerate`
-to pre-warm all Explain caches while Ollama is still up.
+to pre-warm caches while Ollama is still up.
 
-**Sources:**
-- Generic: SEC EDGAR 8-K (40), 10-Q (20), 10-K (10), Form 4 (40)
-- Yahoo Finance (~60 tickers), MarketWatch RSS, Seeking Alpha RSS
+**Mac must be awake at 6am PT** for the container to fire. Set scheduled wake:
+`sudo pmset repeat wakeorpoweron MTWRFSU 05:45:00`
+
+**Sources (post-Phase-0 cleanse):**
 - Targeted (TargetedSECConnector): 60 curated tickers across 5 sectors
   - AI Infra (NVDA, AMD, AVGO, MRVL, SMCI, DELL, CSCO, ANET, VRT…)
   - Semiconductor Supply Chain (AMAT, KLAC, LRCX, MU, INTC, TSM…)
   - Energy Grid (ETN, HUBB, PWR, AMPS, GE, NEE…)
   - Defense (LMT, RTX, NOC, GD, KTOS…)
   - Data Center Physical (DLR, EQIX, VRT, IR, JCI…)
-- Sector RSS: Breaking Defense, Utility Dive, EE Times, The Register, Ars Technica
+- Sector RSS (TRADE_PRESS): Breaking Defense, Utility Dive, EE Times
+
+**Removed (ADR-033):** Generic EDGAR fire hose, Form 4, Yahoo Finance,
+MarketWatch, Seeking Alpha, The Register, Ars Technica.
 
 Smart catch-up: if `ingest:done:{date}` Redis key is missing on startup, runs
 immediately rather than waiting for the scheduled slot.
@@ -107,9 +135,10 @@ immediately rather than waiting for the scheduled slot.
 
 - Frontend changes require Docker image rebuild — no live reload in production container
 - Evidence is immutable — re-evaluation is explicit user action (ADR-017)
-- Confidence formula: `supporting / total_evidence_count` — changing it requires updating ADR-012
+- ICR is the primary metric — do not re-introduce confidence scores (ADR-031)
+- Only PRIMARY_DISCLOSURE and TRADE_PRESS sources are ingested (ADR-033)
 - `/no_think` prefix on all latency-sensitive LLM calls — do not remove (ADR-021)
-- Company radar ranks by unique source documents, not mention count (ADR-020)
+- Constraint vocabulary gate required before creating evidence rows (ADR-034)
 
 ---
 
@@ -223,10 +252,17 @@ marketmind/
 - **ADR-024** — Supply chain extraction deprioritised (code retained)
 - **ADR-025** — Insider transaction tracking deprioritised (code retained)
 - **ADR-026** — Corpus targeting is highest-leverage infrastructure investment
-- **ADR-027** — Company deep-dive: global React context; hook inside provider tree
+- **ADR-027** — Company deep-dive: global React context (deprecated in Sprint 14, see ADR-036)
 - **ADR-028** — Timeline scrubber: radar always live, feed content is historical
 - **ADR-029** — Ingestor invalidates feed via direct Redis key deletion (not HTTP)
-- **ADR-030** — Multi-thesis LLM scoring planned (one generate call per doc, all theses)
+- **ADR-030** — Multi-thesis LLM scoring planned (deferred pending ICR rebuild)
+- **ADR-031** — ICR replaces confidence score as primary intelligence metric
+- **ADR-032** — Source type: PRIMARY_DISCLOSURE vs TRADE_PRESS
+- **ADR-033** — Corpus quality cleanse: noisy sources removed
+- **ADR-034** — Constraint vocabulary gate: constraint language required, not just topic presence
+- **ADR-035** — Signal Map replaces Feed + Radar as primary surface
+- **ADR-036** — Company surface as full page, not slide-out panel
+- **ADR-037** — Trajectory inflection alerts replace static threshold alerts
 
 ---
 
