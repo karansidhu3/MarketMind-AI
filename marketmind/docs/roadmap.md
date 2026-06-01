@@ -2,17 +2,14 @@
 
 ## Vision
 
-MarketMind is a persistent investment intelligence platform that surfaces unknown
-companies and tracks investment thesis confidence **before signals become mainstream**.
+MarketMind is a corpus memory platform that tracks Independent Citation Rate (ICR)
+— how many structurally independent companies cited an entity in primary SEC filings
+each week, tracked over time. The moat is temporal: a company going from 0 → 2 → 9
+independent citations over 8 weeks is a signal no search engine, terminal, or LLM
+can surface without a system that has been running and accumulating.
 
-The core advantage over one-shot LLM queries: **memory across time**.
-MarketMind knows what signals appeared 6 weeks ago versus today. It builds a
-corpus that compounds. The longer it runs, the more meaningful every new signal
-becomes.
-
-**The daily use case:** Open it for 2 minutes each morning. See what changed in
-your thesis trajectories, which unknown companies are accelerating, and how that
-maps to your portfolio — in plain English, without jargon.
+**The daily use case:** Open the Signal Map. See which company trajectories have
+inflected since yesterday. Check which accelerating trajectories you don't hold.
 
 ---
 
@@ -439,203 +436,58 @@ See the design direction: stop showing it as a holdings table. Restructure as:
 
 ---
 
-## Rebuild — ICR-Based Architecture
+## ICR Rebuild ✅ (2026-06-01)
 
-Following a deep audit of the intelligence layer (2026-06-01), the product is
-being rebuilt around a single primitive: **Independent Citation Rate (ICR)** —
-the number of structurally independent companies citing an entity in primary
-legal disclosures per week, tracked over time.
+Following a deep audit of the intelligence layer, the product was rebuilt around
+ICR as the sole primary metric. ADR-031 through ADR-037 govern the architecture.
 
-**What the audit found:**
-- Confidence scores inflate toward 70–80% by construction regardless of thesis validity
-- Momentum labels measure volume, not direction
-- Generic EDGAR fire hose, Yahoo Finance, MarketWatch, and Seeking Alpha generate
-  noise that degrades company signal quality
-- The genuine moat is the temporal trajectory of corpus presence, currently buried
-  as a secondary chart — not the primary output
-- The product's most valuable capability is: showing when a company went from
-  background noise to being cited in 9 independent filings in a single week
+### Phase 0 — Corpus Cleanse ✅
 
-**ADRs:** ADR-031 through ADR-037 govern this rebuild. Read those before
-making architectural changes.
+- Removed `SECEdgarConnector`, `Form4Connector`, `YahooFinanceConnector`,
+  MarketWatch, Seeking Alpha, The Register, Ars Technica from `ingest.py`
+- Kept: `TargetedSECConnector` (5 sector watchlists) + Breaking Defense / Utility
+  Dive / EE Times (sector trade press)
+- `scripts/corpus_cleanse.py` deleted 127 evidence rows + 105 orphaned company
+  signal rows from noisy sources. 154 clean rows retained.
 
----
+- `source_classification` (`PRIMARY_DISCLOSURE` | `TRADE_PRESS`) and `filing_ticker`
+  added to Evidence schema. `migrate_sprint12.py` backfilled all 154 existing rows.
+- `app/ingestion/constraint.py` — constraint vocabulary gate (34 terms). PRIMARY_DISCLOSURE
+  docs only generate CompanySignals if gate passes. TRADE_PRESS always generates signals
+  (radar display, not ICR).
+- `app/services/trajectory_service.py` — `TrajectoryService`: `get_icr_series()`,
+  `get_top_trajectories()`, `is_inflecting()` (current ≥ 2× 4w avg AND ≥ 3)
+- `GET /trajectory/top` and `GET /trajectory/{name}` endpoints live.
+- ICR data accumulates from filing_ticker on new ingestion runs (pre-Sprint-12 rows
+  have source_classification backfilled but no filing_ticker).
 
-### Phase 0 — Corpus Cleanse ✅ (immediate, pre-sprint)
+### Sprint 13 — Signal Map (frontend) ✅
 
-No new features. Clean the existing corpus before building on it.
+- `/signals` page — primary surface. 12-week bar sparklines, acceleration ranking,
+  amber "Accelerating" badge for inflecting entities. Filter: All / Accelerating.
+- Empty state explains ICR accumulation (shown until first ingestion run populates data).
+- Info toggle reveals ICR explanation (collapsed by default).
+- Nav: Signals (first) | Feed | Themes | Portfolio. Logo links to /signals.
+- Confidence percentage removed from CompanyPanel ThesisCard and VerdictCard sentences.
 
-**Remove from `ingest.py`:**
-- `SECEdgarConnector` — generic EDGAR daily fire hose (8-K, 10-Q, 10-K, Form 4)
-- `YahooFinanceConnector` — always late, dominated by targeted EDGAR
-- `GenericRSSConnector` for MarketWatch, Seeking Alpha, The Register, Ars Technica
+### Sprint 14 — Company Full Page ✅
 
-**Keep:**
-- `TargetedSECConnector` for all 5 sector watchlists
-- `GenericRSSConnector` for Breaking Defense, Utility Dive, EE Times
+- `/companies/[name]` — ICR card (12-week sparkline, current ICR, 4w avg, inflecting
+  badge) + corpus trajectory (4-week doc bar chart) + thesis exposure + full evidence
+  trail (40 excerpts, filterable by All / Supporting / Opposing).
+- `CompanyNavigator` in AppShell: intercepts `openCompany()` and calls
+  `router.push('/companies/[name]')`. No call-site changes needed.
+- CompanyPanel preserved in DemoShell (demo still uses drawer with static data).
+- `GET /trajectory/{name}` fetched alongside company data; graceful 404 handling.
 
-**Surgical corpus cleanse** — `scripts/corpus_cleanse.py`:
-1. Delete `Evidence` rows where `source_name IN ('SEC EDGAR', 'Yahoo Finance',
-   'MarketWatch', 'Seeking Alpha', 'The Register', 'Ars Technica')`
-2. Delete `CompanySignal` rows with no remaining evidence
-3. Recompute `CompanySignal.last_seen` and `first_seen` from retained evidence
-4. Log before/after counts: documents retained, companies retained, companies lost
+### Sprint 15 — Cleanup ✅
 
-**Expected result:** A smaller, higher-quality corpus. Phantom company signals
-(large caps appearing due to keyword coincidence in random articles) are removed.
-The genuine trajectory history from targeted EDGAR and sector trade press survives.
-
----
-
-### Sprint 12 — ICR Foundation (backend)
-
-**Goal:** Replace confidence score with ICR as the primary computed metric.
-Establish source type classification. Add constraint vocabulary gate.
-
-**Backend changes:**
-
-- **`source_type` on Evidence** — `PRIMARY_DISCLOSURE` | `TRADE_PRESS`. Set
-  at ingest time from connector metadata. `TargetedSECConnector` → PRIMARY.
-  Sector RSS → TRADE_PRESS.
-
-- **`independent_citation_count` on CompanySignal** — count of distinct
-  `citing_company` values from PRIMARY_DISCLOSURE evidence. Replaces
-  `mention_count` as the key signal metric. Updated on each new evidence row.
-
-- **Cross-citation tracking** — when Company A's filing mentions Company B,
-  record `citing_company = A` on the Evidence row for B. Currently citations
-  are not attributed. This is the critical missing piece for ICR.
-
-- **Constraint vocabulary gate** — `app/ingestion/constraint.py`. A document
-  only creates an Evidence row and advances ICR if: (a) a watchlist entity is
-  present AND (b) constraint vocabulary matches (lead time, backlog, shortage,
-  allocation, capacity constraint, delivery timeline, etc.). Documents without
-  constraint language are still embedded in Qdrant but do not count as citations.
-
-- **`TrajectoryService`** — new service that computes ICR time series for a
-  company: weekly independent citation counts going back to first_seen, using
-  only PRIMARY_DISCLOSURE evidence. Replaces the ad-hoc `weekly_counts`
-  calculation in `ThesisService.get_company_radar()`.
-
-- **Inflection detection** — `TrajectoryService.detect_inflections()`. Returns
-  companies where ICR this week ≥ 2× the 4-week average AND ≥ 3 independent
-  citations. These become alert triggers.
-
-- **Remove from backend:** Confidence score removed from `/theses` API response
-  as a primary field. Retained in DB, not surfaced in primary endpoints.
-  Momentum label removed from `ThesisSignal`. `_classify_sentiment()` repurposed
-  as constraint detection — it now asks "does this describe a constraint?" not
-  "is this supporting/opposing?"
-
----
-
-### Sprint 13 — Signal Map (frontend)
-
-**Goal:** Replace Feed + Radar with the Signal Map as the primary surface.
-Remove confidence scores from all UI components.
-
-**Frontend changes:**
-
-- **`/signals` page** — new primary surface. Ranked list of companies by
-  ICR acceleration (week-over-week slope, not absolute count). Each row:
-  company name + ticker, 12-week ICR sparkline (primary visual), citation count
-  this week + delta, first appeared date, top excerpt from most recent
-  PRIMARY_DISCLOSURE citation.
-
-- **Filter chips** — one per signal context (AI Infra, Semis, Grid, Defense,
-  DC Infra). All active by default. Click to filter. No separate Themes page.
-
-- **Watch callout updated** — shows ICR inflection: "[Company] — 9 independent
-  citations this week vs. 2-week average of 2." Numbers, not prose.
-
-- **Confidence score removed** from: `ThesisGridCard`, `CompanyPanel`,
-  `SignalCard`, `PortfolioPage`, all API response displays.
-
-- **Momentum badges removed** — replaced by trajectory state derived from
-  ICR slope: Accelerating / Emerging / Steady / Fading. These are computed
-  from ICR, not evidence volume.
-
-- **Narrative toggle** — LLM unified explain narrative moved behind an
-  "Analysis" expand button at the bottom of the Signal Map. Never auto-opened.
-
-- **12-week sparklines** — all sparklines extended from 4-week to 12-week.
-  The longer window is what makes the trajectory story legible.
-
-- **Navigation update** — `Feed` renamed `Signals`. Themes link becomes a
-  filter on the Signal Map, not a separate route. Navigation: Signals | Companies
-  | Portfolio.
-
----
-
-### Sprint 14 — Company Surface (full page)
-
-**Goal:** Replace slide-out CompanyPanel with full `/companies/[name]` page.
-Surface the full trajectory history and citation network.
-
-**Frontend changes:**
-
-- **`/companies/[name]` page** — four zones (see ADR-036):
-  1. Trajectory timeline — full history, ICR per week, annotated at inflections
-  2. Citation sources — which companies filed documents citing this entity
-     (independent source list, sortable by recency, filing type, source)
-  3. Signal context membership — which contexts, with independent citation
-     count per context (not confidence %)
-  4. Portfolio status — one line, held / not held
-
-- **`CompanyPanel` deprecated** — existing slide-out drawer removed after
-  full page is live. All `openCompany()` calls replaced with
-  `router.push('/companies/${normalisedName}')`.
-
-- **`CompanyContext` removed** — global context replaced by standard Next.js
-  routing. ADR-027 superseded by ADR-036.
-
-- **Backend: `GET /companies/{name}`** updated to return full ICR history,
-  citation source list, and signal context membership. Response shape changes.
-
----
-
-### Sprint 15 — Portfolio + Cleanup
-
-**Goal:** Simplify portfolio to trajectory gap detection. Remove all legacy
-confidence-score surfaces. Add corpus health indicator.
-
-**Frontend changes:**
-
-- **Portfolio simplified** — two sections only:
-  1. *Trajectory gaps* — companies with ICR acceleration you don't hold,
-     ranked by acceleration rate. Each row: sparkline, citation count this week,
-     first appeared, "Not held."
-  2. *Holdings* — your positions with 12-week ICR sparklines. No alignment
-     score. No coverage percentage. Just: is the trajectory behind this holding
-     accelerating, steady, or fading?
-
-- **Themes page removed** — signal contexts are filter chips on the Signal Map,
-  not a separate route. The `/thesis` route and `ThesisGridCard` component are
-  deleted.
-
-- **Corpus health indicator** — one line in the page footer across all surfaces:
-  "Corpus: [N] primary disclosures · [M] trade press · Last run: [Xh] ago."
-  Ambient proof that the system is running and accumulating.
-
-- **Legacy cleanup** — remove: `CompanyPanel.tsx`, `CompanyContext.tsx`,
-  `feed/page.tsx`, `thesis/page.tsx`, `thesis/[id]/page.tsx`, `SignalCard.tsx`,
-  `ThesisGridCard.tsx`. These surfaces no longer exist in the new architecture.
-
-- **Alert system updated** — alert UI changes from "set threshold" input to
-  "watch this company" toggle. Alert triggers show ICR inflection data, not
-  doc_count.
-
----
-
-### Sequencing Notes
-
-Phase 0 can be executed immediately — it is data surgery and connector removal,
-no new features. Sprint 12 and 13 should proceed in parallel where possible
-(backend ICR foundation + frontend Signal Map scaffold). The old surfaces remain
-live during the transition; they are deprecated in Sprint 15, not before.
-
-Do not remove the old surfaces before the new ones are validated. Users should
-never face a blank screen during the migration.
+- Themes removed from nav (3-item nav: Signals | Feed | Portfolio). Route preserved.
+- `GET /health/corpus` — unauthenticated endpoint: evidence counts by classification
+  and source, last document date. Used by Signal Map corpus health footer.
+- Signal Map footer: "152 primary disclosures · 2 trade press · 154 total · last filing [date]"
+- Portfolio GapRow: `formatConfidence(thesis_confidence)` display removed.
+- CompanyPanel `deriveVerdict`: confidence % strings removed from narrative sentences.
 
 ---
 

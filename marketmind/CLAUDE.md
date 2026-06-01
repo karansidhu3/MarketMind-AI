@@ -29,11 +29,11 @@ inflected since yesterday. Check which accelerating trajectories you don't hold.
 **Portfolio goal:** Surface trajectory gaps — companies with accelerating ICR
 in your investment contexts that you have no position in.
 
-**⚠️ Rebuild in progress (as of 2026-06-01):** The product is being rebuilt
-around ICR as the primary metric. See `docs/roadmap.md` (Phase 0 + Sprints 12–15)
-and ADR-031 through ADR-037. Confidence scores are being removed. The Feed and
-Themes surfaces are being replaced by the Signal Map. Company Panel is being
-replaced by full `/companies/[name]` pages.
+**ICR rebuild complete (2026-06-01).** Phase 0 + Sprints 12–15 shipped. See
+`docs/roadmap.md` for full sprint history. ADR-031 through ADR-037 govern the
+architecture. The Signal Map is live at `/signals`. Company pages live at
+`/companies/[name]`. Feed and Themes remain as legacy routes; Themes is no longer
+linked from nav.
 
 ---
 
@@ -72,35 +72,28 @@ Everything runs locally. Zero API costs.
 
 ## Information architecture
 
-**⚠️ Target architecture (Sprints 12–15). Current code still uses old surfaces.**
-See `docs/roadmap.md` for migration sequence. Old surfaces remain live until
-Sprint 15 deprecation.
-
-Three surfaces — **Signals / Companies / Portfolio**:
+Three primary surfaces — **Signals / Companies / Portfolio**:
 
 **Signals** (`/signals`) — the Signal Map. Primary surface. Companies ranked by
-ICR acceleration (week-over-week slope, not absolute count). Each row: 12-week
-ICR sparkline, independent citation count this week + delta, first appeared date,
-top primary filing excerpt. Filter chips for signal contexts. LLM narrative
-available behind "Analysis" toggle — never auto-expanded.
+ICR acceleration. Each row: 12-week ICR sparkline, citation count this week,
+delta vs 4w avg, amber "Accelerating" badge when inflecting. Filter: All /
+Accelerating. Corpus health footer (classification breakdown + last filing date).
+ICR data populates after each 6am PT ingestion run.
 
-**Companies** (`/companies/[name]`) — full company page. Full ICR history since
-first_seen. Citation sources (which companies filed documents citing this entity).
-Signal context membership (independent citation count per context). Portfolio
-status (held / not held). No confidence score. No verdict card.
+**Companies** (`/companies/[name]`) — full company page. ICR card (12-week
+sparkline, current ICR, 4w avg, inflecting badge). Corpus trajectory (4-week
+doc bar chart). Thesis exposure (by doc count, no confidence %). Full evidence
+trail (40 excerpts, filterable by sentiment). No confidence score. No verdict card.
 
-**Portfolio** (`/portfolio`) — two sections: trajectory gaps (accelerating
-companies you don't hold, ranked by ICR acceleration) + holdings (your positions
-with 12-week ICR sparklines showing whether the underlying thesis is gaining
-or losing independent confirmation).
+**Portfolio** (`/portfolio`) — Holdings CRUD + gap detection. Gap rows link to
+company pages. No confidence %, no alignment score display.
 
-**Demo** — `/demo` (signal map with static data) and `/demo/portfolio`.
-Public-facing. No auth. Company panel (current) will be replaced by company
-page during Sprint 14 migration.
+**Legacy surfaces (still live, not linked from primary nav):** `/feed` (daily
+briefing + radar-first), `/thesis` (themes list). Feed remains in nav during
+transition. Themes removed from nav in Sprint 15.
 
-**Currently live (pre-rebuild):** Feed / Themes / Portfolio with company
-slide-out panel. These surfaces remain functional during the rebuild and are
-removed in Sprint 15.
+**Demo** — `/demo` and `/demo/portfolio`. Public-facing, no auth, static data.
+Uses CompanyPanel drawer (not company page) for demo company deep-dives.
 
 ---
 
