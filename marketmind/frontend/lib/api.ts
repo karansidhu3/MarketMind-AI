@@ -190,6 +190,10 @@ export async function getTopTrajectories(weeks = 12, limit = 100): Promise<impor
   return request(`/trajectory/top?weeks=${weeks}&limit=${limit}`)
 }
 
+export async function getTrajectoryDetail(normalisedName: string, weeks = 12): Promise<import('./types').TrajectoryDetail> {
+  return request(`/trajectory/${encodeURIComponent(normalisedName)}?weeks=${weeks}`)
+}
+
 // ── Streaming helpers ─────────────────────────────────────────────────────────
 
 /**

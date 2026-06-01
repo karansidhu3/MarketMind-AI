@@ -233,6 +233,16 @@ export interface PortfolioAlignment {
 
 // ── Signal Map / ICR (Sprint 13) ──────────────────────────────────────────────
 
+/** Full ICR series for a single entity — GET /trajectory/{name}. */
+export interface TrajectoryDetail {
+  normalised_name: string
+  icr_series:      number[]   // `weeks` values, oldest first
+  icr_current:     number
+  icr_4w_avg:      number
+  is_inflecting:   boolean
+  weeks:           number
+}
+
 /** One row from GET /trajectory/top — the primary Signal Map data contract. */
 export interface TrajectoryRow {
   normalised_name: string

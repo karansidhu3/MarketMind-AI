@@ -1,10 +1,30 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Header from './Header'
-import CompanyPanel from '@/components/company/CompanyPanel'
-import { CompanyProvider } from '@/contexts/CompanyContext'
+import { CompanyProvider, useCompany } from '@/contexts/CompanyContext'
+
+// ── CompanyNavigator ──────────────────────────────────────────────────────────
+// Sprint 14: replaces CompanyPanel in the main app (ADR-036).
+// Watches selectedCompany and navigates to the full /companies/[name] page.
+// CompanyPanel is preserved in DemoShell where it still renders a drawer.
+
+function CompanyNavigator() {
+  const router = useRouter()
+  const { selectedCompany, closeCompany } = useCompany()
+  const closeRef = useRef(closeCompany)
+  closeRef.current = closeCompany
+
+  useEffect(() => {
+    if (selectedCompany) {
+      router.push(`/companies/${encodeURIComponent(selectedCompany)}`)
+      closeRef.current()
+    }
+  }, [selectedCompany, router])
+
+  return null
+}
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const router  = useRouter()
@@ -28,7 +48,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <main className="pt-20 min-h-screen">
           {children}
         </main>
-        <CompanyPanel />
+        <CompanyNavigator />
       </div>
     </CompanyProvider>
   )
