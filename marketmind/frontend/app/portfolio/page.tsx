@@ -10,7 +10,7 @@ import AppShell from '@/components/layout/AppShell'
 import TickerSearch from '@/components/portfolio/TickerSearch'
 import { SectionLabel } from '@/components/SectionLabel'
 import { getHoldings, addHolding, updateHolding, deleteHolding, getPortfolioAlignment } from '@/lib/api'
-import { formatConfidence, cn } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { spring } from '@/lib/motion'
 import { useCompany } from '@/contexts/CompanyContext'
 import type { HoldingOut, PortfolioAlignment, ThesisExposure, GapCompany } from '@/lib/types'
@@ -87,9 +87,6 @@ function GapRow({ gap, rank }: { gap: GapCompany; rank: number }) {
         <div className="text-text-primary text-xs font-semibold tabular-nums">
           {gap.doc_count}
           <span className="text-text-tertiary font-normal ml-0.5 text-[10px]">docs</span>
-        </div>
-        <div className="text-text-tertiary text-[10px]">
-          {formatConfidence(gap.thesis_confidence)} conf
         </div>
       </div>
       <ChevronRight size={12} className="text-text-tertiary opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />

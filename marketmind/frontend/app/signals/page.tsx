@@ -4,11 +4,11 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Activity, TrendingUp, Info } from 'lucide-react'
 import AppShell from '@/components/layout/AppShell'
-import { getTopTrajectories } from '@/lib/api'
+import { getTopTrajectories, getCorpusHealth } from '@/lib/api'
 import { useCompany } from '@/contexts/CompanyContext'
 import { spring } from '@/lib/motion'
-import { cn } from '@/lib/utils'
-import type { TrajectoryRow } from '@/lib/types'
+import { cn, formatDateShort } from '@/lib/utils'
+import type { TrajectoryRow, CorpusHealth } from '@/lib/types'
 
 // ── ICR Sparkline — 12-week bar chart ─────────────────────────────────────────
 
@@ -243,16 +243,64 @@ function FilterChip({ label, active, onClick }: { label: string; active: boolean
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+// ── Corpus health footer ──────────────────────────────────────────────────────
+
+function CorpusFooter({ health }: { health: CorpusHealth | null }) {
+  if (!health) return null
+  const primary    = health.by_classification['PRIMARY_DISCLOSURE'] ?? 0
+  const tradePres  = health.by_classification['TRADE_PRESS'] ?? 0
+  const lastDate   = health.last_document_date
+    ? formatDateShort(health.last_document_date)
+    : null
+
+  return (
+    <div className="mt-8 pt-5 border-t border-border/40 flex items-center gap-4 flex-wrap">
+      <p className="text-text-tertiary text-[11px] font-medium uppercase tracking-wide shrink-0">
+        Corpus
+      </p>
+      <div className="flex items-center gap-3 flex-wrap text-[11px] text-text-tertiary">
+        <span>
+          <span className="tabular-nums text-accent font-semibold">{primary}</span>
+          {' '}primary disclosures
+        </span>
+        <span className="text-border">·</span>
+        <span>
+          <span className="tabular-nums font-medium text-text-secondary">{tradePres}</span>
+          {' '}trade press
+        </span>
+        <span className="text-border">·</span>
+        <span>
+          <span className="tabular-nums font-medium text-text-secondary">{health.evidence_total}</span>
+          {' '}total evidence rows
+        </span>
+        {lastDate && (
+          <>
+            <span className="text-border">·</span>
+            <span>last filing {lastDate}</span>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export default function SignalsPage() {
   const [rows,    setRows]    = useState<TrajectoryRow[]>([])
+  const [health,  setHealth]  = useState<CorpusHealth | null>(null)
   const [loading, setLoading] = useState(true)
   const [filter,  setFilter]  = useState<Filter>('all')
   const [showInfo, setShowInfo] = useState(false)
 
   useEffect(() => {
-    getTopTrajectories(12, 100)
-      .then(setRows)
-      .catch(() => setRows([]))
+    Promise.all([
+      getTopTrajectories(12, 100),
+      getCorpusHealth().catch(() => null),
+    ]).then(([trajectories, corpusHealth]) => {
+      setRows(trajectories)
+      setHealth(corpusHealth)
+    }).catch(() => setRows([]))
       .finally(() => setLoading(false))
   }, [])
 
@@ -398,6 +446,7 @@ export default function SignalsPage() {
             </div>
           )}
         </div>
+        <CorpusFooter health={health} />
       </div>
     </AppShell>
   )

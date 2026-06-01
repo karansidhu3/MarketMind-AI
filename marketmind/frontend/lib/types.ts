@@ -231,6 +231,15 @@ export interface PortfolioAlignment {
   held_company_docs?: Record<string, number>  // ticker → corpus doc count
 }
 
+// ── Corpus health (Sprint 15) ─────────────────────────────────────────────────
+
+export interface CorpusHealth {
+  evidence_total:     number
+  by_classification:  Record<string, number>
+  by_source:          { source_name: string; count: number }[]
+  last_document_date: string | null
+}
+
 // ── Signal Map / ICR (Sprint 13) ──────────────────────────────────────────────
 
 /** Full ICR series for a single entity — GET /trajectory/{name}. */

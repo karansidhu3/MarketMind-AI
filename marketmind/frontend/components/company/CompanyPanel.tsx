@@ -22,11 +22,10 @@ interface VerdictResult {
 }
 
 function deriveVerdict(data: CompanyDetail): VerdictResult {
-  const { doc_count, weekly_counts, thesis_breakdown, evidence } = data
+  const { doc_count, weekly_counts, thesis_breakdown } = data
   const latest  = weekly_counts[weekly_counts.length - 1] ?? 0
   const prev    = weekly_counts[weekly_counts.length - 2] ?? 0
   const thesisCount = thesis_breakdown.length
-  void evidence  // available for future use; confidence score removed (ADR-031)
 
   let signal_strength: SignalStrength
   if (doc_count >= 20 && latest > 0)         signal_strength = 'STRONG'

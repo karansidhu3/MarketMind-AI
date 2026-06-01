@@ -2,18 +2,19 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Activity, Zap, BookOpen, LogOut, Sun, Moon, BriefcaseBusiness } from 'lucide-react'
+import { Activity, Zap, LogOut, Sun, Moon, BriefcaseBusiness } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import Logo from '@/components/ui/Logo'
 import { getAlerts } from '@/lib/api'
 
+// Sprint 15: Themes (/thesis) removed from nav — deprecated surface.
+// Feed retained during rebuild transition; removed in post-15 cleanup.
 const NAV = [
-  { href: '/signals',   icon: Activity,            label: 'Signals'   },
-  { href: '/feed',      icon: Zap,                 label: 'Feed'      },
-  { href: '/thesis',    icon: BookOpen,             label: 'Themes'    },
-  { href: '/portfolio', icon: BriefcaseBusiness,    label: 'Portfolio' },
+  { href: '/signals',   icon: Activity,           label: 'Signals'   },
+  { href: '/feed',      icon: Zap,                label: 'Feed'      },
+  { href: '/portfolio', icon: BriefcaseBusiness,  label: 'Portfolio' },
 ]
 
 export default function Header() {
