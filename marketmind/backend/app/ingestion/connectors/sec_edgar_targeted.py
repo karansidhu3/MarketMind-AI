@@ -27,7 +27,7 @@ import feedparser
 import httpx
 
 from app.ingestion.connectors.base import BaseConnector
-from app.ingestion.schema import Document, SourceType
+from app.ingestion.schema import Document, SourceClassification, SourceType
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +62,8 @@ class TargetedSECConnector(BaseConnector):
     source_type: SourceType = "rss"
     source_name: str = "SEC EDGAR (Targeted)"
     source_credibility_score: float = 0.95
+    # Sprint 12: targeted company filings are the primary disclosure source (ADR-032)
+    source_classification: SourceClassification = "PRIMARY_DISCLOSURE"
 
     def __init__(
         self,
@@ -221,4 +223,8 @@ class TargetedSECConnector(BaseConnector):
                 "target_ticker": ticker,
             },
             created_at=created_at,
+            source_classification=self.source_classification,
+            # filing_ticker = the company that submitted this SEC document.
+            # Used by TrajectoryService to compute ICR (distinct citing companies).
+            filing_ticker=ticker,
         )

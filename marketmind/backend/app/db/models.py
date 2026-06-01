@@ -47,6 +47,14 @@ class Evidence(Base):
     source_name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     document_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+    # Sprint 12: source classification for ICR (ADR-032).
+    # PRIMARY_DISCLOSURE = targeted SEC filings; TRADE_PRESS = sector trade press;
+    # UNKNOWN = pre-Sprint-12 rows (backfilled by migrate_sprint12.py).
+    source_classification: Mapped[str] = mapped_column(String(30), nullable=False, default="UNKNOWN", index=True)
+    # Sprint 12: for PRIMARY_DISCLOSURE evidence — the ticker of the company that
+    # filed this document (the "citing company" in cross-citation tracking).
+    # NULL for TRADE_PRESS evidence. Used for ICR computation in TrajectoryService.
+    filing_ticker: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
 
     thesis: Mapped[Thesis] = relationship("Thesis", back_populates="evidence", lazy="noload")
 

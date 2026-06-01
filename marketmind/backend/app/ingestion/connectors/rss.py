@@ -8,7 +8,7 @@ import feedparser
 import httpx
 
 from app.ingestion.connectors.base import BaseConnector
-from app.ingestion.schema import Document, SourceType
+from app.ingestion.schema import Document, SourceClassification, SourceType
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +19,8 @@ class GenericRSSConnector(BaseConnector):
     source_type: SourceType = "rss"
     source_name: str = "RSS"
     source_credibility_score: float = 0.50
+    # Sprint 12: sector trade press is TRADE_PRESS; subclasses may override (ADR-032)
+    source_classification: SourceClassification = "TRADE_PRESS"
 
     def __init__(
         self,
@@ -59,6 +61,8 @@ class GenericRSSConnector(BaseConnector):
                 "author": entry.get("author", ""),
             },
             created_at=self._parse_date(entry),
+            source_classification=self.source_classification,
+            # TRADE_PRESS sources have no filing company — filing_ticker stays None
         )
 
     @staticmethod

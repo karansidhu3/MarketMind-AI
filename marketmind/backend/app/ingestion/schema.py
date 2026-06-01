@@ -7,6 +7,12 @@ from typing import Literal
 
 SourceType = Literal["rss", "api"]
 
+# Semantic classification used for ICR computation (ADR-032).
+# PRIMARY_DISCLOSURE: targeted SEC filings from companies in our watchlist.
+# TRADE_PRESS: sector-specific publications (Breaking Defense, Utility Dive, EE Times).
+# UNKNOWN: legacy rows ingested before Sprint 12.
+SourceClassification = Literal["PRIMARY_DISCLOSURE", "TRADE_PRESS", "UNKNOWN"]
+
 
 @dataclass
 class Document:
@@ -18,6 +24,11 @@ class Document:
     content: str
     metadata: dict
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    # Sprint 12: semantic source classification for ICR (ADR-032)
+    source_classification: SourceClassification = "UNKNOWN"
+    # Sprint 12: for PRIMARY_DISCLOSURE — ticker of the company that filed this document.
+    # This is the "citing company" in the cross-citation model. NULL for TRADE_PRESS.
+    filing_ticker: str | None = None
 
     @staticmethod
     def make_id(seed: str) -> str:
@@ -34,4 +45,7 @@ class Document:
             "content": self.content[:2000],
             "metadata": self.metadata,
             "created_at": self.created_at.isoformat(),
+            # Sprint 12: stored in Qdrant so re-evaluation can restore these fields
+            "source_classification": self.source_classification,
+            "filing_ticker": self.filing_ticker,
         }

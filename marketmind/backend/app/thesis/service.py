@@ -206,6 +206,16 @@ class ThesisService:
 
     async def score_document(self, doc: Document) -> None:
         """Score an ingested document against all active theses. Stores evidence + company signals."""
+        from app.ingestion.constraint import passes_constraint_gate
+
+        # Sprint 12: determine whether this document can generate ICR cross-citations.
+        # PRIMARY_DISCLOSURE docs only count as citations if they contain constraint
+        # language — this prevents passing brand mentions from inflating ICR (ADR-034).
+        # TRADE_PRESS docs always run company extraction (they contribute to radar
+        # display but not to ICR, which filters by source_classification later).
+        is_primary = doc.source_classification == "PRIMARY_DISCLOSURE"
+        can_cite = (not is_primary) or passes_constraint_gate(doc.content)
+
         async with self._factory() as session:
             theses = (
                 await session.execute(select(Thesis).where(Thesis.is_active == True))  # noqa: E712
@@ -240,12 +250,21 @@ class ThesisService:
                     source_url=doc.metadata.get("url", ""),
                     source_name=doc.source_name,
                     document_date=doc.created_at,
+                    # Sprint 12: persist source classification and filing company
+                    source_classification=doc.source_classification,
+                    filing_ticker=doc.filing_ticker,
                 )
                 session.add(evidence)
 
-                companies = await self._extract_companies(doc)
-                for name in companies:
-                    await self._upsert_company_signal(session, name, thesis.id, doc.id)
+                # Sprint 12: company extraction only runs when:
+                #   - TRADE_PRESS (always — radar display, not ICR)
+                #   - PRIMARY_DISCLOSURE + passes constraint gate (ICR cross-citations)
+                # If PRIMARY_DISCLOSURE fails constraint gate, no CompanySignals are
+                # created from this doc, so it won't inflate ICR for any entity.
+                if can_cite:
+                    companies = await self._extract_companies(doc)
+                    for name in companies:
+                        await self._upsert_company_signal(session, name, thesis.id, doc.id)
 
             await session.commit()
 
@@ -323,6 +342,8 @@ class ThesisService:
                         source_url=doc.metadata.get("url", ""),
                         source_name=doc.source_name,
                         document_date=doc.created_at,
+                        source_classification=doc.source_classification,
+                        filing_ticker=doc.filing_ticker,
                     ))
                     await session.commit()
                     new_count += 1
@@ -447,6 +468,12 @@ class ThesisService:
             created_at = datetime.fromisoformat(raw_ts) if raw_ts else datetime.now(timezone.utc)
         except ValueError:
             created_at = datetime.now(timezone.utc)
+        # Sprint 12: restore source_classification and filing_ticker from payload.
+        # Pre-Sprint-12 payloads won't have these — fall back to UNKNOWN / None.
+        # Backfill via migrate_sprint12.py for existing evidence rows.
+        raw_classification = payload.get("source_classification", "UNKNOWN")
+        if raw_classification not in ("PRIMARY_DISCLOSURE", "TRADE_PRESS"):
+            raw_classification = "UNKNOWN"
         return Document(
             id=payload.get("id", ""),
             title=payload.get("title", ""),
@@ -456,6 +483,8 @@ class ThesisService:
             content=payload.get("content", ""),
             metadata=payload.get("metadata") or {},
             created_at=created_at,
+            source_classification=raw_classification,
+            filing_ticker=payload.get("filing_ticker"),
         )
 
     async def _enrich(self, thesis: Thesis, session: AsyncSession) -> ThesisOut:
