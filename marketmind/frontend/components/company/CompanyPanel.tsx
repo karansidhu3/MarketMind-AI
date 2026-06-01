@@ -26,8 +26,7 @@ function deriveVerdict(data: CompanyDetail): VerdictResult {
   const latest  = weekly_counts[weekly_counts.length - 1] ?? 0
   const prev    = weekly_counts[weekly_counts.length - 2] ?? 0
   const thesisCount = thesis_breakdown.length
-  const supporting  = evidence.filter(e => e.sentiment === 'supporting').length
-  const supportRate = evidence.length > 0 ? supporting / evidence.length : 0
+  void evidence  // available for future use; confidence score removed (ADR-031)
 
   let signal_strength: SignalStrength
   if (doc_count >= 20 && latest > 0)         signal_strength = 'STRONG'
@@ -43,15 +42,14 @@ function deriveVerdict(data: CompanyDetail): VerdictResult {
 
   const name = data.display_name
   const tp   = thesisCount === 1 ? 'theme' : 'themes'
-  const sp   = Math.round(supportRate * 100)
   let sentence: string
 
   if (signal_strength === 'STRONG' && consensus === 'ACCELERATING') {
-    sentence = `${name} is accelerating — ${latest} docs this week with ${sp}% support rate across ${thesisCount} investment ${tp}.`
+    sentence = `${name} is accelerating — ${latest} docs this week across ${thesisCount} investment ${tp}.`
   } else if (signal_strength === 'STRONG' && consensus === 'WIDENING') {
-    sentence = `${name} has broad coverage across ${thesisCount} investment ${tp} with a ${doc_count}-doc corpus and ${sp}% support rate.`
+    sentence = `${name} has broad coverage across ${thesisCount} investment ${tp} with a ${doc_count}-doc corpus.`
   } else if (signal_strength === 'STRONG') {
-    sentence = `${name} has built a strong ${doc_count}-doc corpus signal with ${sp}% of evidence supporting the thesis.`
+    sentence = `${name} has built a strong ${doc_count}-doc corpus signal across ${thesisCount} investment ${tp}.`
   } else if (signal_strength === 'MODERATE' && consensus === 'ACCELERATING') {
     sentence = `${name} is an emerging signal — activity up ${prev > 0 ? `${Math.round(latest / prev)}×` : 'sharply'} this week across ${thesisCount} investment ${tp}.`
   } else if (signal_strength === 'MODERATE' && consensus === 'WIDENING') {
@@ -151,23 +149,10 @@ function SentimentDot({ sentiment }: { sentiment: string }) {
 // ── Thesis exposure card ──────────────────────────────────────────────────────
 
 function ThesisCard({ td }: { td: CompanyThesisBreakdown }) {
-  const total = td.supporting + td.opposing
-  const confPct = total > 0 ? Math.round((td.supporting / total) * 100) : null
-
   return (
     <div className="flex items-center justify-between gap-3 py-2.5 border-b border-border/50 last:border-0">
       <p className="text-text-secondary text-xs leading-snug flex-1">{td.thesis_name}</p>
-      <div className="flex items-center gap-3 shrink-0">
-        <span className="text-text-tertiary text-[11px] tabular-nums">{td.doc_count} docs</span>
-        {confPct !== null && (
-          <span className={cn(
-            'text-[11px] font-semibold tabular-nums w-9 text-right',
-            confPct >= 60 ? 'text-green' : confPct >= 40 ? 'text-amber' : 'text-red'
-          )}>
-            {confPct}%
-          </span>
-        )}
-      </div>
+      <span className="text-text-tertiary text-[11px] tabular-nums shrink-0">{td.doc_count} docs</span>
     </div>
   )
 }

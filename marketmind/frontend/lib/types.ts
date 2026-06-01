@@ -231,6 +231,20 @@ export interface PortfolioAlignment {
   held_company_docs?: Record<string, number>  // ticker → corpus doc count
 }
 
+// ── Signal Map / ICR (Sprint 13) ──────────────────────────────────────────────
+
+/** One row from GET /trajectory/top — the primary Signal Map data contract. */
+export interface TrajectoryRow {
+  normalised_name: string
+  display_name:    string
+  ticker:          string | null
+  icr_series:      number[]   // 12 values, oldest first
+  icr_current:     number     // this week's ICR
+  icr_4w_avg:      number     // average of prior 4 weeks
+  is_inflecting:   boolean    // current >= 2× 4w avg AND >= 3
+  acceleration:    number     // recent 2w avg − prior 4w avg
+}
+
 export interface LanguageDelta {
   status: 'ok' | 'insufficient_data'
   message?: string                 // only when status=insufficient_data

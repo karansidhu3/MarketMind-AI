@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Zap, BookOpen, LogOut, Sun, Moon, BriefcaseBusiness } from 'lucide-react'
+import { Activity, Zap, BookOpen, LogOut, Sun, Moon, BriefcaseBusiness } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -10,9 +10,10 @@ import Logo from '@/components/ui/Logo'
 import { getAlerts } from '@/lib/api'
 
 const NAV = [
-  { href: '/feed',      icon: Zap,                label: 'Feed'      },
-  { href: '/thesis',    icon: BookOpen,            label: 'Themes'    },
-  { href: '/portfolio', icon: BriefcaseBusiness,   label: 'Portfolio' },
+  { href: '/signals',   icon: Activity,            label: 'Signals'   },
+  { href: '/feed',      icon: Zap,                 label: 'Feed'      },
+  { href: '/thesis',    icon: BookOpen,             label: 'Themes'    },
+  { href: '/portfolio', icon: BriefcaseBusiness,    label: 'Portfolio' },
 ]
 
 export default function Header() {
@@ -43,7 +44,7 @@ export default function Header() {
       <div className="max-w-[1400px] mx-auto h-12 px-4 sm:px-5 flex items-center gap-4 sm:gap-6">
 
         {/* ── Logo ── */}
-        <Link href="/feed" className="flex items-center shrink-0 active:scale-[0.95] transition-transform">
+        <Link href="/signals" className="flex items-center shrink-0 active:scale-[0.95] transition-transform">
           <Logo size={20} showWordmark className="hidden sm:inline-flex" />
           <Logo size={20} className="sm:hidden" />
         </Link>

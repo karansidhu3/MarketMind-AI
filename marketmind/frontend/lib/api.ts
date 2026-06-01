@@ -184,6 +184,12 @@ export async function getCompany(normalisedName: string): Promise<import('./type
   return request(`/companies/${encodeURIComponent(normalisedName)}`)
 }
 
+// ── Signal Map / ICR (Sprint 13) ──────────────────────────────────────────────
+
+export async function getTopTrajectories(weeks = 12, limit = 100): Promise<import('./types').TrajectoryRow[]> {
+  return request(`/trajectory/top?weeks=${weeks}&limit=${limit}`)
+}
+
 // ── Streaming helpers ─────────────────────────────────────────────────────────
 
 /**
