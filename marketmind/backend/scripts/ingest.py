@@ -1,6 +1,6 @@
 """
-Ingestion script — populates marketmind_documents from all configured sources,
-then scores every document against active theses and extracts supply chain relationships.
+Ingestion script — populates marketmind_documents from targeted sources,
+then scores every document against active theses.
 
 Run inside the backend container:
     docker exec infrastructure-backend-1 python scripts/ingest.py
@@ -8,12 +8,20 @@ Run inside the backend container:
 Re-running is safe: document IDs are deterministic (UUID5 from source URL),
 so Qdrant upsert and Postgres evidence inserts are both idempotent.
 
-Corpus targeting strategy (ADR-026):
-  The generic EDGAR daily feed returns random filings from any sector.
-  We supplement it with company-specific EDGAR feeds for ~60 tickers that
-  are known to operate in our thesis areas. This dramatically improves
-  signal-to-noise — we get filings from companies we're actually watching,
-  not whatever happened to file that day.
+Corpus strategy (ADR-026, ADR-033):
+  Only two source classes are ingested:
+    1. PRIMARY_DISCLOSURE — TargetedSECConnector for ~60 tickers across 5 sectors.
+       These are company-specific 8-K and 10-Q filings from companies known to
+       operate in our thesis areas. High signal, high credibility.
+    2. TRADE_PRESS — Breaking Defense, Utility Dive, EE Times. Sector-specific
+       publications that surface headwinds, budget pressure, and capacity constraints
+       before they appear in company filings.
+
+  Removed (Phase 0 cleanse, ADR-033):
+    - Generic EDGAR fire hose (SECEdgarConnector) — random sector, adds noise
+    - Form 4 insider transactions (Form4Connector) — commodity signal (ADR-025)
+    - Yahoo Finance (YahooFinanceConnector) — news aggregator, low signal
+    - MarketWatch, Seeking Alpha, The Register, Ars Technica — financial/tech media
 """
 import asyncio
 import logging
@@ -25,11 +33,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.config import get_settings
 from app.db.session import close_db, create_tables, get_session_factory, init_db
-from app.ingestion.connectors.form4 import Form4Connector
 from app.ingestion.connectors.rss import GenericRSSConnector
-from app.ingestion.connectors.sec_edgar import SECEdgarConnector
 from app.ingestion.connectors.sec_edgar_targeted import TargetedSECConnector
-from app.ingestion.connectors.yahoo_finance import YahooFinanceConnector
 from app.ingestion.worker import IngestionWorker
 from app.services.llm_service import OllamaLLMService
 from app.services.retrieval_service import QdrantRetrievalService
@@ -91,19 +96,11 @@ _DC_INFRA = [
     "CARR",                                          # building tech
 ]
 
-# Combined unique ticker set for Yahoo Finance (real-time news + earnings)
-_ALL_TICKERS = sorted(set(
-    _AI_INFRA + _SEMI_SUPPLY + _GRID + _DEFENSE + _DC_INFRA
-))
-
 SOURCES = [
-    # ── 1. Generic EDGAR daily feed — catches anything we might have missed ──
-    ("SEC EDGAR — 8-K (material events)", SECEdgarConnector(filing_type="8-K", count=40)),
-    ("SEC EDGAR — 10-Q (quarterly)", SECEdgarConnector(filing_type="10-Q", count=20)),
-    ("SEC EDGAR — 10-K (annual)", SECEdgarConnector(filing_type="10-K", count=10)),
-    ("SEC EDGAR — Form 4 (insider transactions)", Form4Connector(count=40)),
-
-    # ── 2. Targeted EDGAR — company-specific filings for our watchlist ────────
+    # ── PRIMARY_DISCLOSURE — targeted 8-K and 10-Q filings ───────────────────
+    # ~60 curated tickers across 5 thesis sectors. These are the companies we
+    # are actually watching. Targeted pull guarantees relevance; the generic
+    # EDGAR fire hose (removed ADR-033) returned random-sector filings.
     (
         "SEC EDGAR — AI Infrastructure (targeted)",
         TargetedSECConnector(tickers=_AI_INFRA, filing_types=["8-K", "10-Q"], count_per_company=3),
@@ -125,34 +122,10 @@ SOURCES = [
         TargetedSECConnector(tickers=_DC_INFRA, filing_types=["8-K", "10-Q"], count_per_company=3),
     ),
 
-    # ── 3. Yahoo Finance — real-time news + earnings for all watchlist tickers ─
-    (
-        "Yahoo Finance — thesis watchlist",
-        YahooFinanceConnector(tickers=_ALL_TICKERS),
-    ),
-
-    # ── 4. RSS — broad market context ────────────────────────────────────────
-    (
-        "MarketWatch — market bulletins",
-        GenericRSSConnector(
-            "https://feeds.content.dowjones.io/public/rss/mw_bulletins",
-            source_name="MarketWatch",
-            credibility_score=0.80,
-        ),
-    ),
-    (
-        "Seeking Alpha — market currents",
-        GenericRSSConnector(
-            "https://seekingalpha.com/market_currents.xml",
-            source_name="Seeking Alpha",
-            credibility_score=0.70,
-        ),
-    ),
-
-    # ── 5. Sector trade press — surfaces headwinds + skeptical analysis ───────
-    # These are the primary source of opposing evidence. Company filings are
-    # always positive about their sector — trade press covers budget cuts,
-    # demand slowdowns, competition, and analyst skepticism.
+    # ── TRADE_PRESS — sector-specific publications ────────────────────────────
+    # These surface headwinds, capacity constraints, and supply-side pressure
+    # before they show up in company filings. Weight 0.4 in ICR (vs 1.0 for
+    # primary disclosures) because they are secondary, not primary, sources.
     (
         "Breaking Defense — defense industry news",
         GenericRSSConnector(
@@ -175,22 +148,6 @@ SOURCES = [
             "https://www.eetimes.com/feed/",
             source_name="EE Times",
             credibility_score=0.78,
-        ),
-    ),
-    (
-        "The Register — technology analysis",
-        GenericRSSConnector(
-            "https://www.theregister.com/headlines.atom",
-            source_name="The Register",
-            credibility_score=0.72,
-        ),
-    ),
-    (
-        "Ars Technica — technology news",
-        GenericRSSConnector(
-            "https://feeds.arstechnica.com/arstechnica/index",
-            source_name="Ars Technica",
-            credibility_score=0.75,
         ),
     ),
 ]
