@@ -92,8 +92,10 @@ company pages. No confidence %, no alignment score display.
 briefing + radar-first), `/thesis` (themes list). Feed remains in nav during
 transition. Themes removed from nav in Sprint 15.
 
-**Demo** — `/demo` and `/demo/portfolio`. Public-facing, no auth, static data.
-Uses CompanyPanel drawer (not company page) for demo company deep-dives.
+**Demo** — `/demo` (Signal Map) and `/demo/portfolio`. Public-facing, no auth, static data.
+`/demo` mirrors the Signal Map: 12-week ICR bar sparklines, All / Accelerating filter,
+same layout as `/signals`. Company deep-dives use CompanyPanel drawer with ICR card
+(not the full company page — drawer is intentional in demo context). Sprint 16.
 
 ---
 

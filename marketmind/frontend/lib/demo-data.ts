@@ -23,6 +23,10 @@ export const DEMO_COMPANY_DETAIL: Record<string, CompanyDetail> = {
     doc_count: 23,
     mention_count: 61,
     weekly_counts: [4, 8, 11, 23],
+    icr_series:    [0,1,1,1,2,2,3,4,5,5,7,12],
+    icr_current:   12,
+    icr_4w_avg:    5.25,
+    is_inflecting: true,
     thesis_breakdown: [
       {
         thesis_id: 'demo-ai-infra',
@@ -95,6 +99,10 @@ export const DEMO_COMPANY_DETAIL: Record<string, CompanyDetail> = {
     doc_count: 19,
     mention_count: 74,
     weekly_counts: [9, 12, 16, 19],
+    icr_series:    [4,5,5,6,7,7,8,9,9,9,10,11],
+    icr_current:   11,
+    icr_4w_avg:    9.25,
+    is_inflecting: false,
     thesis_breakdown: [
       {
         thesis_id: 'demo-ai-infra',
@@ -167,6 +175,10 @@ export const DEMO_COMPANY_DETAIL: Record<string, CompanyDetail> = {
     doc_count: 16,
     mention_count: 38,
     weekly_counts: [5, 7, 11, 16],
+    icr_series:    [0,1,1,2,2,3,3,3,4,5,7,11],
+    icr_current:   11,
+    icr_4w_avg:    4.75,
+    is_inflecting: true,
     thesis_breakdown: [
       {
         thesis_id: 'demo-semi-supply',
@@ -229,6 +241,10 @@ export const DEMO_COMPANY_DETAIL: Record<string, CompanyDetail> = {
     doc_count: 14,
     mention_count: 29,
     weekly_counts: [4, 6, 10, 14],
+    icr_series:    [2,2,3,4,4,5,5,6,7,7,8,9],
+    icr_current:   9,
+    icr_4w_avg:    7.0,
+    is_inflecting: false,
     thesis_breakdown: [
       {
         thesis_id: 'demo-energy-grid',
@@ -301,6 +317,10 @@ export const DEMO_COMPANY_DETAIL: Record<string, CompanyDetail> = {
     doc_count: 13,
     mention_count: 41,
     weekly_counts: [2, 5, 9, 13],
+    icr_series:    [0,0,1,1,1,2,2,3,3,4,6,9],
+    icr_current:   9,
+    icr_4w_avg:    4.0,
+    is_inflecting: true,
     thesis_breakdown: [
       {
         thesis_id: 'demo-ai-infra',
@@ -364,6 +384,10 @@ export const DEMO_COMPANY_DETAIL: Record<string, CompanyDetail> = {
     doc_count: 12,
     mention_count: 35,
     weekly_counts: [3, 6, 9, 12],
+    icr_series:    [1,2,2,3,3,4,4,5,5,6,7,8],
+    icr_current:   8,
+    icr_4w_avg:    5.75,
+    is_inflecting: false,
     thesis_breakdown: [
       { thesis_id: 'demo-ai-infra', thesis_name: 'AI Infrastructure Bottlenecks', confidence: 0.64, doc_count: 7, mention_count: 22, supporting: 5, opposing: 1, neutral: 1 },
       { thesis_id: 'demo-semi-supply', thesis_name: 'Semiconductor Supply Chain Stress', confidence: 0.65, doc_count: 5, mention_count: 13, supporting: 4, opposing: 1, neutral: 0 },
@@ -384,6 +408,10 @@ export const DEMO_COMPANY_DETAIL: Record<string, CompanyDetail> = {
     doc_count: 11,
     mention_count: 22,
     weekly_counts: [3, 5, 8, 11],
+    icr_series:    [1,1,2,2,3,3,4,4,5,5,6,7],
+    icr_current:   7,
+    icr_4w_avg:    5.0,
+    is_inflecting: false,
     thesis_breakdown: [
       { thesis_id: 'demo-energy-grid', thesis_name: 'Energy Grid Modernisation', confidence: 0.58, doc_count: 11, mention_count: 22, supporting: 7, opposing: 2, neutral: 2 },
     ],
@@ -403,6 +431,10 @@ export const DEMO_COMPANY_DETAIL: Record<string, CompanyDetail> = {
     doc_count: 10,
     mention_count: 18,
     weekly_counts: [2, 4, 7, 10],
+    icr_series:    [0,0,1,1,2,2,2,3,3,4,5,8],
+    icr_current:   8,
+    icr_4w_avg:    3.75,
+    is_inflecting: true,
     thesis_breakdown: [
       { thesis_id: 'demo-semi-supply', thesis_name: 'Semiconductor Supply Chain Stress', confidence: 0.65, doc_count: 10, mention_count: 18, supporting: 7, opposing: 1, neutral: 2 },
     ],
@@ -422,6 +454,10 @@ export const DEMO_COMPANY_DETAIL: Record<string, CompanyDetail> = {
     doc_count: 9,
     mention_count: 20,
     weekly_counts: [2, 4, 6, 9],
+    icr_series:    [1,1,2,2,3,3,4,4,4,5,5,6],
+    icr_current:   6,
+    icr_4w_avg:    4.5,
+    is_inflecting: false,
     thesis_breakdown: [
       { thesis_id: 'demo-data-center', thesis_name: 'Data Center Physical Infrastructure', confidence: 0.69, doc_count: 9, mention_count: 20, supporting: 7, opposing: 1, neutral: 1 },
     ],
@@ -441,6 +477,10 @@ export const DEMO_COMPANY_DETAIL: Record<string, CompanyDetail> = {
     doc_count: 9,
     mention_count: 17,
     weekly_counts: [3, 4, 6, 9],
+    icr_series:    [2,2,3,3,3,4,4,4,4,4,4,5],
+    icr_current:   5,
+    icr_4w_avg:    4.0,
+    is_inflecting: false,
     thesis_breakdown: [
       { thesis_id: 'demo-defense', thesis_name: 'Defense Production Ramp', confidence: 0.61, doc_count: 9, mention_count: 17, supporting: 6, opposing: 1, neutral: 2 },
     ],
@@ -460,6 +500,10 @@ export const DEMO_COMPANY_DETAIL: Record<string, CompanyDetail> = {
     doc_count: 8,
     mention_count: 15,
     weekly_counts: [1, 3, 5, 8],
+    icr_series:    [0,1,1,2,2,3,3,4,4,5,6,7],
+    icr_current:   7,
+    icr_4w_avg:    4.75,
+    is_inflecting: false,
     thesis_breakdown: [
       { thesis_id: 'demo-semi-supply', thesis_name: 'Semiconductor Supply Chain Stress', confidence: 0.65, doc_count: 8, mention_count: 15, supporting: 6, opposing: 1, neutral: 1 },
     ],
@@ -479,6 +523,10 @@ export const DEMO_COMPANY_DETAIL: Record<string, CompanyDetail> = {
     doc_count: 7,
     mention_count: 12,
     weekly_counts: [0, 0, 3, 7],
+    icr_series:    [0,0,0,0,0,1,1,1,2,2,3,7],
+    icr_current:   7,
+    icr_4w_avg:    2.0,
+    is_inflecting: true,
     thesis_breakdown: [
       { thesis_id: 'demo-ai-infra', thesis_name: 'AI Infrastructure Bottlenecks', confidence: 0.72, doc_count: 4, mention_count: 7, supporting: 3, opposing: 0, neutral: 1 },
       { thesis_id: 'demo-data-center', thesis_name: 'Data Center Physical Infrastructure', confidence: 0.69, doc_count: 3, mention_count: 5, supporting: 3, opposing: 0, neutral: 0 },
@@ -499,6 +547,10 @@ export const DEMO_COMPANY_DETAIL: Record<string, CompanyDetail> = {
     doc_count: 7,
     mention_count: 14,
     weekly_counts: [1, 3, 5, 7],
+    icr_series:    [1,1,2,2,3,3,4,4,4,5,5,7],
+    icr_current:   7,
+    icr_4w_avg:    4.5,
+    is_inflecting: false,
     thesis_breakdown: [
       { thesis_id: 'demo-defense', thesis_name: 'Defense Production Ramp', confidence: 0.61, doc_count: 7, mention_count: 14, supporting: 5, opposing: 1, neutral: 1 },
     ],
@@ -518,6 +570,10 @@ export const DEMO_COMPANY_DETAIL: Record<string, CompanyDetail> = {
     doc_count: 6,
     mention_count: 11,
     weekly_counts: [0, 2, 4, 6],
+    icr_series:    [0,0,0,0,0,0,1,1,2,3,4,6],
+    icr_current:   6,
+    icr_4w_avg:    2.5,
+    is_inflecting: true,
     thesis_breakdown: [
       { thesis_id: 'demo-defense', thesis_name: 'Defense Production Ramp', confidence: 0.61, doc_count: 6, mention_count: 11, supporting: 5, opposing: 0, neutral: 1 },
     ],
@@ -537,6 +593,10 @@ export const DEMO_COMPANY_DETAIL: Record<string, CompanyDetail> = {
     doc_count: 5,
     mention_count: 8,
     weekly_counts: [0, 0, 1, 5],
+    icr_series:    [0,0,0,0,0,0,0,1,1,2,2,5],
+    icr_current:   5,
+    icr_4w_avg:    1.5,
+    is_inflecting: true,
     thesis_breakdown: [
       { thesis_id: 'demo-energy-grid', thesis_name: 'Energy Grid Modernisation', confidence: 0.58, doc_count: 5, mention_count: 8, supporting: 4, opposing: 0, neutral: 1 },
     ],

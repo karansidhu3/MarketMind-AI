@@ -9,44 +9,35 @@ import { useCompany } from '@/contexts/CompanyContext'
 import { cn } from '@/lib/utils'
 import { DEMO_GAPS, DEMO_HOLDINGS, type DemoGap, type DemoHolding } from '../data'
 
-// ── Mini sparkline for gap rows ────────────────────────────────────────────────
+// ── Mini bar sparkline for gap rows — matches Signal Map bar language ──────────
 
 function GapSparkline({ counts }: { counts: number[] }) {
-  if (!counts || counts.length < 2 || counts.every(v => v === 0)) return null
+  if (!counts || counts.length === 0 || counts.every(v => v === 0)) return null
 
-  const max  = Math.max(...counts, 1)
-  const W = 48, H = 20, PAD = 2
-
-  const pts = counts.map((v, i) => {
-    const x = PAD + (i / (counts.length - 1)) * (W - 2 * PAD)
-    const y = H - PAD - (v / max) * (H - 2 * PAD)
-    return `${x.toFixed(1)},${y.toFixed(1)}`
-  }).join(' ')
-
+  const max    = Math.max(...counts, 1)
   const latest = counts[counts.length - 1]
-  const prev   = counts[counts.length - 2]
+  const prev   = counts[counts.length - 2] ?? 0
   const surge  = latest >= prev * 2 && prev > 0
-  const rising = latest > prev
-  const color  = surge ? 'text-accent' : rising ? 'text-green' : 'text-text-tertiary'
-  const sw     = surge ? 2 : 1.5
-
-  const lastPt   = pts.split(' ').pop()!
-  const [lx, ly] = lastPt.split(',').map(parseFloat)
 
   return (
-    <svg width={W} height={H} className={color} style={{ overflow: 'visible' }}>
-      <title>{`4-week: ${counts.join(', ')} docs`}</title>
-      <polyline
-        points={pts}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={sw}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        opacity={0.85}
-      />
-      <circle cx={lx} cy={ly} r={surge ? 2.5 : 2} fill="currentColor" />
-    </svg>
+    <div className="flex items-end gap-0.5" style={{ height: 20 }}>
+      {counts.map((v, i) => {
+        const isCurrent = i === counts.length - 1
+        const heightPx  = Math.max(v === 0 ? 0 : 2, Math.round((v / max) * 20))
+        return (
+          <div
+            key={i}
+            className={cn(
+              'rounded-sm',
+              isCurrent && surge  ? 'bg-accent'
+                : isCurrent       ? 'bg-accent/60'
+                                  : 'bg-border/60'
+            )}
+            style={{ width: 4, height: heightPx }}
+          />
+        )
+      })}
+    </div>
   )
 }
 

@@ -3,7 +3,113 @@
  * Simulates a realistic MarketMind feed — no backend required.
  */
 
-import type { FeedResponse, CompanyRadarItem } from '@/lib/types'
+import type { FeedResponse, CompanyRadarItem, TrajectoryRow } from '@/lib/types'
+
+// ── Signal Map demo data — mirrors TrajectoryRow contract ─────────────────────
+// Sorted: inflecting first (by acceleration desc), then non-inflecting (by acceleration desc).
+
+export const DEMO_TRAJECTORIES: TrajectoryRow[] = [
+  {
+    normalised_name: 'vertiv holdings',
+    display_name:    'Vertiv Holdings',
+    ticker:          'VRT',
+    icr_series:      [0,1,1,1,2,2,3,4,5,5,7,12],
+    icr_current:     12,
+    icr_4w_avg:      5.25,
+    is_inflecting:   true,
+    acceleration:    4.25,
+  },
+  {
+    normalised_name: 'applied materials',
+    display_name:    'Applied Materials',
+    ticker:          'AMAT',
+    icr_series:      [0,1,1,2,2,3,3,3,4,5,7,11],
+    icr_current:     11,
+    icr_4w_avg:      4.75,
+    is_inflecting:   true,
+    acceleration:    4.25,
+  },
+  {
+    normalised_name: 'super micro computer',
+    display_name:    'Super Micro Computer',
+    ticker:          'SMCI',
+    icr_series:      [0,0,1,1,1,2,2,3,3,4,6,9],
+    icr_current:     9,
+    icr_4w_avg:      4.0,
+    is_inflecting:   true,
+    acceleration:    3.5,
+  },
+  {
+    normalised_name: 'kla corporation',
+    display_name:    'KLA Corporation',
+    ticker:          'KLAC',
+    icr_series:      [0,0,1,1,2,2,2,3,3,4,5,8],
+    icr_current:     8,
+    icr_4w_avg:      3.75,
+    is_inflecting:   true,
+    acceleration:    2.75,
+  },
+  {
+    normalised_name: 'advanced micro devices',
+    display_name:    'Advanced Micro Devices',
+    ticker:          'AMD',
+    icr_series:      [1,2,2,3,3,4,4,5,5,6,7,8],
+    icr_current:     8,
+    icr_4w_avg:      5.75,
+    is_inflecting:   false,
+    acceleration:    1.75,
+  },
+  {
+    normalised_name: 'eaton corporation',
+    display_name:    'Eaton Corporation',
+    ticker:          'ETN',
+    icr_series:      [2,2,3,4,4,5,5,6,7,7,8,9],
+    icr_current:     9,
+    icr_4w_avg:      7.0,
+    is_inflecting:   false,
+    acceleration:    1.5,
+  },
+  {
+    normalised_name: 'nvidia',
+    display_name:    'NVIDIA',
+    ticker:          'NVDA',
+    icr_series:      [4,5,5,6,7,7,8,9,9,9,10,11],
+    icr_current:     11,
+    icr_4w_avg:      9.25,
+    is_inflecting:   false,
+    acceleration:    1.25,
+  },
+  {
+    normalised_name: 'quanta services',
+    display_name:    'Quanta Services',
+    ticker:          'PWR',
+    icr_series:      [1,1,2,2,3,3,4,4,5,5,6,7],
+    icr_current:     7,
+    icr_4w_avg:      5.0,
+    is_inflecting:   false,
+    acceleration:    1.5,
+  },
+  {
+    normalised_name: 'equinix',
+    display_name:    'Equinix',
+    ticker:          'EQIX',
+    icr_series:      [1,1,2,2,3,3,4,4,4,5,5,6],
+    icr_current:     6,
+    icr_4w_avg:      4.5,
+    is_inflecting:   false,
+    acceleration:    1.0,
+  },
+  {
+    normalised_name: 'lockheed martin',
+    display_name:    'Lockheed Martin',
+    ticker:          'LMT',
+    icr_series:      [2,2,3,3,3,4,4,4,4,4,4,5],
+    icr_current:     5,
+    icr_4w_avg:      4.0,
+    is_inflecting:   false,
+    acceleration:    0.5,
+  },
+]
 
 export const DEMO_FEED: FeedResponse = {
   feed_date: '2026-05-25',

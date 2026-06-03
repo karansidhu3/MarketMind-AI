@@ -489,6 +489,25 @@ ICR as the sole primary metric. ADR-031 through ADR-037 govern the architecture.
 - Portfolio GapRow: `formatConfidence(thesis_confidence)` display removed.
 - CompanyPanel `deriveVerdict`: confidence % strings removed from narrative sentences.
 
+### Sprint 16 — Demo Alignment ✅ (2026-06-02)
+
+**Goal:** Demo mirrors the actual product — Signal Map as primary surface, ICR data
+model throughout, correct nav, ICR card in company deep-dive.
+
+**Divergences fixed:**
+- Demo primary surface was Feed-era (`CompanyRadar` + thesis pills). Replaced with
+  Signal Map clone: `DEMO_TRAJECTORIES` static data (10 companies, 12-week ICR
+  series), All / Accelerating filter chips, column labels, same layout as `/signals`.
+- `DemoShell` header: "Feed / Portfolio / About" → "Signals / Portfolio" with
+  active-state styling matching `Header.tsx`. Logo links to `/demo`.
+- `CompanyPanel` demo mode: `VerdictCard` (confidence-era, wrong metric) replaced
+  with `ICRCard` when `data.icr_series` is present. Matches ICR card on company pages.
+- `DemoGapRow` sparkline: SVG polyline (4-point line) → 4-bar chart using the same
+  bar language as the Signal Map.
+- `CompanyDetail` type: optional `icr_series`, `icr_current`, `icr_4w_avg`,
+  `is_inflecting` fields added. All 14 `DEMO_COMPANY_DETAIL` entries populated.
+- Demo CTA copy updated to ICR / independent citation framing.
+
 ---
 
 ## Sprint 12 — Track Record + Prediction (deferred)

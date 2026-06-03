@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, ExternalLink } from 'lucide-react'
+import { X, ExternalLink, Activity } from 'lucide-react'
 import { useCompany } from '@/contexts/CompanyContext'
 import { getCompany } from '@/lib/api'
 import { cn, formatDateShort } from '@/lib/utils'
@@ -96,6 +96,92 @@ function VerdictCard({ data }: { data: CompanyDetail }) {
   )
 }
 
+// ── ICR card (shown in demo mode instead of VerdictCard) ─────────────────────
+
+function ICRSparklineMini({ series, inflecting }: { series: number[]; inflecting: boolean }) {
+  const max    = Math.max(...series, 1)
+  const BAR_W  = 3
+  const GAP    = 1.5
+  const H      = 22
+
+  if (series.every(v => v === 0)) {
+    return (
+      <div className="flex items-end" style={{ gap: GAP, height: H }}>
+        {series.map((_, i) => (
+          <div key={i} className="bg-border/50 rounded-sm" style={{ width: BAR_W, height: 2 }} />
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex items-end" style={{ gap: GAP, height: H }}>
+      {series.map((v, i) => {
+        const isCurrent = i === series.length - 1
+        const heightPx  = Math.max(v === 0 ? 0 : 2, Math.round((v / max) * H))
+        return (
+          <motion.div
+            key={i}
+            className={cn(
+              'rounded-sm',
+              isCurrent && inflecting ? 'bg-amber'
+                : isCurrent           ? 'bg-accent'
+                : inflecting          ? 'bg-amber/25'
+                                      : 'bg-accent/20',
+            )}
+            style={{ width: BAR_W, height: heightPx }}
+            initial={{ scaleY: 0, originY: '100%' }}
+            animate={{ scaleY: 1 }}
+            transition={{ duration: 0.3, delay: i * 0.02 }}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+function ICRCard({ data }: { data: CompanyDetail }) {
+  const series     = data.icr_series!
+  const current    = data.icr_current!
+  const avg4w      = data.icr_4w_avg!
+  const inflecting = data.is_inflecting!
+
+  return (
+    <div className={cn(
+      'rounded-xl border p-4',
+      inflecting ? 'border-amber/20 bg-amber/[0.04]' : 'border-border/60 bg-elevated/30'
+    )}>
+      <div className="flex items-center gap-2 mb-3">
+        <Activity size={12} className={inflecting ? 'text-amber' : 'text-accent'} strokeWidth={2} />
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
+          Independent Citation Rate
+        </span>
+      </div>
+      <div className="flex items-end gap-4 mb-3">
+        <div>
+          <div className="text-text-primary text-2xl font-bold tabular-nums leading-none">
+            {current}
+          </div>
+          <div className="text-text-tertiary text-[10px] mt-0.5">this week</div>
+        </div>
+        <div className="pb-0.5">
+          <div className="text-text-secondary text-sm tabular-nums font-medium">{avg4w.toFixed(1)}</div>
+          <div className="text-text-tertiary text-[10px]">4w avg</div>
+        </div>
+        {inflecting && (
+          <span className="text-amber text-[10px] font-semibold bg-amber/10 border border-amber/25 px-1.5 py-0.5 rounded-full leading-none self-end mb-0.5">
+            Accelerating
+          </span>
+        )}
+      </div>
+      <ICRSparklineMini series={series} inflecting={inflecting} />
+      <p className="text-text-tertiary/60 text-[10px] mt-2">
+        Independent filers per week · PRIMARY_DISCLOSURE only
+      </p>
+    </div>
+  )
+}
+
 // ── 4-week bar chart ──────────────────────────────────────────────────────────
 
 function TrajectoryChart({ counts }: { counts: number[] }) {
@@ -105,7 +191,7 @@ function TrajectoryChart({ counts }: { counts: number[] }) {
 
   return (
     <div>
-      <SectionLabel className="mb-3">4-week trajectory</SectionLabel>
+      <SectionLabel className="mb-3">Corpus trajectory</SectionLabel>
       <div className="flex items-end gap-2 h-32">
         {counts.map((v, i) => {
           const pct = (v / max) * 100
@@ -322,10 +408,13 @@ export default function CompanyPanel({
 
           {!loading && !error && data && (
             <div className="p-5 space-y-5">
-              {/* ── Verdict — system speaks first ── */}
-              <VerdictCard data={data} />
+              {/* ── ICR card (when data present) or verdict card (fallback) ── */}
+              {data.icr_series && data.icr_current !== undefined
+                ? <ICRCard data={data} />
+                : <VerdictCard data={data} />
+              }
 
-              {/* 4-week trajectory — visual proof of verdict */}
+              {/* 4-week corpus trajectory */}
               <TrajectoryChart counts={data.weekly_counts} />
 
               {/* Thesis exposure */}

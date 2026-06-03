@@ -131,6 +131,11 @@ export interface CompanyDetail {
   weekly_counts: number[]
   thesis_breakdown: CompanyThesisBreakdown[]
   evidence: CompanyEvidenceItem[]
+  // Optional ICR fields — populated in demo data; on live data fetched separately via /trajectory/{name}
+  icr_series?:    number[]
+  icr_current?:   number
+  icr_4w_avg?:    number
+  is_inflecting?: boolean
 }
 
 export interface SourceRef {
