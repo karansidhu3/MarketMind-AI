@@ -179,8 +179,15 @@ async def main() -> None:
                     # then pre-warm all explain caches while Ollama is still running.
                     await _invalidate_feed_cache(redis)
                     await _prewarm_explain_caches()
-                except Exception:
-                    logger.exception("Ingestion failed — will retry in 1 hour")
+                except (Exception, BaseException) as exc:
+                    # Catch BaseException too — asyncio.CancelledError and other
+                    # non-Exception base classes can propagate through network failures
+                    # (DNS timeouts, connection resets mid-run) and kill the process.
+                    # Log the crash type so the cause is visible in `docker logs ingestor`.
+                    logger.exception(
+                        "Ingestion failed (%s) — will retry in 1 hour",
+                        type(exc).__name__,
+                    )
                     await asyncio.sleep(3600)
                     continue
                 # Loop back to the top immediately after a successful run.
