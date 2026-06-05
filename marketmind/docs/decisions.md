@@ -573,11 +573,14 @@ primary product surfaces.
 - Distinguishes confirmation (multiple independent companies) from noise
   (one company mentioned repeatedly)
 
-**What changes:**
-- `CompanySignal` gets `independent_citation_count` field (distinct citing companies)
-- `Evidence` gets `source_type` field: PRIMARY_DISCLOSURE or TRADE_PRESS
-- ICR computed as `COUNT(DISTINCT citing_company)` from PRIMARY_DISCLOSURE evidence
-  per time window
+**What was built:**
+- `Evidence` gets `source_classification` field: PRIMARY_DISCLOSURE or TRADE_PRESS
+- `Evidence` gets `filing_ticker` field: the ticker of the company that filed the document
+  (NULL for TRADE_PRESS; populated for targeted SEC filings from Sprint 12 onward)
+- ICR computed dynamically by `TrajectoryService` as `COUNT(DISTINCT filing_ticker)`
+  from PRIMARY_DISCLOSURE Evidence rows joined to CompanySignal on document_id
+- Note: `CompanySignal.independent_citation_count` was planned but not implemented;
+  ICR is always computed at query time, never stored as a field
 - Confidence score retained in DB for backward compatibility but not surfaced
 - All UI components showing confidence % are removed or replaced with ICR trajectory
 
@@ -594,11 +597,13 @@ record and used to weight ICR computation.
 - Legally required, filed under SEC liability, highest factual reliability
 - Cross-company citations in these filings carry maximum signal weight
 
-**TRADE_PRESS** (weight: 0.4)
+**TRADE_PRESS** (weight: 0 for ICR)
 - Breaking Defense, Utility Dive, EE Times
 - Editorial content from vertical trade publications
 - Higher precision than general press; includes opposing signals
-- Counts toward ICR at reduced weight to prevent press-coverage inflation
+- Does NOT count toward ICR — `TrajectoryService` filters `source_classification = 'PRIMARY_DISCLOSURE'` exclusively
+- TRADE_PRESS evidence still ingested: contributes to radar doc_count, evidence trail, and thesis scoring
+- Rationale: editorial coverage follows filings; counting it would inflate ICR with derivative signal
 
 **REMOVED (not ingested):**
 - Generic EDGAR daily feed (any industry) — dominated by targeted connector
@@ -749,8 +754,13 @@ are deprecated.
   infrastructure for a component that should be a page.
 
 **Migration:** Existing company name links update from `openCompany()` to
-`router.push('/companies/[normalised_name]')`. `CompanyContext` and
-`CompanyPanel` are deleted after migration is complete.
+`router.push('/companies/[normalised_name]')` via `CompanyNavigator` in `AppShell`.
+
+**Exception — Demo:** `CompanyPanel` and `CompanyContext` are intentionally
+preserved in `DemoShell`. The demo uses a slide-out drawer with static company
+data (`DEMO_COMPANY_DETAIL`) — the drawer pattern is correct for the demo context
+(no routing, no auth, static payload). `CompanyPanel` should not be deleted from
+the codebase while the demo route exists.
 
 ---
 

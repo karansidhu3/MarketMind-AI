@@ -52,7 +52,7 @@ _OLLAMA_WAIT_SECONDS = int(os.getenv("OLLAMA_WAIT_SECONDS", "300"))  # 5 minutes
 
 
 def _done_key(for_date: date | None = None) -> str:
-    d = for_date or date.today()
+    d = for_date or datetime.now(PT).date()
     return f"{_DONE_KEY_PREFIX}{d.isoformat()}"
 
 
@@ -135,7 +135,7 @@ async def _invalidate_feed_cache(redis, for_date: date | None = None) -> None:
     Also clears the explain-summary and unified-explain caches so the LLM
     narratives are re-synthesised from the new data.
     """
-    d = (for_date or date.today()).isoformat()
+    d = (for_date or datetime.now(PT).date()).isoformat()
     keys = [
         f"feed:generated:{d}",
         f"feed:explain-summary:{d}",

@@ -111,7 +111,7 @@ function EvidenceRow({ ev }: { ev: CompanyEvidenceItem }) {
     <div className="flex gap-3 py-4 border-b border-border/50 last:border-0">
       <SentimentDot sentiment={ev.sentiment} />
       <div className="flex-1 min-w-0">
-        <p className="text-text-secondary text-sm leading-relaxed">{ev.excerpt}</p>
+        <p className="text-text-secondary text-sm leading-relaxed border-l-2 border-border/50 pl-3">{ev.excerpt}</p>
         <div className="flex items-center gap-3 mt-2 flex-wrap">
           <span className="text-text-tertiary text-xs">{ev.source_name}</span>
           {ev.document_date && (
@@ -282,7 +282,7 @@ export default function CompanyPage() {
           className="mb-8"
         >
           <div className="flex items-start gap-3 mb-1">
-            <h1 className="text-text-primary text-2xl font-bold tracking-tight leading-tight">
+            <h1 className="text-text-primary text-2xl font-serif-display leading-tight">
               {company.display_name}
             </h1>
             {company.ticker && (
@@ -323,7 +323,7 @@ export default function CompanyPage() {
                     <div className="text-text-primary text-3xl font-bold tabular-nums leading-none">
                       {trajectory.icr_current}
                     </div>
-                    <div className="text-text-tertiary text-xs mt-1">this week</div>
+                    <div className="text-text-tertiary text-[11px] mt-1 leading-tight">independent companies this week</div>
                   </div>
                   <div className="pb-0.5">
                     <div className="text-text-secondary text-sm tabular-nums font-medium">

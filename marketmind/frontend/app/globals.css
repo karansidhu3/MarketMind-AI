@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Color system (CareerOS shared design language) ──────────────────────── */
+/* ── Color system ──────────────────────────────────────────────────────────── */
 :root {
   /* Accent — violet, product-specific */
   --c-accent:        #7C3AED;

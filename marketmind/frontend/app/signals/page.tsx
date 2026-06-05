@@ -14,13 +14,13 @@ import type { TrajectoryRow, CorpusHealth } from '@/lib/types'
 
 function ICRSparkline({ series, inflecting }: { series: number[]; inflecting: boolean }) {
   const max = Math.max(...series, 1)
-  const BAR_W = 4
-  const BAR_GAP = 2
-  const H = 28
+  const BAR_W = 8
+  const BAR_GAP = 3
+  const H = 44
 
   if (series.every(v => v === 0)) {
     return (
-      <div className="flex items-end gap-0.5" style={{ width: series.length * (BAR_W + BAR_GAP) - BAR_GAP, height: H }}>
+      <div className="flex items-end" style={{ gap: BAR_GAP, width: series.length * (BAR_W + BAR_GAP) - BAR_GAP, height: H }}>
         {series.map((_, i) => (
           <div
             key={i}
@@ -33,7 +33,7 @@ function ICRSparkline({ series, inflecting }: { series: number[]; inflecting: bo
   }
 
   return (
-    <div className="flex items-end gap-0.5" style={{ height: H }}>
+    <div className="flex items-end" style={{ gap: BAR_GAP, height: H }}>
       {series.map((v, i) => {
         const isCurrent = i === series.length - 1
         const heightPx  = Math.max(v === 0 ? 0 : 2, Math.round((v / max) * H))
@@ -77,8 +77,8 @@ function SignalRow({ row, index }: { row: TrajectoryRow; index: number }) {
       transition={{ ...spring.gentle, delay: index * 0.02 }}
       className={cn(
         'group flex items-center gap-4 px-4 py-3 border-b border-border/50 last:border-0',
-        'hover:bg-elevated/60 transition-colors cursor-default',
-        row.is_inflecting && 'bg-amber/[0.025]'
+        'hover:bg-elevated/60 transition-colors cursor-pointer',
+        row.is_inflecting && 'bg-amber/[0.05]'
       )}
     >
       {/* Rank */}
@@ -319,7 +319,7 @@ export default function SignalsPage() {
           <div>
             <div className="flex items-center gap-2.5 mb-1">
               <Activity size={16} className="text-accent shrink-0" strokeWidth={2} />
-              <h1 className="text-text-primary text-lg font-bold tracking-tight">Signal Map</h1>
+              <h1 className="text-text-primary text-lg font-serif-display">Signal Map</h1>
             </div>
             <p className="text-text-tertiary text-xs leading-relaxed max-w-md">
               Independent companies citing each entity in primary SEC filings —

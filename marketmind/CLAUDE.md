@@ -29,7 +29,7 @@ inflected since yesterday. Check which accelerating trajectories you don't hold.
 **Portfolio goal:** Surface trajectory gaps — companies with accelerating ICR
 in your investment contexts that you have no position in.
 
-**ICR rebuild complete (2026-06-01).** Phase 0 + Sprints 12–15 shipped. See
+**ICR rebuild complete (2026-06-01). Sprint 16 (demo alignment) complete (2026-06-02).** Phase 0 + Sprints 12–16 shipped. See
 `docs/roadmap.md` for full sprint history. ADR-031 through ADR-037 govern the
 architecture. The Signal Map is live at `/signals`. Company pages live at
 `/companies/[name]`. Feed and Themes remain as legacy routes; Themes is no longer
