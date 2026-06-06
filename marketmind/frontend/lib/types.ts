@@ -207,6 +207,7 @@ export interface GapCompany {
   thesis_names: string[]
   doc_count: number
   thesis_confidence: number
+  weekly_counts: number[]   // doc counts for each of the last 4 weeks (oldest → newest)
 }
 
 export interface FeedGapSignal {

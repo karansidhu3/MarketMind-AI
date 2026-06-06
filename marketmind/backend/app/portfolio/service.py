@@ -264,6 +264,7 @@ class PortfolioService:
 
         # ── Gap detection: high-signal companies you don't hold ──────────────
 
+        now_dt = datetime.now(timezone.utc)
         gaps: list[GapCompany] = []
         for norm, doc_count in company_doc_counts.items():
             if doc_count < _GAP_MIN_DOCS:
@@ -293,6 +294,23 @@ class PortfolioService:
             # Display name: canonical company name from signals
             company_name = sig_groups[norm][0].company_name if sig_groups.get(norm) else norm
 
+            # 4-week sparkline: count unique documents first_seen in each 7-day bucket
+            sigs_for_norm = sig_groups.get(norm, [])
+            week_buckets = [0, 0, 0, 0]
+            for sig in sigs_for_norm:
+                fs = sig.first_seen
+                if fs.tzinfo is None:
+                    fs = fs.replace(tzinfo=timezone.utc)
+                days_ago = (now_dt - fs).days
+                if days_ago < 7:
+                    week_buckets[3] += 1
+                elif days_ago < 14:
+                    week_buckets[2] += 1
+                elif days_ago < 21:
+                    week_buckets[1] += 1
+                elif days_ago < 28:
+                    week_buckets[0] += 1
+
             gaps.append(GapCompany(
                 normalised_name=norm,
                 company_name=company_name,
@@ -300,12 +318,12 @@ class PortfolioService:
                 thesis_names=thesis_names,
                 doc_count=doc_count,
                 thesis_confidence=round(best_conf, 3),
+                weekly_counts=week_buckets,
             ))
 
         # Rank gaps by urgency: doc_count × thesis_count × recency_weight
         # thesis_count: number of independent theses the company appears in (breadth)
         # recency_weight: how recently the company was seen in new signals (freshness)
-        now_dt = datetime.now(timezone.utc)
         company_last_seen: dict[str, datetime] = {}
         for norm, sigs in sig_groups.items():
             latest = max(

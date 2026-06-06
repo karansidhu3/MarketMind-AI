@@ -63,6 +63,7 @@ class GapCompany(BaseModel):
     thesis_names: list[str]
     doc_count: int
     thesis_confidence: float            # highest confidence among the theses it appears in
+    weekly_counts: list[int] = []       # doc counts for each of the last 4 weeks (oldest → newest)
 
 
 class FeedGapSignal(BaseModel):

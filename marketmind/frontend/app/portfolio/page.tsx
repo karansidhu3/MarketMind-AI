@@ -45,6 +45,34 @@ function buildNarrative(alignment: PortfolioAlignment): string {
   return parts.join('. ') + (parts.length ? '.' : '')
 }
 
+// ── Gap sparkline — 4-week mini bar chart ────────────────────────────────────
+
+function GapSparkline({ counts }: { counts: number[] }) {
+  if (!counts || counts.length === 0 || counts.every(v => v === 0)) return null
+  const max    = Math.max(...counts, 1)
+  const latest = counts[counts.length - 1]
+  const prev   = counts[counts.length - 2] ?? 0
+  const surge  = latest >= prev * 2 && prev > 0
+  return (
+    <div className="flex items-end gap-0.5" style={{ height: 20 }}>
+      {counts.map((v, i) => {
+        const isCurrent = i === counts.length - 1
+        const heightPx  = Math.max(v === 0 ? 0 : 2, Math.round((v / max) * 20))
+        return (
+          <div
+            key={i}
+            className={cn(
+              'rounded-sm',
+              isCurrent && surge ? 'bg-accent' : isCurrent ? 'bg-accent/60' : 'bg-border/60'
+            )}
+            style={{ width: 4, height: heightPx }}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
 // ── Gap row ───────────────────────────────────────────────────────────────────
 
 function GapRow({ gap, rank }: { gap: GapCompany; rank: number }) {
@@ -78,16 +106,20 @@ function GapRow({ gap, rank }: { gap: GapCompany; rank: number }) {
         <div className="flex flex-wrap gap-1 mt-0.5">
           {gap.thesis_names.map(t => (
             <span key={t} className="text-text-tertiary text-[10px] bg-elevated px-1.5 py-0.5 rounded-md">
-              {t}
+              {t.split(' ').slice(0, 2).join(' ')}
             </span>
           ))}
         </div>
+      </div>
+      <div className="shrink-0 hidden sm:block">
+        <GapSparkline counts={gap.weekly_counts ?? []} />
       </div>
       <div className="shrink-0 text-right">
         <div className="text-text-primary text-xs font-semibold tabular-nums">
           {gap.doc_count}
           <span className="text-text-tertiary font-normal ml-0.5 text-[10px]">docs</span>
         </div>
+        <div className="text-red text-[10px] font-medium">Not held</div>
       </div>
       <ChevronRight size={12} className="text-text-tertiary opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
     </div>
