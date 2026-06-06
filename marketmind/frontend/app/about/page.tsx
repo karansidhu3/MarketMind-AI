@@ -152,8 +152,8 @@ export default function AboutPage() {
               },
               {
                 icon: Clock,
-                title: 'Daily feed',
-                body: 'The feed surfaces what changed today against what the corpus has been building for months. New companies on radar, theme momentum shifts, the top excerpt worth reading — synthesised into a 2-sentence plain English briefing.',
+                title: 'Signal Map',
+                body: 'The Signal Map ranks companies by ICR acceleration — how many independent companies cited each entity in primary SEC filings this week versus the prior 4-week average. A company going from 0 to 9 independent citations over 8 weeks is a signal no one-shot query can surface.',
               },
               {
                 icon: Layers,

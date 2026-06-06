@@ -21,7 +21,7 @@ export default function LoginPage() {
     try {
       const token = await login(email, password)
       localStorage.setItem('mm_token', token)
-      router.push('/feed')
+      router.push('/signals')
     } catch {
       setError('Invalid email or password.')
     } finally {

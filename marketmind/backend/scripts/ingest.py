@@ -26,7 +26,8 @@ Corpus strategy (ADR-026, ADR-033):
 import asyncio
 import logging
 import sys
-from datetime import date
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -186,7 +187,7 @@ async def main() -> int:
     # connectors are skipped instantly. Keys expire after 25h so each new day
     # starts fresh.
     redis = aioredis.from_url(settings.redis_url, decode_responses=True)
-    today = date.today().isoformat()
+    today = datetime.now(ZoneInfo("America/Vancouver")).date().isoformat()
 
     total = 0
     try:
