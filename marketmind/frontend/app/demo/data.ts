@@ -6,8 +6,12 @@ import type { TrajectoryRow } from '@/lib/types'
 
 // ── Signal Map demo data — mirrors TrajectoryRow contract ─────────────────────
 // Sorted: inflecting first (by acceleration desc), then non-inflecting (by acceleration desc).
+// 15 rows total: 7 inflecting (amber) + 8 steady.
 
 export const DEMO_TRAJECTORIES: TrajectoryRow[] = [
+
+  // ── Inflecting — 7 companies ─────────────────────────────────────────────────
+
   {
     normalised_name: 'vertiv holdings',
     display_name:    'Vertiv Holdings',
@@ -39,6 +43,16 @@ export const DEMO_TRAJECTORIES: TrajectoryRow[] = [
     acceleration:    3.5,
   },
   {
+    normalised_name: 'celestica',
+    display_name:    'Celestica',
+    ticker:          'CLS',
+    icr_series:      [0,0,0,0,0,1,1,1,2,2,3,7],
+    icr_current:     7,
+    icr_4w_avg:      2.0,
+    is_inflecting:   true,
+    acceleration:    3.0,
+  },
+  {
     normalised_name: 'kla corporation',
     display_name:    'KLA Corporation',
     ticker:          'KLAC',
@@ -49,12 +63,45 @@ export const DEMO_TRAJECTORIES: TrajectoryRow[] = [
     acceleration:    2.75,
   },
   {
+    normalised_name: 'kratos defense',
+    display_name:    'Kratos Defense',
+    ticker:          'KTOS',
+    icr_series:      [0,0,0,0,0,0,1,1,2,3,4,6],
+    icr_current:     6,
+    icr_4w_avg:      2.5,
+    is_inflecting:   true,
+    acceleration:    2.5,
+  },
+  {
+    normalised_name: 'powell industries',
+    display_name:    'Powell Industries',
+    ticker:          'POWL',
+    icr_series:      [0,0,0,0,0,0,0,1,1,2,2,5],
+    icr_current:     5,
+    icr_4w_avg:      1.5,
+    is_inflecting:   true,
+    acceleration:    2.0,
+  },
+
+  // ── Steady — 8 companies ──────────────────────────────────────────────────────
+
+  {
     normalised_name: 'advanced micro devices',
     display_name:    'Advanced Micro Devices',
     ticker:          'AMD',
     icr_series:      [1,2,2,3,3,4,4,5,5,6,7,8],
     icr_current:     8,
     icr_4w_avg:      5.75,
+    is_inflecting:   false,
+    acceleration:    1.75,
+  },
+  {
+    normalised_name: 'micron technology',
+    display_name:    'Micron Technology',
+    ticker:          'MU',
+    icr_series:      [0,1,1,2,2,3,3,4,4,5,6,7],
+    icr_current:     7,
+    icr_4w_avg:      4.75,
     is_inflecting:   false,
     acceleration:    1.75,
   },
@@ -69,16 +116,6 @@ export const DEMO_TRAJECTORIES: TrajectoryRow[] = [
     acceleration:    1.5,
   },
   {
-    normalised_name: 'nvidia',
-    display_name:    'NVIDIA',
-    ticker:          'NVDA',
-    icr_series:      [4,5,5,6,7,7,8,9,9,9,10,11],
-    icr_current:     11,
-    icr_4w_avg:      9.25,
-    is_inflecting:   false,
-    acceleration:    1.25,
-  },
-  {
     normalised_name: 'quanta services',
     display_name:    'Quanta Services',
     ticker:          'PWR',
@@ -87,6 +124,26 @@ export const DEMO_TRAJECTORIES: TrajectoryRow[] = [
     icr_4w_avg:      5.0,
     is_inflecting:   false,
     acceleration:    1.5,
+  },
+  {
+    normalised_name: 'rtx corporation',
+    display_name:    'RTX Corporation',
+    ticker:          'RTX',
+    icr_series:      [1,1,2,2,3,3,4,4,4,5,5,7],
+    icr_current:     7,
+    icr_4w_avg:      4.5,
+    is_inflecting:   false,
+    acceleration:    1.5,
+  },
+  {
+    normalised_name: 'nvidia',
+    display_name:    'NVIDIA',
+    ticker:          'NVDA',
+    icr_series:      [4,5,5,6,7,7,8,9,9,9,10,11],
+    icr_current:     11,
+    icr_4w_avg:      9.25,
+    is_inflecting:   false,
+    acceleration:    1.25,
   },
   {
     normalised_name: 'equinix',
@@ -155,8 +212,8 @@ export const DEMO_HOLDINGS: DemoHolding[] = [
 ]
 
 /**
- * Companies with strong corpus signals that the demo user doesn't hold.
- * Sorted by urgency: doc_count × thesis_count × recency (all current).
+ * Gap companies — accelerating signals not represented in holdings.
+ * All four are currently inflecting. Sorted by ICR current desc.
  */
 export const DEMO_GAPS: DemoGap[] = [
   {
@@ -166,14 +223,6 @@ export const DEMO_GAPS: DemoGap[] = [
     thesis_names: ['AI Infrastructure Bottlenecks', 'Data Center Physical Infrastructure'],
     doc_count: 23,
     weekly_counts: [4, 8, 11, 23],
-  },
-  {
-    company_name: 'Advanced Micro Devices',
-    ticker: 'AMD',
-    normalised_name: 'advanced micro devices',
-    thesis_names: ['AI Infrastructure Bottlenecks', 'Semiconductor Supply Chain Stress'],
-    doc_count: 12,
-    weekly_counts: [3, 6, 9, 12],
   },
   {
     company_name: 'Applied Materials',
@@ -191,5 +240,12 @@ export const DEMO_GAPS: DemoGap[] = [
     doc_count: 13,
     weekly_counts: [2, 5, 9, 13],
   },
+  {
+    company_name: 'Celestica',
+    ticker: 'CLS',
+    normalised_name: 'celestica',
+    thesis_names: ['AI Infrastructure Bottlenecks', 'Data Center Physical Infrastructure'],
+    doc_count: 7,
+    weekly_counts: [0, 0, 3, 7],
+  },
 ]
-
