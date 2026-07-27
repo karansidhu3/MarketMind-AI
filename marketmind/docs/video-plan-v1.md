@@ -1,321 +1,663 @@
-# MarketMind — Cinematic Systems Showcase: Version 1 Film Plan
+````md
+# MarketMind — Portfolio Film
 
-> **Type:** Systems showcase — not a proof-of-intelligence film.  
-> **Audience:** Recruiters, engineers, technical hiring managers, GitHub portfolio viewers.  
-> **Goal:** Communicate deep systems thinking, architectural discipline, epistemic rigor, and design maturity.  
-> **What this is NOT:** A proof-of-alpha film. No real ICR signals have accumulated yet. The moat is being built.
+**Director's Document**
 
----
-
-## Positioning
-
-### What the film claims
-
-- ICR — Independent Citation Rate — counts how many structurally independent companies cite an entity in primary SEC filings per week, tracked as a 12-week time series.
-- A constraint vocabulary gate (`constraint.py`) ensures only filings discussing supply-chain stress — not passing mentions — advance ICR. This is a documented architectural decision, not a tuning choice.
-- The system was rebuilt around ICR after confidence scores were explicitly removed because they inflate toward 70–80% by construction.
-- 37 documented architecture decisions. An explicit "What NOT to build" list. Confidence scores removed. Supply chain extraction removed. Insider transactions removed. All with written rationale.
-- Runs entirely locally: Postgres, Qdrant, Redis, Ollama, Docker Compose. No API costs.
-- Design is intentional: warm neutrals, spring physics, DM Serif for editorial moments, monospace for data.
-- The corpus is accumulating. Real ICR requires real time. The system is production-quality.
-
-### What the film does NOT claim
-
-- Any specific real signal discovered — ICR data has not accumulated long enough.
-- Investment alpha demonstrated.
-- That the demo data is live data. It is clearly labeled sample data.
-- "This is what the market doesn't know yet." That story comes later.
-
-### Framing
-
-> *"This is what it looks like to think carefully about information quality, epistemic rigor, temporal accumulation, and product design — before the data has accumulated long enough to tell its first real story."*
-
-The video communicates *how I think*, not *what the system found*.
+Runtime: 90–120 seconds  
+Format: Screen Studio Capture Only  
+Aspect Ratio: 16:9  
+Tone: Intentional. Quiet. Editorial.
 
 ---
 
-## Pre-Film Fixes
+# The Brief
 
-Complete all Critical items before recording. See `docs/video-readiness-plan.md` for full implementation detail.
+This film is not an investing pitch.
 
-| Priority | Fix | File |
-|---|---|---|
-| **Critical** | Remove Feed from nav | `Header.tsx` |
-| **Critical** | Enlarge Signal Map sparklines (4→8px wide, 28→44px tall) | `signals/page.tsx`, `demo/page.tsx` |
-| **Critical** | DM Serif on Signal Map title | `signals/page.tsx` |
-| **Critical** | DM Serif on company page h1 | `companies/[name]/page.tsx` |
-| **Critical** | Amber row highlight 0.025→0.05 opacity | `signals/page.tsx`, `demo/page.tsx` |
-| **Critical** | `cursor-pointer` on Signal Map rows | `signals/page.tsx` |
-| **High** | Evidence excerpt blockquote border | `companies/[name]/page.tsx` |
-| **High** | Remove "CareerOS" comment from globals.css | `globals.css` |
-| **High** | Delete stale demo exports (DEMO_FEED, DEMO_RADAR, DEMO_NARRATIVES) | `demo/data.ts` |
+This film is not an AI demonstration.
 
----
+This film is evidence.
 
-## Film Structure
+The audience is not deciding whether to use MarketMind.
 
-**Duration:** 2:35 – 2:50  
-**Pacing model:** Technical essay, not product demo. Each section lands before the next begins.  
-**Mode:** Dark mode for Act I and Act II. Transition to light mode in Act IV.
+The audience is:
 
----
+- Engineering managers
+- Recruiters
+- Founders
+- Technical leads
 
-### Opening — The Problem (0:00–0:18)
+The goal is simple:
 
-**No UI. Typography only. Dark background (`#111110`).**
+> Demonstrate systems thinking through a product that remembers information over time.
 
-Lines appear sequentially, each ~18 frame fade, DM Serif, white, centered:
+Most financial software answers questions.
 
-```
-"Most financial signals arrive at the same moment."
-                  ↓ 2.5s hold
-"Aggregated from the same sources."
-"Parsed by the same models."
-"Available to everyone simultaneously."
-```
+MarketMind builds memory.
 
-Each line slightly smaller than the one above it. 1 second hold on the final line.
+The distinction is the entire product.
 
-**Hard cut to white.** Not a dissolve. A cut. This is the conceptual break.
+The film should never explain this.
+
+It should become obvious.
 
 ---
 
-### Act I — The Signal (0:18–0:52)
+# Core Observation
 
-**Introduce ICR through the product. `/demo` in dark mode.**
+Markets react.
 
-| Moment | Action | Duration |
-|---|---|---|
-| Page load | Demo Signal Map loads; sparklines animate up from 0 | 2s hold |
-| Typography overlay | "Independent Citation Rate" (DM Serif, lower-third) | 1.5s |
-| Definition | "How many structurally independent companies referenced an entity in primary SEC filings — per week." | 3.5s |
-| Cursor rests on VRT row | Amber highlight visible, Accelerating badge, sparkline shape | 2s |
-| Screen Studio zoom | 1.3× on VRT sparkline | 2s hold |
-| Typography | "Not mentions. Legal disclosures." | 2s |
-| Click Vertiv Holdings | Company page loads with spring animation | 1.5s |
-| Hold on ICR card | 12, sparkline, Accelerating badge | 2s |
-| Typography | "A company going 0 → 12 in 12 weeks cannot be surfaced by a one-shot query." | 3s |
+News cycles move on.
 
-**This is the thesis statement of the film.**
+Corporate filings don't.
 
----
+Every quarter, thousands of disclosures are published.
 
-### Act II — The Gate (0:52–1:22)
+Most are read once.
 
-**Constraint vocabulary gate and architectural discipline. Code editor view.**
+Then forgotten.
 
-| Moment | Action | Duration |
-|---|---|---|
-| Dissolve to code | `constraint.py` open in editor | 1s |
-| Hold on docstring | Camera reads: "without this gate, ICR over-counts: a company that appears in 30 SEC filings as a passing customer reference would score the same as one that appears as a supply bottleneck." | 5s |
-| Typography | "A mention does not advance the signal. Constraint language does." | 3s |
-| Slow scroll to CONSTRAINT_TERMS | Zoom 1.4× on cluster: `"lead time"`, `"backlog"`, `"sole source"`, `"wafer"`, `"foundry"` | 4s |
-| Cut to decisions.md | ADR-034 heading visible | 2s |
-| Cut to CLAUDE.md | "What NOT to build" section: confidence scores, supply chain extraction, insider transactions — all with rationale | 4s |
-| Typography | "37 documented architecture decisions. Including what not to build." | 3s |
+MarketMind was built around a different assumption.
+
+> A corpus should remember.
+
+Everything else follows from that idea.
 
 ---
 
-### Act III — The System (1:22–1:50)
+# Narrative Structure
 
-**Architecture glimpses. Fast pacing. ~2.5s per cut.**
+The film moves through five ideas.
 
-| Moment | Action | Duration |
-|---|---|---|
-| docker-compose.yml | Service names visible: postgres, qdrant, redis, ollama, backend, frontend, ingestor | 3s |
-| Typography | "Runs entirely locally. No API costs." | 2s |
-| trajectory_service.py | Zoom 1.5× on: `func.count(distinct(Evidence.filing_ticker))` | 3s |
-| Typography | "ICR is a count, not an inference. `COUNT(DISTINCT filing_ticker)` — objective and self-correcting." | 3s |
-| scheduler.py | The `_wait_for_ollama()` comment: "Useful when Ollama runs on a remote host (e.g. a PC waking from sleep)" | 2.5s |
-| No typography | Let the comment speak. A human detail. | — |
+Not features.
 
----
+Not architecture.
 
-### Act IV — The Product (1:50–2:25)
+Ideas.
 
-**Light mode. Warm, clean, breathing. Demonstrate the product surfaces.**
+## 1. Observation (0:00 – 0:15)
 
-| Moment | Action | Duration |
-|---|---|---|
-| Dissolve from code | Signal Map in light mode, full list loaded | 1s |
-| Slow scroll | All 15 rows, sparklines, badges — no cursor interaction; pause on POWL row (0→5 in final 5 weeks) | 10s |
-| Click "Accelerating" filter | Non-inflecting rows spring out; 7 amber rows remain | 2s |
-| Typography | "Acceleration = current week ICR ≥ 2× 4-week average AND ≥ 3 independent citations." | 3s |
-| Nav click to Portfolio | Portfolio intelligence mode loads | 1.5s |
-| Hold on narrative sentence | DM Serif pull-quote: "Positioned in AI Infrastructure and Energy Grid. Vertiv Holdings — 12 independent citations, not held." | 4s |
-| Typography | "What your corpus knows about what you don't hold." | 2.5s |
-| Gap signals animate in | Staggered spring entrance, hold briefly | 2s |
+Information disappears.
 
----
+## 2. Memory (0:15 – 0:45)
 
-### Close (2:25–2:45)
+The corpus accumulates.
 
-**Dissolve to dark. Slow.**
+## 3. Judgment (0:45 – 1:10)
 
-```
-MarketMind            ← Logo wordmark, centered
-A corpus memory platform.    ← DM Serif, below
-The moat is temporal.        ← smaller, 1.5s delay
-```
+The system decides what deserves to become memory.
 
-Hold 2 seconds. Fade to black over 1.8s.
+## 4. Reflection (1:10 – 1:40)
 
-Name / GitHub / LinkedIn — small, monospace, bottom of frame, fade in last, fade out with black.
+Time creates understanding.
+
+## 5. End Card (1:40 – 2:00)
+
+Quiet resolution.
 
 ---
 
-## Shot List
+# Visual Philosophy
 
-| # | Scene | Mode | Route | Duration | Notes |
-|---|---|---|---|---|---|
-| 01 | Opening typography | — | — | 0:18 | Screen Studio: dark frame, no UI |
-| 02 | Signal Map load + sparklines settling | Dark | `/demo` | 0:12 | Capture spring animations on load |
-| 03 | VRT row zoom | Dark | `/demo` | 0:08 | Screen Studio 1.3× zoom |
-| 04 | VRT company page ICR card | Dark | `/demo` (panel) | 0:10 | Click Vertiv, spring slide-in |
-| 05 | constraint.py docstring | Dark | Editor | 0:10 | VS Code, minimal theme |
-| 06 | constraint.py CONSTRAINT_TERMS | Dark | Editor | 0:08 | Zoom 1.4× on key terms |
-| 07 | CLAUDE.md "What NOT to build" | Dark | Editor | 0:06 | Scroll to section |
-| 08 | docker-compose.yml | Dark | Editor | 0:05 | Service names visible |
-| 09 | trajectory_service.py COUNT line | Dark | Editor | 0:06 | Zoom 1.5× |
-| 10 | scheduler.py Ollama comment | Dark | Editor | 0:05 | No zoom needed |
-| 11 | Signal Map full list | Light | `/demo` | 0:12 | Slow scroll, pause 2s on Powell Industries row |
-| 12 | Accelerating filter click | Light | `/demo` | 0:06 | Spring removal of 8 rows; 7 amber remain |
-| 13 | Portfolio narrative sentence | Light | `/demo/portfolio` | 0:08 | Zoom 1.25×, hold |
-| 14 | Gap signals stagger | Light | `/demo/portfolio` | 0:05 | Watch animation settle |
-| 15 | Close typography | Dark | — | 0:20 | Fade to black |
+Everything is captured using Screen Studio.
 
----
+No voiceover.
 
-## Screen Studio Guidance
+No talking head.
 
-### Setup
-- Record at Retina native (2×). Do not downsample before export.
-- Browser: clean profile, no visible extensions, URL bar hidden.
-- Cursor: Screen Studio minimal dot, no ring, smallest size.
+No architecture diagrams.
 
-### Cursor rules
-- Move at reading pace. Practice each shot path before recording.
-- Hold cursor still for ≥ 1.5s before any click.
-- During sparkline zoom: cursor off-screen or bottom-right corner.
-- No hovering without intent. Every cursor position is deliberate.
+No technology logos.
 
-### Zoom targets
+No animated arrows.
 
-| Target | Zoom level | Hold |
-|---|---|---|
-| VRT sparkline (Signal Map) | 1.30× | 2s |
-| ICR number on company page | 1.25× | 3s |
-| `CONSTRAINT_TERMS` cluster | 1.40× | 4s |
-| `COUNT(DISTINCT filing_ticker)` | 1.50× | 3s |
-| Portfolio narrative sentence | 1.25× | 4s |
+No feature callouts.
+
+No startup energy.
+
+No "AI-powered" language.
+
+The interface is the subject.
+
+Motion comes from interaction.
+
+Typography appears rarely.
+
+Every sentence must earn its place.
+
+The audience should leave understanding the philosophy behind the product, not its implementation.
 
 ---
 
-## Final Cut Pro Guidance
+# Act I — Observation
 
-### Track layout
-```
-Track 1 Video:  Screen recordings
-Track 2 Video:  Typography overlay compound clips
-Track 1 Audio:  Music bed
-Track 2 Audio:  Sparse UI sounds (optional, −26dB)
+## 0:00 – 0:15
+
+Black screen.
+
+Hold.
+
+Typography fades in.
+
+### Card 1
+
+Markets react.
+
+Hold.
+
+Fade.
+
+### Card 2
+
+Filings remain.
+
+Hold.
+
+Fade.
+
+### Card 3
+
+Someone has to remember them.
+
+Hold.
+
+Hard cut into the product.
+
+No logo.
+
+No splash screen.
+
+No introduction.
+
+---
+
+# Act II — Memory
+
+## 0:15 – 0:45
+
+The Signal Map appears.
+
+Rows animate into place.
+
+The cursor waits.
+
+No movement.
+
+No explanation.
+
+Click a company.
+
+Open the evidence.
+
+Read naturally.
+
+Scroll slowly.
+
+Allow the interface to breathe.
+
+Nothing is rushed.
+
+The audience should discover the product instead of being guided through it.
+
+### Typography Card
+
+```text
+memory
+
+becomes
+
+measurable.
 ```
 
-### Transition language
+Hold briefly.
 
-| Transition type | Duration | When |
-|---|---|---|
-| Hard cut | 0 frames | Opening typography → product |
-| Product dissolve | 18 frames (0.3s) | Within Act IV |
-| Code ↔ product dissolve | 30 frames (0.5s) | Acts II–III ↔ Acts I, IV |
-| Fade to black | 108 frames (1.8s) | Close only |
+Return to the product.
 
-**Do not use:** slides, wipes, pushes, zoom-outs, or any transition that calls attention to itself.
+The audience should think:
 
-### Typography overlays
+> This system remembers information over time.
 
-- **Typeface:** DM Serif Display (primary claims), Geist Mono (code references)
-- **Size hierarchy:** 72pt primary → 36pt sub-claim → 24pt definition
-- **Color:** white on dark, `#1C1C1E` on light product shots
-- **Animation:** opacity 0→1 over 18 frames. No position. No scale. Hold. Opacity 1→0 over 12 frames.
-- **Positioning:** lower-third for definitions, center for primary statements
+Not:
 
-### Color grade
-
-| Shot type | Adjustment |
-|---|---|
-| Light mode product | Temperature +4, shadows +2, highlights −1 |
-| Dark mode product | Temperature +2, saturation −3 |
-| Code editor | Desaturate −8, temperature −2 |
-
-Apply at 25–35% LUT strength if using a warm-neutral LUT. Do not fight the product's existing palette.
+> This visualizes SEC filings.
 
 ---
 
-## Soundtrack Direction
+# Act III — Judgment
 
-**Genre:** Ambient / minimal electronic or sparse piano with electronic texture.
+## 0:45 – 1:10
 
-**References:** Jon Hopkins ("Immunity"), Nils Frahm ("Says"), Rival Consoles ("Persona").
+The interface gives way to engineering.
 
-**Avoid:** Beats, cinematic swells, Hans Zimmer textures, drops, anything that sounds like a startup announcement.
+Only briefly.
 
-**BPM:** 70–90 if any tempo. Fully ambient is also correct.
+### Sequence
 
-**Mix levels:**
+1. Constraint gate
+2. COUNT(DISTINCT filing_ticker)
+3. Architecture Decisions
 
-| Section | Music level |
-|---|---|
-| Opening typography | −6 dBFS |
-| Product shots (UI) | −10 dBFS |
-| Code shots | −14 dBFS |
-| Close typography | −8 dBFS |
+No scrolling through code.
+
+No long editor sequences.
+
+Only enough to communicate intent.
+
+The code exists as supporting evidence.
+
+Not as the subject.
+
+### Typography Card
+
+```text
+not every mention
+
+becomes memory.
+```
+
+Hold.
+
+Return to code.
+
+### Typography Card
+
+```text
+memory
+
+should be earned.
+```
+
+Hold.
+
+Return to code.
+
+### Typography Card
+
+```text
+every decision
+
+was written down.
+```
+
+Hold.
+
+Return to the product.
+
+The audience should think:
+
+> This wasn't assembled.
+
+It was designed.
 
 ---
 
-## Recruiter Notes
+# Act IV — Reflection
 
-### What signals senior-level thinking
+## 1:10 – 1:40
 
-- The `passes_constraint_gate()` docstring — explains a precision/recall tradeoff precisely.
-- ADR-031 "Why confidence score fails" — shows statistical self-awareness about your own metrics.
-- The "What NOT to build" section — explicit rejection with rationale is rare. Show it.
-- 37 ADRs existing at all — not the content but the practice of writing them.
-- `filing_ticker` on Evidence rather than `independent_citation_count` on CompanySignal — the correct data model choice that avoids denormalization.
-- The corpus cleanse: built something, audited it honestly, deleted 127 rows because they were generated by noisy sources. Documented in a sprint.
-- **Powell Industries (POWL)** — demo ICR series `[0,0,0,0,0,0,0,1,1,2,2,5]`. A company that appeared from zero in week 8 and hit 5 citations in week 12. The POWL evidence excerpt reads: *"Prior to May 22, zero mentions across all tracked sources."* This is the product's entire promise made concrete. When the camera slow-scrolls the Signal Map, it should pause here. Recruiters who understand the domain will recognize this as the signal type that earns the system.
+Return to the product.
 
-### What accidentally signals immaturity (avoid in film)
+Portfolio.
 
-- Feed in the nav — signals cleanup debt. Remove before filming.
-- Empty Signal Map — never show the "No ICR data yet" state.
-- Any confidence score in the UI.
-- The Feed route, the Themes route.
-- Any loading skeleton as the primary subject of a shot.
+Gap Signals.
+
+Evidence.
+
+Narratives.
+
+Everything settles naturally.
+
+No rapid navigation.
+
+No feature tour.
+
+One typography card.
+
+```text
+the corpus
+
+remembers
+
+what your portfolio doesn't.
+```
+
+Hold.
+
+Black screen.
+
+Typography only.
+
+### Card 1
+
+Information
+
+isn't knowledge.
+
+Hold.
+
+Fade.
+
+### Card 2
+
+Knowledge
+
+requires memory.
+
+Hold.
+
+Fade.
+
+### Card 3
+
+Memory
+
+requires time.
+
+Silence.
 
 ---
 
-## Version 2 — Future Flagship Film Direction
+# End Card
 
-Version 2 is a fundamentally different film. It requires real accumulated data.
+## 1:40 – 2:00
 
-**Minimum requirements to begin Version 2 production:**
+Black.
 
-- 12+ weeks of production ICR data
-- At least 1 real inflection event (a company whose ICR series shows genuine acceleration, traceable to real filings)
-- 3+ companies with non-trivial ICR series (not all zeros)
-- Real evidence excerpts with specific constraint language from real filings
+Slow fade.
 
-**The story Version 2 tells:**
+### Card 1
 
-> "8 weeks ago, this company appeared in 0 independent SEC filings per week.  
-> Here is the first filing that cited it.  
-> Here is the week 3 companies independently cited it.  
-> Here is the week it inflected.  
-> Here are the actual filings. Here is the actual language."
+```text
+MarketMind
+```
 
-That is a falsifiable claim with evidence attached. It earns the cinematic treatment.
+Hold.
 
-**Version 1 creates the context. Version 2 delivers the proof.**
+### Card 2
 
-Q2 10-Q season (mid-July 2026) is the first realistic window for meaningful ICR accumulation. Version 2 production can begin when the data earns it — approximately September 2026 at earliest.
+```text
+Corpus Intelligence.
+```
+
+Hold.
+
+### Card 3
+
+```text
+Built by
+
+Karan Sidhu
+```
+
+Hold.
+
+### Card 4
+
+```text
+GitHub
+
+LinkedIn
+```
+
+Fade to black.
+
+End.
+
+---
+
+# Music Direction
+
+One ambient track.
+
+No percussion.
+
+No cinematic build.
+
+No trailer music.
+
+No emotional climax.
+
+The soundtrack should disappear behind the product.
+
+## References
+
+- Brian Eno
+- Nils Frahm
+- Ólafur Arnalds
+- Hammock
+
+Reference the atmosphere.
+
+Not the emotion.
+
+---
+
+# Capture Checklist
+
+Three recordings.
+
+Everything else is typography built in post.
+
+Capture target is `/demo` and `/demo/portfolio` — not the authenticated
+app. The real `/signals` is a live surface and can be genuinely empty
+depending on ingestion state; `/demo` is the one built to always be
+camera-ready. Confirmed working end to end before filming: Signal Map
+rows, sparklines, the company evidence drawer, the Portfolio narrative
+sentence, and a gap row opening evidence — all verified live.
+
+## 1. Signal Map — `/demo`
+
+Fresh incognito session. No cached state — this matters more than it
+sounds: the row entrance is a real staggered animation, and it plays in
+full on a genuinely first load. A warm/cached tab may skip or compress it.
+
+Signal Map loads naturally.
+
+Rows animate.
+
+Open one company — the panel's arrival is its own beat, not a side
+effect of "opening evidence." Backdrop blur, spatial depth, the drawer
+sliding in from the right: this is the single clearest "interface as
+subject" moment in the product and the one that most directly proves the
+film's own stated philosophy ("motion comes from interaction"). Frame it
+deliberately. Let the slide-in complete and hold half a second before any
+further movement — earn the arrival before reading past it.
+
+Read evidence.
+
+Scroll slowly.
+
+## 2. Engineering Evidence
+
+Three short captures.
+
+- Constraint gate
+- COUNT(DISTINCT filing_ticker)
+- Architecture Decisions (ADR folder)
+
+Nothing else.
+
+No scrolling through the repository.
+
+No Docker Compose glamour shots.
+
+No stack tour.
+
+## 3. Portfolio Intelligence — `/demo/portfolio`
+
+Navigate naturally.
+
+Open Portfolio.
+
+View the narrative sentence.
+
+Gap Signals.
+
+Click one gap row — same evidence drawer as Act II, different entry
+point. Worth capturing once here specifically because it proves the
+drawer isn't a one-off feature of the Signal Map, it's the product's one
+consistent way of answering "tell me more."
+
+Allow every interaction to settle.
+
+No unnecessary cursor movement.
+
+---
+
+Before recording:
+
+Disable cursor highlights in Screen Studio.
+
+Use the smallest cursor.
+
+Every movement should feel deliberate.
+
+Never move faster than someone could comfortably read.
+
+---
+
+# Execution Craft — Screen Studio + Final Cut
+
+This is where "Apple-like" stops being a mood and becomes settings and
+numbers. The plan already has the restraint right. This section is the
+difference between a video that reads as restrained on purpose and one
+that reads as unfinished.
+
+## Screen Studio
+
+- No gradient background, no device frame, no padding treatment. Full
+  bleed on the interface itself. Screen Studio's default backgrounds are
+  a SaaS-launch-video cliché this plan already explicitly rejects — don't
+  let the capture tool's defaults reintroduce it.
+- Record at the highest available resolution and 60fps, even though the
+  final export will likely sit lower. Headroom for reframing and any
+  speed-ramping in Final Cut without visible quality loss.
+- Turn off click ripple/highlight effects (already noted) — but also
+  turn off automatic cursor-follow zoom if it's set to trigger on every
+  click. Reserve zoom for the two or three moments that are actually
+  worth leaning into (the panel opening, the constraint gate code, the
+  narrative sentence) — zoom on everything is the same mistake as
+  highlighting everything: nothing ends up emphasized.
+
+## Cursor choreography
+
+Every cursor movement in the final cut should look pre-planned, not
+navigated live. In practice that means: rehearse each capture's mouse
+path before recording, move in straight lines rather than correcting
+mid-motion, and pause fully before clicking rather than clicking on
+arrival. A cursor that hesitates for a beat before acting reads as
+intentional. A cursor that clicks the instant it arrives reads as
+automated.
+
+## Typography
+
+- One typeface, one weight for restraint, one heavier weight reserved
+  for the handful of lines meant to land hardest (per the doctrine
+  already implicit in this plan: heavy weight only means something if
+  it's rare). SF Pro Display if available; a geometric grotesk as the
+  fallback — don't mix families.
+- Tight tracking at display size (roughly -0.02em to -0.03em), never
+  tighter — past that letters start touching and it reads as cramped
+  rather than considered.
+- Pick one entrance curve and one duration band for every card in the
+  film, and don't vary them scene to scene: ease-out-quart or -quint,
+  no bounce, no elastic. 200–400ms for card transitions is the range to
+  live in. Consistency here is what makes the typography moments feel
+  like one authored system instead of separately-timed title cards.
+
+## Sound
+
+The plan is right that the soundtrack should disappear behind the
+product — don't add anything that competes with that. But consider one
+extremely subtle layer underneath the ambient track: a nearly-inaudible
+tick or soft tap synced to the two or three deliberate clicks in the
+film (the company row, the gap row). Not a notification chime, not
+skeuomorphic UI sound — something closer to a keyboard's felt thock than
+an app's feedback sound. If it's noticeable on first listen, it's too
+loud. Cut it before adding it if there's any doubt.
+
+## Color
+
+The three captures happen in different sessions, possibly different
+lighting, possibly different times of day. Before final assembly, do one
+pass matching white balance and contrast across all three so they read
+as one continuous world rather than three separate recordings stitched
+together. This is invisible when done right and distracting when
+skipped — nobody consciously notices consistent color grading, everybody
+unconsciously notices inconsistent color grading.
+
+## The one hard cut
+
+Every transition in this plan is a hold, a fade, or a dissolve — which
+is correct, that's the film's whole register. Reserve exactly one true
+hard cut for the very end: the last typography card cutting to black
+with no fade, no dissolve. In a film built entirely from soft transitions,
+one instant cut reads as the loudest, most deliberate gesture in the
+entire piece — precisely because nothing else in the film prepares you
+for it. Don't use this technique anywhere else, or it stops working here.
+
+---
+
+# Editing Philosophy
+
+Remove everything that feels like marketing.
+
+Remove everything that feels like a tutorial.
+
+Remove everything that feels like an architecture presentation.
+
+Keep only what demonstrates:
+
+- Systems thinking
+- Product judgment
+- Restraint
+- Execution
+
+Every cut should answer:
+
+> Does this improve understanding?
+
+If not,
+
+remove it.
+
+---
+
+# Hard Constraints
+
+The film is not allowed to contain:
+
+- Voiceovers
+- Architecture diagrams
+- Technology logos
+- Stack slides
+- Feature lists
+- Animated arrows
+- Cursor highlights
+- Startup language
+- Claims about investment alpha
+- Performance statistics
+- "AI-powered"
+- "Revolutionary"
+- "Powerful"
+- "Smart"
+- "Intuitive"
+
+Avoid explaining the implementation.
+
+The product should demonstrate the thinking.
+
+The film should never claim it.
+
+---
+
+# The Standard
+
+The viewer should finish the film with one impression:
+
+> This person builds software that accumulates memory instead of producing answers.
+
+Not because the film said so.
+
+Because the product made it obvious.
+````
