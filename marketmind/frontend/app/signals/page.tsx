@@ -4,11 +4,39 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Activity, TrendingUp, Info } from 'lucide-react'
 import AppShell from '@/components/layout/AppShell'
-import { getTopTrajectories, getCorpusHealth } from '@/lib/api'
+import { getTopTrajectories, getCorpusHealth, getValuation } from '@/lib/api'
 import { useCompany } from '@/contexts/CompanyContext'
 import { spring } from '@/lib/motion'
 import { cn, formatDateShort } from '@/lib/utils'
-import type { TrajectoryRow, CorpusHealth } from '@/lib/types'
+import type { TrajectoryRow, CorpusHealth, ValuationOut } from '@/lib/types'
+
+// ── Valuation badge — Sprint 17 / ADR-038 ─────────────────────────────────────
+// A separate axis from ICR. Rendered as its own chip, never merged into the
+// Accelerating badge or the ICR stat block. "Unclear" renders nothing — most
+// rows won't have valuation data at all (only tracked tickers do), and a
+// muted "Unclear" chip on every other row would be noise, not signal.
+
+function ValuationBadge({ valuation }: { valuation: ValuationOut }) {
+  if (valuation.label === 'Unclear') return null
+
+  const styles: Record<string, string> = {
+    'Room left': 'text-green bg-green/10 border-green/25',
+    'Priced in': 'text-text-secondary bg-elevated border-border',
+    'Stretched': 'text-red bg-red/10 border-red/25',
+  }
+
+  return (
+    <span
+      title={valuation.reasoning}
+      className={cn(
+        'text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none shrink-0 border',
+        styles[valuation.label]
+      )}
+    >
+      {valuation.label}
+    </span>
+  )
+}
 
 // ── ICR Sparkline — 12-week bar chart ─────────────────────────────────────────
 
@@ -63,7 +91,7 @@ function ICRSparkline({ series, inflecting }: { series: number[]; inflecting: bo
 
 // ── Signal row ────────────────────────────────────────────────────────────────
 
-function SignalRow({ row, index }: { row: TrajectoryRow; index: number }) {
+function SignalRow({ row, index, valuation }: { row: TrajectoryRow; index: number; valuation?: ValuationOut }) {
   const { openCompany } = useCompany()
 
   const delta = row.icr_current - Math.round(row.icr_4w_avg)
@@ -108,6 +136,7 @@ function SignalRow({ row, index }: { row: TrajectoryRow; index: number }) {
               Accelerating
             </span>
           )}
+          {valuation && <ValuationBadge valuation={valuation} />}
         </div>
       </div>
 
@@ -292,6 +321,7 @@ export default function SignalsPage() {
   const [loading, setLoading] = useState(true)
   const [filter,  setFilter]  = useState<Filter>('all')
   const [showInfo, setShowInfo] = useState(false)
+  const [valuations, setValuations] = useState<Record<string, ValuationOut>>({})
 
   useEffect(() => {
     Promise.all([
@@ -300,6 +330,20 @@ export default function SignalsPage() {
     ]).then(([trajectories, corpusHealth]) => {
       setRows(trajectories)
       setHealth(corpusHealth)
+
+      // Valuation axis (Sprint 17 / ADR-038) — only tracked tickers have data.
+      // Fire-and-forget per unique ticker; 404s are expected and silently
+      // dropped rather than surfaced as errors.
+      const tickers = Array.from(
+        new Set(trajectories.map(r => r.ticker).filter((t): t is string => !!t))
+      )
+      Promise.allSettled(tickers.map(t => getValuation(t))).then(results => {
+        const map: Record<string, ValuationOut> = {}
+        results.forEach((res, i) => {
+          if (res.status === 'fulfilled') map[tickers[i]] = res.value
+        })
+        setValuations(map)
+      })
     }).catch(() => setRows([]))
       .finally(() => setLoading(false))
   }, [])
@@ -432,7 +476,12 @@ export default function SignalsPage() {
               </div>
               {/* Rows */}
               {filtered.map((row, i) => (
-                <SignalRow key={row.normalised_name} row={row} index={i} />
+                <SignalRow
+                  key={row.normalised_name}
+                  row={row}
+                  index={i}
+                  valuation={row.ticker ? valuations[row.ticker] : undefined}
+                />
               ))}
               {/* Footer */}
               <div className="px-4 py-2.5 border-t border-border/50 bg-elevated/30 flex items-center justify-between">

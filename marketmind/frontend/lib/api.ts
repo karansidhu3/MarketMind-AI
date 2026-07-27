@@ -194,6 +194,12 @@ export async function getTrajectoryDetail(normalisedName: string, weeks = 12): P
   return request(`/trajectory/${encodeURIComponent(normalisedName)}?weeks=${weeks}`)
 }
 
+// ── Valuation axis (Sprint 17 / ADR-038) ──────────────────────────────────────
+
+export async function getValuation(ticker: string): Promise<import('./types').ValuationOut> {
+  return request(`/valuation/${encodeURIComponent(ticker)}`)
+}
+
 // ── Corpus health (Sprint 15) ─────────────────────────────────────────────────
 
 /** No auth required — uses fetch directly so it works even pre-login. */

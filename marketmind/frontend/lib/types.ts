@@ -270,6 +270,21 @@ export interface TrajectoryRow {
   acceleration:    number     // recent 2w avg − prior 4w avg
 }
 
+// ── Valuation axis (Sprint 17 / ADR-038) ──────────────────────────────────────
+// Deliberately a separate signal from ICR — never merged into one score.
+
+export interface ValuationOut {
+  ticker:          string
+  week_start:      string
+  price:           number
+  forward_pe:      number | null
+  forward_peg:     number | null
+  price_52w_high:  number | null
+  price_52w_low:   number | null
+  label:           'Room left' | 'Priced in' | 'Stretched' | 'Unclear'
+  reasoning:       string
+}
+
 export interface LanguageDelta {
   status: 'ok' | 'insufficient_data'
   message?: string                 // only when status=insufficient_data

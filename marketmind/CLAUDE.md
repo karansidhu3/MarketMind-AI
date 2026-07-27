@@ -258,6 +258,7 @@ marketmind/
 - **ADR-035** — Signal Map replaces Feed + Radar as primary surface
 - **ADR-036** — Company surface as full page, not slide-out panel
 - **ADR-037** — Trajectory inflection alerts replace static threshold alerts
+- **ADR-038** — Valuation axis (PEG, price vs. 52w high) — separate signal from ICR, never blended (Sprint 17)
 
 ---
 

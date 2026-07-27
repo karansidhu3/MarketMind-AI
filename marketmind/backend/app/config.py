@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     ollama_embed_model: str = "nomic-embed-text"
     ollama_generate_model: str = "qwen3:8b"
 
+    # Sprint 17 (ADR-038) — valuation axis. Free tier only; no cost implication
+    # for the "zero API costs" principle. Empty by default so the valuation
+    # ingestion script fails loudly and specifically rather than silently
+    # no-op'ing if it's never configured.
+    finnhub_api_key: str = ""
+
     admin_email: str = "admin@marketmind.local"
     admin_password: str = "marketmind"
 

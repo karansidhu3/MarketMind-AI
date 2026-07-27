@@ -791,3 +791,52 @@ static document count threshold.
 companies for alert monitoring. The system detects inflection automatically.
 A single alert type: "[Company] — ICR inflected: [N] independent citations
 this week vs. [avg] average (4-week baseline)."
+
+---
+
+## ADR-038 — Valuation axis, kept permanently separate from ICR
+
+**Decision:** Add a second signal — PEG ratio and price relative to 52-week
+high — as its own axis, computed and displayed independently from ICR.
+Never combined into a single score.
+
+**Reason:**
+ICR answers "is this company becoming more structurally load-bearing." It
+has no concept of price. A company can show a textbook-perfect ICR
+inflection while already being priced as if that inflection is guaranteed
+to continue for years — the "already priced for perfection" case, not the
+"still has room" case. ICR alone cannot distinguish these, and treating an
+inflection as automatically actionable without checking valuation would be
+a real, not hypothetical, failure mode of this product's own stated goal
+(finding companies early, not after the market already has).
+
+**Why not blend it into one number:**
+ADR-031 already established that a single confidence score inflates
+misleadingly by construction. The identical failure mode applies to a
+blended "opportunity score" combining ICR and valuation: it would launder
+away the one distinction — real momentum vs. already priced in — that this
+axis exists to preserve. Two labels, shown side by side, never merged.
+
+**Data source:** Finnhub free tier. Confirmed directly (live test call, not
+assumed from documentation) that `stock/metric` returns `forwardPEG`,
+`forwardPE`, and 52-week high/low with no paid plan required. Forward
+EPS/revenue *estimates* are paywalled on the free tier — this axis
+deliberately does not depend on them.
+
+**Scope boundary:** This is not a price-tracking feature. No live price,
+no charting, no news. The user already has a brokerage app for that
+(Wealthsimple, in practice). This axis exists only to answer whether an
+ICR signal is still actionable, nothing more — matching the same
+minimalism standard the rest of the product already holds itself to
+(no confidence scores, no momentum from volume, no buy/sell framing).
+
+**Label logic (first pass, expect tuning once real data accumulates):**
+- `Room left` — PEG < 1.0 and price < 90% of 52-week high
+- `Priced in` — PEG < 1.0 and price ≥ 90% of 52-week high
+- `Stretched` — PEG > 2.0 and price ≥ 90% of 52-week high
+- `Unclear` — anything else, including missing data
+
+Every label carries the literal numbers behind it in its reasoning string.
+No label is ever shown without the PEG value and price-vs-high percentage
+that produced it — same "show your work" standard ICR's evidence trail
+already holds.

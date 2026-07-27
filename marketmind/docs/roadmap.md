@@ -565,3 +565,102 @@ Unscheduled ideas worth keeping. Revisit when relevant sprint arrives.
 
 - **Auto language delta in feed** — surface one language shift per thesis in the
   feed automatically, no click required. Currently buried in thesis detail page.
+
+---
+
+## Sprint 17 — Valuation Layer + Sector Evidence (complete)
+
+**Theme:** ICR answers "is this company becoming structurally load-bearing."
+It has never answered "has the market already paid for that becoming true."
+A company can clear a perfect ICR inflection and still be a bad idea if the
+story is already fully priced. This sprint adds the axis that's been
+missing, plus a path to validating sectors beyond the 5 pre-seeded theses.
+
+The product goal behind this sprint, stated directly: find companies with
+real, evidenced structural momentum that the market hasn't fully priced in
+yet — not by discovering companies nobody's heard of (ICR's large-cap bias,
+C-004, makes that unreliable), but by pairing structural evidence with a
+valuation check that ICR alone can't provide.
+
+Three layers, each narrowing the previous one:
+
+**Layer 1 — Sector validation.** Is there real evidence behind a theme, or
+just buzz? Existing theses (AI Infra, Semiconductor Supply, Energy Grid,
+Defense, Data Center) already do this at the company level via the evidence
+trail and constraint gate. Missing: a *sector-level aggregate* ICR trend —
+summed or averaged across every company tagged to a thesis — to answer "is
+citation evidence for this whole theme accelerating in aggregate." This is
+also the path to onboarding a sector not yet tracked (e.g. space) — but that
+requires curating a ticker list and keyword set first; it's a content task,
+not just an engineering one. Addresses C-002 (discovery gap) partially —
+still requires a human to propose the sector, does not auto-discover one.
+
+**Layer 2 — Company-level structural trajectory.** Already built: ICR,
+TrajectoryService, Signal Map, inflection detection. No changes in this
+sprint. Known limitation carried forward: large-cap bias (C-004) — citation
+volume structurally favors companies already big enough to be cited a lot.
+
+**Layer 3 — Valuation overlay (new, this sprint).** For companies already
+showing real structural acceleration, is the growth story still cheap
+relative to expectations, or already priced for perfection? PEG ratio and
+price relative to 52-week high are enough to make that call — verified
+directly that both are available for free via Finnhub's `stock/metric`
+endpoint (forward EPS/revenue *estimates* are paywalled on their free tier;
+PEG is not). Deliberately minimal — this is not a price-tracking dashboard;
+Wealthsimple already covers that job. Just enough context to judge whether
+an ICR inflection is still actionable or already reflected in the price.
+
+**Hard rule carried over from ADR-031:** the valuation label and the ICR
+label are never blended into one score. Same reasoning that killed
+confidence scores applies here — a single "opportunity score" would erase
+the exact distinction (real momentum vs. already priced in) this sprint
+exists to preserve. See ADR-038.
+
+### Scope for this sprint
+
+- `ValuationSnapshot` table — weekly PEG/price/52-week-range per tracked
+  ticker, independent of the ICR/document pipeline.
+- `FinnhubValuationService` — new, isolated service, the only file
+  permitted to call Finnhub.
+- Valuation label computation (`Room left` / `Priced in` / `Stretched` /
+  `Unclear`), each carrying its own plain-English reasoning — same "show
+  the numbers, never just a verdict" standard as the rest of the product.
+- Standalone ingestion script — no Ollama dependency, runs independently of
+  document ingestion (and therefore independently of the current PC/Ollama
+  networking issue).
+- `GET /valuation/{ticker}` endpoint.
+- Signal Map: valuation label shown as its own badge, visually distinct
+  from the ICR/Accelerating badge — never merged.
+
+### Shipped
+
+All scope items above are built and verified end to end:
+
+- Ran `ingest_valuation.py` against real Finnhub data — 67/67 tracked
+  tickers ok, 0 failed. Confirmed rows in Postgres and via
+  `GET /valuation/{ticker}` (auth required, same as every other endpoint).
+- Known data quirks, consistent with the "surface don't fabricate" standard
+  used elsewhere: `MYR`/`PIKE` return `status=ok` with all-null metrics
+  (Finnhub has no data for them — handled as "no data", not an error).
+  `TSM`'s `price_52w_high` (2535) is a known Finnhub data anomaly (ADR/local
+  share conflation) — same issue seen independently in an unrelated project,
+  confirming it's a source-side quirk, not a bug in this pipeline.
+- Wired into `/signals` (live, fetches per-ticker from the new endpoint) and
+  into `/demo` (static — real Finnhub snapshots captured 2026-07-27, hardcoded
+  like the rest of the demo dataset, since `/demo` deliberately makes zero
+  backend calls). Verified visually on `/demo`: green "Room left" badges
+  (SMCI, AMD, MU, NVDA), red "Stretched" badges (ETN, RTX, EQIX), and no badge
+  at all for tickers whose numbers don't clearly signal either case — exactly
+  the intended behavior.
+- `/signals` itself has no live ICR rows yet (`/trajectory/top` returns `[]`
+  until the next successful post-rebuild ingestion) — an existing, unrelated
+  condition (the PC/Ollama networking issue), not something this sprint
+  introduced or fixed. The valuation wiring on that page is code-verified
+  and will render the same way once ICR rows exist.
+
+### Deferred to a later pass
+
+- Sector-level aggregate ICR metric (Layer 1's actual new metric) —
+  scoped, not yet built this sprint.
+- Onboarding a new sector (space or otherwise) — needs ticker/keyword
+  curation from the user before there's anything to ingest against.

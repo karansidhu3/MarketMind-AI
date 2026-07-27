@@ -97,6 +97,11 @@ _DC_INFRA = [
     "CARR",                                          # building tech
 ]
 
+# Union of every tracked ticker across all 5 sector lists — used by
+# scripts/ingest_valuation.py so the valuation axis covers exactly the same
+# companies ICR already tracks, without duplicating the list by hand.
+ALL_TRACKED_TICKERS: list[str] = sorted(set(_AI_INFRA + _SEMI_SUPPLY + _GRID + _DEFENSE + _DC_INFRA))
+
 SOURCES = [
     # ── PRIMARY_DISCLOSURE — targeted 8-K and 10-Q filings ───────────────────
     # ~60 curated tickers across 5 thesis sectors. These are the companies we

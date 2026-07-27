@@ -167,6 +167,49 @@ export const DEMO_TRAJECTORIES: TrajectoryRow[] = [
   },
 ]
 
+// ── Valuation axis (Sprint 17 / ADR-038) ──────────────────────────────────────
+// Real Finnhub snapshots (captured 2026-07-27), not fabricated — kept static
+// like the rest of the demo data. A separate signal from ICR, never blended
+// into one score. Tickers with no entry here weren't in the tracked universe
+// at capture time; they render no badge, matching how the live Signal Map
+// stays silent on untracked tickers rather than guessing.
+
+export interface DemoValuation {
+  label: 'Room left' | 'Priced in' | 'Stretched' | 'Unclear'
+  reasoning: string
+}
+
+export const DEMO_VALUATIONS: Record<string, DemoValuation> = {
+  AMD: {
+    label: 'Room left',
+    reasoning: "PEG of 0.89 is under 1.0 (cheap relative to growth), and the price is 15% below its 52-week high — the market hasn't fully priced this in yet.",
+  },
+  MU: {
+    label: 'Room left',
+    reasoning: "PEG of 0.06 is under 1.0 (cheap relative to growth), and the price is 29% below its 52-week high — the market hasn't fully priced this in yet.",
+  },
+  NVDA: {
+    label: 'Room left',
+    reasoning: "PEG of 0.37 is under 1.0 (cheap relative to growth), and the price is 17% below its 52-week high — the market hasn't fully priced this in yet.",
+  },
+  SMCI: {
+    label: 'Room left',
+    reasoning: "PEG of 0.28 is under 1.0 (cheap relative to growth), and the price is 52% below its 52-week high — the market hasn't fully priced this in yet.",
+  },
+  EQIX: {
+    label: 'Stretched',
+    reasoning: 'PEG of 6.41 is over 2.0 (expensive relative to growth) and the price is near its highs — already priced for a lot of future growth.',
+  },
+  ETN: {
+    label: 'Stretched',
+    reasoning: 'PEG of 2.05 is over 2.0 (expensive relative to growth) and the price is near its highs — already priced for a lot of future growth.',
+  },
+  RTX: {
+    label: 'Stretched',
+    reasoning: 'PEG of 2.54 is over 2.0 (expensive relative to growth) and the price is near its highs — already priced for a lot of future growth.',
+  },
+}
+
 // ── Portfolio demo data ───────────────────────────────────────────────────────
 
 export interface DemoHolding {

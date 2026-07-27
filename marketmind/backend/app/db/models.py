@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSON, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -171,3 +171,31 @@ class Holding(Base):
     shares: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     cost_basis: Mapped[float | None] = mapped_column(Float, nullable=True)  # per share, optional
     added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class ValuationSnapshot(Base):
+    """
+    Weekly valuation snapshot per tracked ticker — PEG ratio, P/E, price vs.
+    52-week high. Sprint 17 (ADR-038): a second axis, deliberately kept
+    separate from ICR — never blended into one score. Independent of the
+    document/ICR pipeline; populated by scripts/ingest_valuation.py, which
+    has no Ollama dependency.
+    """
+    __tablename__ = "valuation_snapshots"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    ticker: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    week_start: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    price: Mapped[float | None] = mapped_column(Float, nullable=True)
+    forward_pe: Mapped[float | None] = mapped_column(Float, nullable=True)
+    forward_peg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    price_52w_high: Mapped[float | None] = mapped_column(Float, nullable=True)
+    price_52w_low: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # 'ok' (a real observation, including a genuine None from Finnhub) or
+    # 'error' (the lookup failed — do not treat a null field as data).
+    status: Mapped[str] = mapped_column(String(10), nullable=False, default="ok")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    __table_args__ = (
+        UniqueConstraint("ticker", "week_start", name="uq_valuation_ticker_week"),
+    )
