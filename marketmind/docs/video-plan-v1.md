@@ -463,6 +463,15 @@ film's own stated philosophy ("motion comes from interaction"). Frame it
 deliberately. Let the slide-in complete and hold half a second before any
 further movement — earn the arrival before reading past it.
 
+Note: rows now carry a second badge next to Accelerating — a green
+"Room left" or red "Stretched" valuation pill (Sprint 17, ADR-038) on
+rows like SMCI, AMD, NVDA, ETN, RTX. Treat it as background texture,
+same tier as the ticker symbol next to the company name — no zoom, no
+pause, no typography card calling it out. It's a second signal that's
+deliberately never blended with ICR into one score; the film shouldn't
+blend it into the narrative either. Two badges on one row still reads
+cleanly at capture resolution — no reframing needed, just don't feature it.
+
 Read evidence.
 
 Scroll slowly.
