@@ -1,252 +1,167 @@
 # MarketMind
 
-A persistent investment intelligence platform that tracks how companies and theses evolve across SEC filings and financial news — running entirely on local infrastructure.
+MarketMind watches the places companies reveal what they depend on, then remembers the pattern long enough for it to become legible. Every day it reads a focused set of SEC filings, tracks which independent companies cite the same entity, and makes the resulting trajectory inspectable.
 
-**[Live Demo →](https://market-mind-ai-pied.vercel.app/demo)**
+**[Open the interactive demo →](https://market-mind-ai-pied.vercel.app/demo)**
 
----
+![MarketMind Signal Map](docs/screenshots/readme/01-signal-map.png)
 
-## Overview
+<br>
 
-Most investment research tools answer a question you already know to ask. You search for a company; you get results. You ask an AI; it synthesizes what it was trained on. The problem is that the most valuable signals often don't arrive as a single decisive event — they accumulate gradually, across many documents, over weeks or months.
+## The problem
 
-MarketMind is built around a different model. It reads SEC filings and financial news every day, scores each document against a set of tracked investment theses, and builds a persistent corpus over time. The longer it runs, the more meaningful each new signal becomes — because you can see it in context of everything that came before.
+The useful part of an investment signal is often not contained in one document. A supplier can be named once in an 8-K and it means almost nothing. The same supplier named in filings from several unrelated companies, then named more often next month, is a different kind of fact. It suggests that the company is becoming structurally important to a part of the market.
 
-This is not a stock screener. It does not produce buy/sell recommendations. It tracks the trajectory of companies and themes through a growing body of evidence, and surfaces that trajectory in plain English each morning.
+Search is not built to keep that history. A terminal can find a filing after the fact. An LLM can summarize a document placed in front of it. Neither naturally retains a record of *who kept citing whom*, measures the change week over week, and lets that record compound.
 
----
+MarketMind was built for the accumulation.
 
-## Why I Built It
+<br>
 
-Investment research has a memory problem.
+## How it works, from the outside
 
-Search engines return results ranked by relevance today, with no concept of how interest in a company has changed over the past six weeks. AI assistants synthesize knowledge from training data, with no awareness of what's been published since. Most tools are designed to answer point-in-time queries, not to accumulate evidence and surface trends as they develop.
+Open the Signal Map. The 12-week bars are the product: each one shows how many structurally independent companies cited an entity in primary SEC disclosures that week. Companies whose current citation rate has materially inflected over their own four-week baseline rise to the top.
 
-The signals I care about most don't announce themselves. A small defense contractor mentioned in three analyst reports in January might appear in eight SEC filings in February and fourteen news articles in March — before anyone calls it a trend. That trajectory is only visible if something is watching continuously, storing the evidence, and tracking the count over time.
+Open a company to see the evidence trail behind the trajectory—source excerpts, filing dates, thesis exposure, and the corpus activity that produced it. Add holdings to the portfolio view and MarketMind surfaces the evidence-backed companies present in its corpus but absent from the portfolio. It does not tell anyone what to buy or sell.
 
-I wanted a system that does that automatically: reads the sources I care about, maintains a persistent record, and tells me each morning what changed — without me having to ask.
+The public demo uses static sample data and works without an account. It is deliberately shaped like the live product: Signal Map first, company evidence on demand, portfolio gaps second.
 
----
+![MarketMind portfolio gaps](docs/screenshots/readme/02-portfolio-gaps.png)
 
-## Example Signal
+<br>
 
-Assume you're tracking a thesis around power grid infrastructure investment. A company called Powell Industries appears once in a utility analyst's 8-K filing in early March. Unremarkable.
+## The metric: Independent Citation Rate
 
-By mid-April, it has appeared in four additional SEC filings from companies in adjacent sectors, all referencing electrical distribution as a supply chain dependency. By May, it appears in nineteen documents across your tracked corpus — analyst commentary, procurement filings, industry RSS feeds.
+ICR is not a mention count.
 
-No single document is the signal. The trajectory is the signal.
+For an entity in a given week, MarketMind counts the distinct companies whose targeted 8-K or 10-Q referenced that entity. Nine mentions in one filing remain one citation. Nine different filing companies are nine independent citations.
 
-MarketMind tracks this automatically. Powell Industries surfaces in the Company Radar ranked by unique source document count, with a four-week activity sparkline showing the acceleration. The portfolio gap detector flags it if you don't hold a position. The company panel shows which theses it's appearing in, what the supporting/opposing evidence split looks like, and when it was first seen.
+That distinction is the whole point. A trajectory such as `0 → 2 → 9` is not a claim about price; it is a measurable record of growing, independent corroboration. To keep ordinary name-drops from inflating the measure, targeted filings have to contain supply-chain or capacity-constraint language before their company signals can contribute to ICR.
 
-A one-time LLM query on March 5th would have returned nothing meaningful. The corpus had to accumulate first.
+MarketMind marks a trajectory as **Accelerating** only when the current week is at least twice its prior four-week ICR average and has at least three independent citations. The baseline belongs to the company, rather than to a static global threshold.
 
----
+<br>
 
-## Key Features
+## Why it is not a stock screener
 
-**Daily Intelligence Briefing**
-Each morning, a unified narrative synthesizes what changed across all tracked theses — which are gaining strength, which are weakening, and what the key cross-theme signals are. Generated via SSE streaming from a local LLM, pre-warmed after each ingestion run so it's ready immediately on first open.
+The interface is intentionally narrow. MarketMind is a research memory system, not a recommendation engine, trading terminal, price charting product, or sentiment feed.
 
-**Thesis Tracking**
-Five pre-seeded investment theses (AI Infrastructure, Semiconductor Supply Chain, Energy Grid, Defense, Data Center Physical), each with configurable keywords and a running confidence score. Confidence is calculated as `supporting / total_evidence_count` with a 90-day half-life decay applied to older evidence — so stale signals fade rather than accumulate indefinitely. Ranked by weekly momentum (7-day confidence delta) so the fastest-moving theses surface first.
+It keeps two questions separate:
 
-**Company Trajectory Analysis**
-The Company Radar ranks companies by unique source document count, with a four-week activity sparkline and week-over-week growth signals. Accelerating companies — those where this week's activity is at least 2× last week's — are sorted to the top. The company deep-dive panel shows the signal strength verdict, trajectory chart, thesis exposure breakdown, and recent evidence.
+- **Structural momentum** — Are independent companies increasingly citing this entity in primary disclosures?
+- **Valuation context** — Is there still apparent room relative to growth and the 52-week range, or is the story already priced in?
 
-**Portfolio Gap Detection**
-Connect your holdings and MarketMind identifies companies that appear frequently in the corpus across multiple theses — but that you don't currently hold. Gap urgency is ranked by `doc_count × thesis_count × recency_weight`, so recently-active, multi-thesis companies surface above stale signals from large-cap noise.
+The valuation label is a separate, deliberately small lens. It is computed from a weekly forward PEG snapshot and price relative to the 52-week high, and it is never blended into an “opportunity score.” A green-looking structural signal that is already stretched is not the same thing as an unpriced signal; combining them would hide exactly the distinction the product exists to surface.
 
-**Long-Term Corpus Memory**
-Every scored document is stored permanently. Evidence records are immutable — re-evaluation is always an explicit user action, never automatic. The corpus accumulates across ingestion runs; a document ingested in January contributes (with decay) to confidence calculations in June. The value compounds over time.
-
-**Evidence-Backed Investigation**
-Every thesis confidence score links back to the specific evidence records that produced it. The company panel shows the excerpt, source, sentiment classification, and originating thesis for each signal. Nothing is a black box.
+<br>
 
 ---
 
-## System Architecture
+<br>
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Next.js 15 Frontend (App Router, React 19, Tailwind CSS)  │
-│  Feed · Themes · Portfolio · Company Panel                  │
-└────────────────────────┬────────────────────────────────────┘
-                         │ HTTP / SSE
-┌────────────────────────▼────────────────────────────────────┐
-│  FastAPI Backend (Python 3.12, async SQLAlchemy)            │
-│  Thesis scoring · Portfolio alignment · Feed generation     │
-└──────┬──────────────────┬──────────────────┬───────────────┘
-       │                  │                  │
-┌──────▼──────┐  ┌────────▼───────┐  ┌──────▼──────┐
-│  PostgreSQL │  │     Qdrant     │  │    Redis    │
-│  Theses     │  │  Document      │  │  Feed cache │
-│  Evidence   │  │  embeddings    │  │  Ingestion  │
-│  Snapshots  │  │  (semantic     │  │  checkpoints│
-│  Holdings   │  │   search)      │  └─────────────┘
-└─────────────┘  └────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────────┐
-│  Ingestion Pipeline (daily scheduler, Docker container)     │
-│  SEC EDGAR · Yahoo Finance · RSS feeds · 60 curated tickers │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────────┐
-│  Ollama (local LLM server)                                  │
-│  qwen3:8b — sentiment classification, narrative generation  │
-│  nomic-embed-text — document embeddings                     │
-└─────────────────────────────────────────────────────────────┘
+*Everything below this line is about how MarketMind is built. The [stack](#built-with) and [local setup](#running-it-locally) are further down if that is what brought you here.*
+
+<br>
+
+## Under the hood
+
+```mermaid
+flowchart LR
+    SEC["Targeted SEC filings\n8-K + 10-Q"] --> Ingest["Daily ingestion"]
+    Press["Sector trade press"] --> Ingest
+    Ingest --> API["FastAPI\nclassification + ICR"]
+    API --> Postgres["PostgreSQL\nevidence, signals, holdings"]
+    API --> Qdrant["Qdrant\ndocument embeddings"]
+    API --> Redis["Redis\ncheckpoints + cache"]
+    API --> Ollama["Ollama\nqwen3:8b + nomic-embed-text"]
+    Web["Next.js\nSignal Map + Portfolio"] --> API
+    Finnhub["Finnhub free tier\nweekly valuation metrics"] --> Valuation["Independent valuation job"]
+    Valuation --> Postgres
 ```
 
-**Frontend** — Next.js 15 with the App Router. Three primary surfaces: Feed (daily briefing), Themes (thesis list and detail), Portfolio (intelligence and configure modes). A global company panel slides in from any company mention across all surfaces. The `/demo` route requires no authentication and runs on static sample data.
+**The corpus has a quality boundary.**
+MarketMind does not ingest the generic EDGAR firehose and hope ranking solves the noise later. It follows a curated, currently 67-ticker universe across AI infrastructure, semiconductor supply chains, energy grid modernization, defense production, and data-center physical infrastructure. The only secondary sources are three sector publications: Breaking Defense, Utility Dive, and EE Times. The core ICR calculation uses primary disclosures only.
 
-**Backend** — FastAPI, fully async. Handles thesis scoring, feed generation, portfolio alignment, and the evidence retrieval layer. A 15% keyword threshold gates which documents are sent to the LLM for full sentiment classification — keeping the cost of each ingestion run proportional to relevance, not volume.
+**A citation has to earn its place.**
+The ingestion worker stores and embeds every collected document, but a primary filing creates company signals only when it passes a constraint-language gate. The product is looking for evidence of capacity, backlog, allocation, lead-time, procurement, or similar operational pressure—not a passing reference to a familiar company.
 
-**PostgreSQL** — Primary state. Theses, evidence records, confidence snapshots, holdings, company signals. Evidence is write-once; updates to a thesis's keywords don't silently re-score historical evidence.
+**The system survives a missed morning.**
+Documents use deterministic UUIDs, so re-ingestion is safe. Redis checkpoints each connector as it finishes; a restart does not repeat completed work. On startup, the scheduler checks whether that day's run happened and catches up if it did not.
 
-**Qdrant** — Vector database for document embeddings. Used for semantic search within the corpus and for the re-evaluation path when a new thesis needs to be scored against existing documents.
+**Evidence does not rewrite itself.**
+Historical evidence is immutable. Changing a thesis's keywords never silently recalculates old records; re-evaluation is explicit. That preserves the meaning of a trajectory over time rather than making its past drift with today’s vocabulary.
 
-**Redis** — Feed cache and per-connector ingestion checkpoints. If the ingestion scheduler restarts mid-run, completed connectors are skipped. If a daily run was missed entirely, the scheduler catches up on startup.
+**Local inference is the default.**
+The core corpus, databases, interface, embeddings, and LLM classification run on infrastructure the user controls. The optional valuation ingestion job makes a small weekly request to Finnhub’s free metrics endpoint; it is isolated from the document and ICR pipeline and can fail independently without affecting it.
 
-**Ingestion pipeline** — Runs daily at 6am PT. Sources include the SEC EDGAR 8-K/10-Q/10-K daily feeds, a curated list of 60 tickers across five sectors (targeted EDGAR connector), Yahoo Finance, MarketWatch and Seeking Alpha RSS, and sector-specific feeds (Breaking Defense, Utility Dive, EE Times, The Register, Ars Technica). After ingestion completes, the backend pre-warms all feed caches so the LLM-generated narrative is ready before the user opens the app.
+<br>
 
-**Ollama** — All LLM inference is local. `qwen3:8b` handles sentiment classification and narrative generation. `nomic-embed-text` generates document embeddings. The `/no_think` prefix is applied to all latency-sensitive calls to disable chain-of-thought reasoning. Zero external API calls; zero per-query cost.
+## Built with
 
----
+| | |
+|---|---|
+| **Frontend** | Next.js 15 (App Router), React 19, Tailwind CSS, Framer Motion |
+| **Backend** | FastAPI, async Python 3.12, SQLAlchemy |
+| **Primary data** | Targeted SEC EDGAR filings and curated sector RSS |
+| **Database** | PostgreSQL for evidence, signals, holdings, and valuation snapshots |
+| **Vector search** | Qdrant with `nomic-embed-text` embeddings |
+| **AI** | Ollama with `qwen3:8b` for local classification and synthesis |
+| **Caching and resilience** | Redis for feed cache and per-connector ingestion checkpoints |
+| **Infrastructure** | Docker Compose |
+| **Optional valuation source** | Finnhub free tier for weekly PEG and 52-week-range context |
 
-## Design Philosophy
+<br>
 
-The interface is deliberately minimal. MarketMind processes a large volume of information, but the user's daily interaction with it should be brief and calm — not a dashboard to navigate, but a briefing to read.
+## Running it locally
 
-A few principles guided the design:
+<details>
+<summary><strong>Setup instructions</strong></summary>
 
-**Editorial over analytical.** The primary output is a narrative in plain English, not a table of numbers. The feed reads like a morning briefing, not a data grid. Confidence scores and evidence counts are available but not foregrounded.
+<br>
 
-**Reduction as a default.** Features that didn't improve the daily use case were removed rather than kept. Supply chain extraction, insider transaction clustering, and a research query endpoint were all built and deprioritized — not because they weren't interesting, but because they added complexity without improving the core signal.
-
-**Trust over performance.** The system doesn't produce buy/sell recommendations or claims of predictive accuracy. Thesis alignment framing is deliberate — MarketMind surfaces what the corpus says, not what you should do. Every confidence score links back to evidence, so the reasoning is always inspectable.
-
-**Corpus integrity over freshness.** Evidence is immutable. Editing a thesis's keywords doesn't silently re-score historical evidence and inflate confidence. Re-evaluation is always an explicit user action.
-
----
-
-## Screenshots
-
-**Feed — daily intelligence briefing**
-![Feed](docs/screenshots/feed.png)
-
-**Themes — ranked by weekly momentum**
-![Themes](docs/screenshots/themes.png)
-
-**Portfolio — gap detection and alignment**
-![Portfolio](docs/screenshots/portfolio.png)
-
-**Company investigation panel**
-![Company Panel](docs/screenshots/company-panel.png)
-
----
-
-## Running Locally
-
-### Prerequisites
-
-- [Docker](https://docs.docker.com/get-docker/) and Docker Compose
-- [Ollama](https://ollama.ai) installed and running locally (or on a remote machine)
-- `qwen3:8b` and `nomic-embed-text` pulled in Ollama
-
-```bash
-ollama pull qwen3:8b
-ollama pull nomic-embed-text
-```
-
-### Setup
+Requires Docker with Docker Compose and an Ollama instance that can run `qwen3:8b` and `nomic-embed-text`. Ollama can be local or reachable on another machine.
 
 ```bash
 git clone https://github.com/karansidhu3/MarketMind-AI.git
 cd MarketMind-AI/marketmind
-```
 
-Copy the environment file and configure:
+# Pull models when Ollama is running locally.
+ollama pull qwen3:8b
+ollama pull nomic-embed-text
 
-```bash
+# Configure MarketMind.
 cp .env.example .env
-```
+# Set OLLAMA_URL if Ollama runs on another machine.
+# Replace JWT_SECRET and the default admin credentials before regular use.
 
-**`.env` variables:**
-
-| Variable | Description | Default |
-|---|---|---|
-| `OLLAMA_URL` | URL of your Ollama instance | `http://localhost:11434` |
-| `JWT_SECRET` | Secret key for auth tokens — generate with `openssl rand -hex 32` | — |
-| `INGEST_HOUR_PT` | Hour (PT) to run daily ingestion | `6` |
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` | Database credentials | `marketmind` |
-
-If Ollama is running on a separate machine (e.g. a desktop GPU box), set `OLLAMA_URL` to that machine's IP:
-
-```
-OLLAMA_URL=http://192.168.1.100:11434
-```
-
-### Start
-
-```bash
 cd infrastructure
 docker compose up -d
 ```
 
-This starts Postgres, Redis, Qdrant, the backend API, the frontend, and the daily ingestion scheduler. First startup will run a catch-up ingestion if no prior run is recorded.
+The first startup seeds the five initial investment themes and the scheduler performs a catch-up document ingestion when no run is recorded for the current day.
 
-- **Frontend:** http://localhost:3001
-- **Backend API:** http://localhost:8000/docs
-- **Demo (no login):** http://localhost:3001/demo
+- App: <http://localhost:3001>
+- API documentation (development): <http://localhost:8000/docs>
+- Public demo: <http://localhost:3001/demo>
 
-**Default credentials:** `admin@marketmind.local` / `marketmind`
+The development defaults are `admin@marketmind.local` / `marketmind`. Change them with `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `.env`.
 
-### Manual ingestion
-
-To run ingestion immediately without waiting for the scheduled time:
+To collect documents or refresh valuation context manually:
 
 ```bash
-docker exec infrastructure-backend-1 python scripts/ingest.py
+# From marketmind/infrastructure
+docker compose exec backend python scripts/ingest.py
+
+# Optional: requires FINNHUB_API_KEY in .env
+docker compose exec backend python scripts/ingest_valuation.py
 ```
 
-### Rebuild after code changes
+</details>
 
-```bash
-# Backend
-docker compose build backend && docker compose up -d backend
-
-# Frontend (no hot reload — Next.js build is baked into the image)
-docker compose build frontend && docker compose up -d frontend
-```
+<br>
 
 ---
 
-## Future Work
+<br>
 
-A few directions that would improve the system meaningfully:
-
-**Multi-thesis scoring in a single LLM call.** Currently each document is scored against each thesis in a separate inference call. Scoring all theses in one generation call would reduce ingestion time significantly and is the natural next step as the thesis count grows.
-
-**Trajectory-weighted gap ranking.** Portfolio gap urgency currently uses `doc_count × thesis_count × recency_weight`. Adding a velocity component — how much a company's document count is accelerating — would improve the ranking for early signals before they accumulate a large raw count.
-
-**Expanded and tunable corpus.** The ingestion pipeline has connectors for 60 curated tickers and several sector RSS feeds. Adding domain-specific sources (industry trade publications, government procurement databases, earnings call transcripts) would improve signal quality for specific thesis areas.
-
-**Historical views.** The confidence snapshot table records daily thesis confidence going back to first ingestion. A timeline scrubber or historical comparison view — "what did the AI Infrastructure thesis look like three months ago?" — would make the temporal layer more directly useful.
-
----
-
-## What I Learned
-
-A few things stood out from building this.
-
-**Long-running systems have different design constraints than request-response tools.** The hardest problems weren't in any single component — they were in the interactions between them over time. Evidence immutability, corpus integrity under keyword edits, ingestion idempotency across restarts, cache invalidation without coupling — none of these are hard in isolation, but they compound.
-
-**Product reduction is as important as feature addition.** Several features were built and removed: supply chain extraction, insider transaction clustering, a stateless research endpoint. Each was technically interesting. None improved the daily use case. The product is better for their absence.
-
-**The interface matters as much as the data.** A system that processes thousands of documents per week and surfaces the output as a wall of numbers isn't useful. The work of translating evidence into a clear morning briefing — deciding what's foregrounded, what's omitted, what's framed as trajectory rather than point-in-time — is as important as the ingestion pipeline that feeds it.
-
-**Local LLM inference is more practical than I expected.** Running `qwen3:8b` locally for sentiment classification and narrative generation is genuinely viable for a personal-scale system. Latency is acceptable; quality is sufficient; cost is zero. The `/no_think` prefix on hot paths made a measurable difference.
-
----
-
-Built by Karan Sidhu · [karansidhu.com](https://karansidhu.com)
+MarketMind is a tool for noticing the difference between a mention and a pattern. Its standard is simple: after enough time has passed, can the corpus show something a one-off query could not?
